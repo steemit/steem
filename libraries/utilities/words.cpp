@@ -22,9 +22,9 @@
  * THE SOFTWARE.
  */
 #include <stdint.h>
-#include <steem/utilities/words.hpp>
+#include <dpn/utilities/words.hpp>
 
-namespace steem { namespace words {
+namespace dpn { namespace words {
 
 const const_char_ptr word_list[] = {
 "a",
@@ -14362,7 +14362,7 @@ const const_char_ptr word_list[] = {
 "estado",
 "estamp",
 "estate",
-"esteem",
+"edpn",
 "ester",
 "estevin",
 "estival",
@@ -49780,4 +49780,4 @@ void hide_unused_warning() {
   (void)word_list;
 }
 
-} } // steem::words
+} } // dpn::words

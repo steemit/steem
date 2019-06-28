@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steem/chain/steem_fwd.hpp>
+#include <dpn/chain/dpn_fwd.hpp>
 
 #include "../bmic_objects/bmic_manager_tests.hpp"
 

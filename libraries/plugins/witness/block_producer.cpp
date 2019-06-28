@@ -1,23 +1,23 @@
-#include <steem/plugins/witness/block_producer.hpp>
+#include <dpn/plugins/witness/block_producer.hpp>
 
-#include <steem/protocol/base.hpp>
-#include <steem/protocol/config.hpp>
-#include <steem/protocol/version.hpp>
+#include <dpn/protocol/base.hpp>
+#include <dpn/protocol/config.hpp>
+#include <dpn/protocol/version.hpp>
 
-#include <steem/chain/database_exceptions.hpp>
-#include <steem/chain/db_with.hpp>
-#include <steem/chain/pending_required_action_object.hpp>
-#include <steem/chain/pending_optional_action_object.hpp>
-#include <steem/chain/witness_objects.hpp>
+#include <dpn/chain/database_exceptions.hpp>
+#include <dpn/chain/db_with.hpp>
+#include <dpn/chain/pending_required_action_object.hpp>
+#include <dpn/chain/pending_optional_action_object.hpp>
+#include <dpn/chain/witness_objects.hpp>
 
 #include <fc/macros.hpp>
 
-namespace steem { namespace plugins { namespace witness {
+namespace dpn { namespace plugins { namespace witness {
 
 chain::signed_block block_producer::generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip)
 {
    chain::signed_block result;
-   steem::chain::detail::with_skip_flags(
+   dpn::chain::detail::with_skip_flags(
       _db,
       skip,
       [&]()
@@ -61,12 +61,12 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
    // _pending_tx_session.
 
    if( !(skip & chain::database::skip_witness_signature) )
-      pending_block.sign( block_signing_private_key, _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
+      pending_block.sign( block_signing_private_key, _db.has_hardfork( DPN_HARDFORK_0_20__1944 ) ? fc::ecc::bip_0062 : fc::ecc::fc_canonical );
 
    // TODO:  Move this to _push_block() so session is restored.
    if( !(skip & chain::database::skip_block_size_check) )
    {
-      FC_ASSERT( fc::raw::pack_size(pending_block) <= STEEM_MAX_BLOCK_SIZE );
+      FC_ASSERT( fc::raw::pack_size(pending_block) <= DPN_MAX_BLOCK_SIZE );
    }
 
    _db.push_block( pending_block, skip );
@@ -76,21 +76,21 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
 
 void block_producer::adjust_hardfork_version_vote(const chain::witness_object& witness, chain::signed_block& pending_block)
 {
-   using namespace steem::protocol;
+   using namespace dpn::protocol;
 
-   if( witness.running_version != STEEM_BLOCKCHAIN_VERSION )
-      pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
+   if( witness.running_version != DPN_BLOCKCHAIN_VERSION )
+      pending_block.extensions.insert( block_header_extensions( DPN_BLOCKCHAIN_VERSION ) );
 
    const auto& hfp = _db.get_hardfork_property_object();
 
-   if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
+   if( hfp.current_hardfork_version < DPN_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
       && ( witness.hardfork_version_vote != hfp.next_hardfork || witness.hardfork_time_vote != hfp.next_hardfork_time ) ) // Witness vote does not match binary configuration
    {
       // Make vote match binary configuration
       pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.next_hardfork, hfp.next_hardfork_time ) ) );
    }
-   else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
-            && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
+   else if( hfp.current_hardfork_version == DPN_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+            && witness.hardfork_version_vote > DPN_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
    {
       // Make vote match binary configuration. This is vote to not apply the new hardfork.
       pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.current_hardfork_version, hfp.processed_hardforks.back() ) ) );
@@ -105,8 +105,8 @@ void block_producer::apply_pending_transactions(
    // The 4 is for the max size of the transaction vector length
    size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
    const auto& gpo = _db.get_dynamic_global_properties();
-   uint64_t maximum_block_size = gpo.maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
-   uint64_t maximum_transaction_partition_size = maximum_block_size -  ( maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
+   uint64_t maximum_block_size = gpo.maximum_block_size; //DPN_MAX_BLOCK_SIZE;
+   uint64_t maximum_transaction_partition_size = maximum_block_size -  ( maximum_block_size * gpo.required_actions_partition_percent ) / DPN_100_PERCENT;
 
    //
    // The following code throws away existing pending_tx_session and
@@ -123,7 +123,7 @@ void block_producer::apply_pending_transactions(
    _db.pending_transaction_session() = _db.start_undo_session();
 
    FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
-   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   if( _db.has_hardfork( DPN_HARDFORK_0_20 ) )
    {
       /// modify current witness so transaction evaluators can know who included the transaction
       _db.modify(
@@ -141,7 +141,7 @@ void block_producer::apply_pending_transactions(
       // Only include transactions that have not expired yet for currently generating block,
       // this should clear problem transactions and allow block production to continue
 
-      if( postponed_tx_count > STEEM_BLOCK_GENERATION_POSTPONED_TX_LIMIT )
+      if( postponed_tx_count > DPN_BLOCK_GENERATION_POSTPONED_TX_LIMIT )
          break;
 
       if( tx.expiration < when )
@@ -249,4 +249,4 @@ FC_TODO( "Remove ifdef when optional actions are added" )
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
 }
 
-} } } // steem::plugins::witness
+} } } // dpn::plugins::witness

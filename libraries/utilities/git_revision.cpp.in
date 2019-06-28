@@ -1,14 +1,14 @@
 #include <stdint.h>
-#include <steem/utilities/git_revision.hpp>
+#include <dpn/utilities/git_revision.hpp>
 
-#define STEEM_GIT_REVISION_SHA "@STEEM_GIT_REVISION_SHA@"
-#define STEEM_GIT_REVISION_UNIX_TIMESTAMP @STEEM_GIT_REVISION_UNIX_TIMESTAMP@
-#define STEEM_GIT_REVISION_DESCRIPTION "@STEEM_GIT_REVISION_DESCRIPTION@"
+#define DPN_GIT_REVISION_SHA "@DPN_GIT_REVISION_SHA@"
+#define DPN_GIT_REVISION_UNIX_TIMESTAMP @DPN_GIT_REVISION_UNIX_TIMESTAMP@
+#define DPN_GIT_REVISION_DESCRIPTION "@DPN_GIT_REVISION_DESCRIPTION@"
 
-namespace steem { namespace utilities {
+namespace dpn { namespace utilities {
 
-const char* const git_revision_sha = STEEM_GIT_REVISION_SHA;
-const uint32_t git_revision_unix_timestamp = STEEM_GIT_REVISION_UNIX_TIMESTAMP;
-const char* const git_revision_description = STEEM_GIT_REVISION_DESCRIPTION;
+const char* const git_revision_sha = DPN_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = DPN_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = DPN_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace steem::utilities
+} } // end namespace dpn::utilities

@@ -5,8 +5,8 @@ pushd () { command pushd "$@" > /dev/null; }
 popd () { command popd "$@" > /dev/null; }
 
 function print_help_and_quit {
-   echo Usage: jobs test_steemd_path ref_steemd_path test_work_path ref_work_path block_limit [--dont-copy-config]
-   echo Example: 16 ~/steemit/1/steemd ~/steemit/2/steemd ~/steemit/1/wdir ~/steemit/2/wdir 5000000
+   echo Usage: jobs test_dpnd_path ref_dpnd_path test_work_path ref_work_path block_limit [--dont-copy-config]
+   echo Example: 16 ~/dpnit/1/dpnd ~/dpnit/2/dpnd ~/dpnit/1/wdir ~/dpnit/2/wdir 5000000
    exit -1
 }
 
@@ -36,19 +36,19 @@ TEST_NODE_OPT=--webserver-http-endpoint=$TEST_NODE
 REF_NODE_OPT=--webserver-http-endpoint=$REF_NODE
 EXIT_CODE=0
 JOBS=$1
-TEST_STEEMD_PATH=$2
-REF_STEEMD_PATH=$3
+TEST_DPND_PATH=$2
+REF_DPND_PATH=$3
 TEST_WORK_PATH=$4
 REF_WORK_PATH=$5
 BLOCK_LIMIT=$6
 WDIR=$PWD/logs
-TEST_STEEMD_PID=-1
-REF_STEEMD_PID=-1
-export STEEMD_NODE_PID=-1
+TEST_DPND_PID=-1
+REF_DPND_PID=-1
+export DPND_NODE_PID=-1
 
 function run_replay {
-   echo Running $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
-   $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_STEEMD_PATH $REF_STEEMD_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
+   echo Running $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_DPND_PATH $REF_DPND_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
+   $SCRIPT_DIR/$REPLAY_SCRIPT $TEST_DPND_PATH $REF_DPND_PATH $TEST_WORK_PATH $REF_WORK_PATH $BLOCK_LIMIT $COPY_CONFIG
    [ $? -ne 0 ] && echo test group FAILED && exit -1
 }
 
@@ -73,26 +73,26 @@ function run_test {
 
 run_replay
 
-open_node "tested" $TEST_STEEMD_PATH $TEST_NODE_OPT $TEST_WORK_PATH $TEST_PORT
-TEST_STEEMD_PID=$STEEMD_NODE_PID
+open_node "tested" $TEST_DPND_PATH $TEST_NODE_OPT $TEST_WORK_PATH $TEST_PORT
+TEST_DPND_PID=$DPND_NODE_PID
 
-open_node "reference" $REF_STEEMD_PATH $REF_NODE_OPT $REF_WORK_PATH $REF_PORT
-REF_STEEMD_PID=$STEEMD_NODE_PID
+open_node "reference" $REF_DPND_PATH $REF_NODE_OPT $REF_WORK_PATH $REF_PORT
+REF_DPND_PID=$DPND_NODE_PID
 
 function cleanup {
    ARG=$1
-   if [ $TEST_STEEMD_PID -ne -1 ]
+   if [ $TEST_DPND_PID -ne -1 ]
    then
-      sleep 0.5 && kill -s SIGINT $TEST_STEEMD_PID &
-      wait -n $TEST_STEEMD_PID
-      [ $? -ne 0 ] && echo ERROR: $TEST_STEEMD_PATH exit failed && EXIT_CODE=-1
+      sleep 0.5 && kill -s SIGINT $TEST_DPND_PID &
+      wait -n $TEST_DPND_PID
+      [ $? -ne 0 ] && echo ERROR: $TEST_DPND_PATH exit failed && EXIT_CODE=-1
    fi
 
-   if [ $REF_STEEMD_PID -ne -1 ]
+   if [ $REF_DPND_PID -ne -1 ]
    then
-      sleep 0.5 && kill -s SIGINT $REF_STEEMD_PID &
-      wait -n $REF_STEEMD_PID
-      [ $? -ne 0 ] && echo ERROR: $REF_STEEMD_PATH exit failed && EXIT_CODE=-1
+      sleep 0.5 && kill -s SIGINT $REF_DPND_PID &
+      wait -n $REF_DPND_PID
+      [ $? -ne 0 ] && echo ERROR: $REF_DPND_PATH exit failed && EXIT_CODE=-1
    fi
 
    wait
@@ -107,8 +107,8 @@ function cleanup {
 
 trap cleanup SIGINT SIGPIPE
 
-echo TEST_STEEMD_PID: $TEST_STEEMD_PID REF_STEEMD_PID: $REF_STEEMD_PID
-if [ $TEST_STEEMD_PID -ne -1 ] &&  [ $REF_STEEMD_PID -ne -1 ]; then
+echo TEST_DPND_PID: $TEST_DPND_PID REF_DPND_PID: $REF_DPND_PID
+if [ $TEST_DPND_PID -ne -1 ] &&  [ $REF_DPND_PID -ne -1 ]; then
    run_test "test_list_votes.py"
    # obsolete: run_test "test_list_votes2.py"
 else

@@ -1,12 +1,12 @@
 #include <chainbase/chainbase.hpp>
-#include <steem/chain/steem_objects.hpp>
-#include <steem/chain/util/reward.hpp>
-#include <steem/chain/util/uint256.hpp>
-#include <steem/plugins/chain/chain_plugin.hpp>
-#include <steem/plugins/rewards_api/rewards_api_plugin.hpp>
-#include <steem/plugins/rewards_api/rewards_api.hpp>
+#include <dpn/chain/dpn_objects.hpp>
+#include <dpn/chain/util/reward.hpp>
+#include <dpn/chain/util/uint256.hpp>
+#include <dpn/plugins/chain/chain_plugin.hpp>
+#include <dpn/plugins/rewards_api/rewards_api_plugin.hpp>
+#include <dpn/plugins/rewards_api/rewards_api.hpp>
 
-namespace steem { namespace plugins { namespace rewards_api {
+namespace dpn { namespace plugins { namespace rewards_api {
 
 namespace detail {
 
@@ -14,7 +14,7 @@ class rewards_api_impl
 {
 public:
    rewards_api_impl() :
-      _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+      _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
 
    DECLARE_API_IMPL( (simulate_curve_payouts) );
 
@@ -34,7 +34,7 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
 
    std::vector< fc::uint128_t > element_vshares;
 
-   auto reward_fund_object = _db.get< chain::reward_fund_object, chain::by_name >( STEEM_POST_REWARD_FUND_NAME );
+   auto reward_fund_object = _db.get< chain::reward_fund_object, chain::by_name >( DPN_POST_REWARD_FUND_NAME );
 
    fc::uint128_t var1{ args.var1 };
 
@@ -80,7 +80,7 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
    {
       auto payout_u256 = ( rf * chain::util::to256( element_vshares[ i ] ) ) / total_claims;
       FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
-      ret.payouts[ i ].payout = protocol::asset( static_cast< uint64_t >( payout_u256 ), STEEM_SYMBOL );
+      ret.payouts[ i ].payout = protocol::asset( static_cast< uint64_t >( payout_u256 ), DPN_SYMBOL );
    }
 
    ret.recent_claims = std::string{ simulated_recent_claims - sum_simulated_vshares };
@@ -88,16 +88,16 @@ DEFINE_API_IMPL( rewards_api_impl, simulate_curve_payouts )
    return ret;
 }
 
-} // steem::plugins::rewards_api::detail
+} // dpn::plugins::rewards_api::detail
 
 rewards_api::rewards_api() : my( std::make_unique< detail::rewards_api_impl >() )
 {
-   JSON_RPC_REGISTER_API( STEEM_REWARDS_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_REWARDS_API_PLUGIN_NAME );
 }
 
 rewards_api::~rewards_api() {}
 
 DEFINE_READ_APIS( rewards_api, (simulate_curve_payouts) )
 
-} } } // steem::plugins::rewards_api
+} } } // dpn::plugins::rewards_api
 

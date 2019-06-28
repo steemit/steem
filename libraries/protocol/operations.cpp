@@ -1,8 +1,8 @@
-#include <steem/protocol/operations.hpp>
+#include <dpn/protocol/operations.hpp>
 
-#include <steem/protocol/operation_util_impl.hpp>
+#include <dpn/protocol/operation_util_impl.hpp>
 
-namespace steem { namespace protocol {
+namespace dpn { namespace protocol {
 
 struct is_market_op_visitor {
    typedef bool result_type;
@@ -32,6 +32,6 @@ bool is_virtual_operation( const operation& op )
    return op.visit( is_vop_visitor() );
 }
 
-} } // steem::protocol
+} } // dpn::protocol
 
-STEEM_DEFINE_OPERATION_TYPE( steem::protocol::operation )
+DPN_DEFINE_OPERATION_TYPE( dpn::protocol::operation )

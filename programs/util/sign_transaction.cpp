@@ -8,26 +8,26 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-#include <steem/utilities/key_conversion.hpp>
+#include <dpn/utilities/key_conversion.hpp>
 
-#include <steem/protocol/transaction.hpp>
-#include <steem/protocol/types.hpp>
+#include <dpn/protocol/transaction.hpp>
+#include <dpn/protocol/types.hpp>
 
 #define CHAIN_ID_PARAM "--chain-id"
 
 struct tx_signing_request
 {
-   steem::protocol::transaction     tx;
+   dpn::protocol::transaction     tx;
    std::string                      wif;
 };
 
 struct tx_signing_result
 {
-   steem::protocol::transaction     tx;
+   dpn::protocol::transaction     tx;
    fc::sha256                       digest;
    fc::sha256                       sig_digest;
-   steem::protocol::public_key_type key;
-   steem::protocol::signature_type  sig;
+   dpn::protocol::public_key_type key;
+   dpn::protocol::signature_type  sig;
 };
 
 struct error_result
@@ -43,7 +43,7 @@ int main(int argc, char** argv, char** envp)
 {
    fc::sha256 chainId;
 
-   chainId = STEEM_CHAIN_ID;
+   chainId = DPN_CHAIN_ID;
 
    const size_t chainIdLen = strlen(CHAIN_ID_PARAM);
 
@@ -120,12 +120,12 @@ int main(int argc, char** argv, char** envp)
          sres.digest = sreq.tx.digest();
          sres.sig_digest = sreq.tx.sig_digest(chainId);
 
-         auto priv_key = steem::utilities::wif_to_key( sreq.wif );
+         auto priv_key = dpn::utilities::wif_to_key( sreq.wif );
 
          if(priv_key)
          {
             sres.sig = priv_key->sign_compact( sres.sig_digest );
-            sres.key = steem::protocol::public_key_type( priv_key->get_public_key() );
+            sres.key = dpn::protocol::public_key_type( priv_key->get_public_key() );
             std::string sres_str = fc::json::to_string( sres );
             std::cout << "{\"result\":" << sres_str << "}" << std::endl;
          }

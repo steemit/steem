@@ -1,8 +1,8 @@
-#include <steem/chain/fork_database.hpp>
+#include <dpn/chain/fork_database.hpp>
 
-#include <steem/chain/database_exceptions.hpp>
+#include <dpn/chain/database_exceptions.hpp>
 
-namespace steem { namespace chain {
+namespace dpn { namespace chain {
 
 fork_database::fork_database()
 {
@@ -61,7 +61,7 @@ void  fork_database::_push_block(const item_ptr& item)
    {
       auto& index = _index.get<block_id>();
       auto itr = index.find(item->previous_id());
-      STEEM_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
+      DPN_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
       item->prev = *itr;
    }
@@ -241,4 +241,4 @@ void fork_database::remove(block_id_type id)
    _index.get<block_id>().erase(id);
 }
 
-} } // steem::chain
+} } // dpn::chain

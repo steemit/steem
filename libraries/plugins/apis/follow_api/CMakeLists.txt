@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/plugins/follow_api/*.hpp")
+file(GLOB HEADERS "include/dpn/plugins/follow_api/*.hpp")
 add_library( follow_api_plugin
              follow_api_plugin.cpp
              follow_api.cpp

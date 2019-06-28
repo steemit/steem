@@ -1,9 +1,9 @@
-#include <steem/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
-#include <steem/plugins/transaction_status_api/transaction_status_api.hpp>
+#include <dpn/plugins/transaction_status_api/transaction_status_api_plugin.hpp>
+#include <dpn/plugins/transaction_status_api/transaction_status_api.hpp>
 
-#include <steem/plugins/transaction_status/transaction_status_objects.hpp>
+#include <dpn/plugins/transaction_status/transaction_status_objects.hpp>
 
-namespace steem { namespace plugins { namespace transaction_status_api {
+namespace dpn { namespace plugins { namespace transaction_status_api {
 
 namespace detail {
 
@@ -11,8 +11,8 @@ class transaction_status_api_impl
 {
 public:
    transaction_status_api_impl() :
-      _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
-      _tsp( appbase::app().get_plugin< steem::plugins::transaction_status::transaction_status_plugin >() ) {}
+      _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ),
+      _tsp( appbase::app().get_plugin< dpn::plugins::transaction_status::transaction_status_plugin >() ) {}
 
    DECLARE_API_IMPL( (find_transaction) )
 
@@ -60,7 +60,7 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
 
          // Check if the expiration is before our earliest tracked block plus maximum transaction expiration
          auto earliest_tracked_block = _db.fetch_block_by_number( earliest_tracked_block_num );
-         if ( expiration < earliest_tracked_block->timestamp + STEEM_MAX_TIME_UNTIL_EXPIRATION )
+         if ( expiration < earliest_tracked_block->timestamp + DPN_MAX_TIME_UNTIL_EXPIRATION )
             return {
                .status = transaction_status::too_old
             };
@@ -86,15 +86,15 @@ DEFINE_API_IMPL( transaction_status_api_impl, find_transaction )
    return { .status = transaction_status::unknown };
 }
 
-} // steem::plugins::transaction_status_api::detail
+} // dpn::plugins::transaction_status_api::detail
 
 transaction_status_api::transaction_status_api() : my( std::make_unique< detail::transaction_status_api_impl >() )
 {
-   JSON_RPC_REGISTER_API( STEEM_TRANSACTION_STATUS_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_TRANSACTION_STATUS_API_PLUGIN_NAME );
 }
 
 transaction_status_api::~transaction_status_api() {}
 
 DEFINE_READ_APIS( transaction_status_api, (find_transaction) )
 
-} } } // steem::plugins::transaction_status_api
+} } } // dpn::plugins::transaction_status_api

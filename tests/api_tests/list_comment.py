@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Create list of all steem comments in file.
+Create list of all dpn comments in file.
 Usage: list_comment.py <server_address> [<output_filename>]
 """
 import sys
 import json
 from jsonsocket import JSONSocket
-from jsonsocket import steemd_call
+from jsonsocket import dpnd_call
 
 def list_comments(url):
   """
@@ -24,7 +24,7 @@ def list_comments(url):
       "params": { "start":[ last_cashout_time, "", "" ], "limit": 5, "order": "by_cashout_time" }
       } ), "utf-8" ) + b"\r\n"
 
-    status, response = steemd_call(url, data=request)
+    status, response = dpnd_call(url, data=request)
     
     if status == False:
       print( "rpc failed for last_cashout_time: " + last_cashout_time )

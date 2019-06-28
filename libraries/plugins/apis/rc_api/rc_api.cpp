@@ -1,22 +1,22 @@
-#include <steem/plugins/rc_api/rc_api_plugin.hpp>
-#include <steem/plugins/rc_api/rc_api.hpp>
+#include <dpn/plugins/rc_api/rc_api_plugin.hpp>
+#include <dpn/plugins/rc_api/rc_api.hpp>
 
-#include <steem/plugins/rc/rc_objects.hpp>
-#include <steem/plugins/rc/resource_sizes.hpp>
+#include <dpn/plugins/rc/rc_objects.hpp>
+#include <dpn/plugins/rc/resource_sizes.hpp>
 
-#include <steem/chain/account_object.hpp>
+#include <dpn/chain/account_object.hpp>
 
 #include <fc/variant_object.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace steem { namespace plugins { namespace rc {
+namespace dpn { namespace plugins { namespace rc {
 
 namespace detail {
 
 class rc_api_impl
 {
    public:
-      rc_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+      rc_api_impl() : _db( appbase::app().get_plugin< dpn::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API_IMPL
       (
@@ -34,7 +34,7 @@ DEFINE_API_IMPL( rc_api_impl, get_resource_params )
    const rc_resource_param_object& params_obj = _db.get< rc_resource_param_object, by_id >( rc_resource_param_object::id_type() );
    fc::mutable_variant_object resource_params_mvo;
 
-   for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
+   for( size_t i=0; i<DPN_NUM_RESOURCE_TYPES; i++ )
    {
       std::string resource_name = fc::reflector< rc_resource_types >::to_string( i );
       result.resource_names.push_back( resource_name );
@@ -67,7 +67,7 @@ DEFINE_API_IMPL( rc_api_impl, get_resource_pool )
    fc::mutable_variant_object mvo;
    const rc_pool_object& pool_obj = _db.get< rc_pool_object, by_id >( rc_pool_object::id_type() );
 
-   for( size_t i=0; i<STEEM_NUM_RESOURCE_TYPES; i++ )
+   for( size_t i=0; i<DPN_NUM_RESOURCE_TYPES; i++ )
    {
       resource_pool_api_object api_pool;
       api_pool.pool = pool_obj.pool_array[i];
@@ -109,7 +109,7 @@ DEFINE_API_IMPL( rc_api_impl, find_rc_accounts )
 
 rc_api::rc_api(): my( new detail::rc_api_impl() )
 {
-   JSON_RPC_REGISTER_API( STEEM_RC_API_PLUGIN_NAME );
+   JSON_RPC_REGISTER_API( DPN_RC_API_PLUGIN_NAME );
 }
 
 rc_api::~rc_api() {}
@@ -120,4 +120,4 @@ DEFINE_READ_APIS( rc_api,
    (find_rc_accounts)
    )
 
-} } } // steem::plugins::rc
+} } } // dpn::plugins::rc

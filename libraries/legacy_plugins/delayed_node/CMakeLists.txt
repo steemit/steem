@@ -1,11 +1,11 @@
-file(GLOB HEADERS "include/steem/delayed_node/*.hpp")
+file(GLOB HEADERS "include/dpn/delayed_node/*.hpp")
 
-add_library( steem_delayed_node
+add_library( dpn_delayed_node
              delayed_node_plugin.cpp
            )
 
-target_link_libraries( steem_delayed_node steem_chain steem_protocol steem_app )
-target_include_directories( steem_delayed_node
+target_link_libraries( dpn_delayed_node dpn_chain dpn_protocol dpn_app )
+target_include_directories( dpn_delayed_node
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if(MSVC)
@@ -13,7 +13,7 @@ if(MSVC)
 endif(MSVC)
 
 install( TARGETS
-   steem_delayed_node
+   dpn_delayed_node
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

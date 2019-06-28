@@ -1,9 +1,9 @@
 
-#include <steem/schema/schema.hpp>
+#include <dpn/schema/schema.hpp>
 
 #include <set>
 
-namespace steem { namespace schema {
+namespace dpn { namespace schema {
 
 namespace detail {
 

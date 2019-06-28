@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/plugins/reputation/*.hpp")
+file(GLOB HEADERS "include/dpn/plugins/reputation/*.hpp")
 
 add_library( reputation_plugin
              reputation_plugin.cpp

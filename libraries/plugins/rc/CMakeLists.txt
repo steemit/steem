@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/plugins/rc/*.hpp")
+file(GLOB HEADERS "include/dpn/plugins/rc/*.hpp")
 
 add_library( rc_plugin
              rc_plugin.cpp
@@ -9,7 +9,7 @@ add_library( rc_plugin
              ${HEADERS}
            )
 
-target_link_libraries( rc_plugin chain_plugin block_data_export_plugin steem_chain steem_jsonball steem_protocol )
+target_link_libraries( rc_plugin chain_plugin block_data_export_plugin dpn_chain dpn_jsonball dpn_protocol )
 target_include_directories( rc_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
