@@ -15,43 +15,17 @@
 
 namespace steem { namespace protocol {
 
-/**
- * Base of all smt operations issued by token creator, holding what's needed by all of them.
- */
-struct smt_base_operation : public base_operation
-{
-   /// Account that controls the SMT.
-   account_name_type control_account;
-   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
-   asset_symbol_type symbol;
-
-   void validate()const;
-   void get_required_active_authorities( flat_set<account_name_type>& a )const
-   { a.insert( control_account ); }
-};
-
-/**
- * Base of all smt operations issued any user (aka executor).
- */
-struct smt_executor_base_operation : public base_operation
-{
-   /// Account that executes the operation.
-   account_name_type executor;
-   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
-   asset_symbol_type symbol;
-
-   void validate()const;
-   void get_required_active_authorities( flat_set< account_name_type >& a )const
-   { a.insert( executor ); }
-};
 
 /**
  * This operation introduces new SMT into blockchain as identified by
  * Numerical Asset Identifier (NAI). Also the SMT precision (decimal points)
  * is explicitly provided.
  */
-struct smt_create_operation : public smt_base_operation
+struct smt_create_operation : public base_operation
 {
+   account_name_type control_account;
+   asset_symbol_type symbol;
+
    /// The amount to be transfered from @account to null account as elevation fee.
    asset             smt_creation_fee;
    /// Separately provided precision for clarity and redundancy.
@@ -60,6 +34,9 @@ struct smt_create_operation : public smt_base_operation
    extensions_type   extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
 struct smt_generation_unit
@@ -73,42 +50,10 @@ struct smt_generation_unit
    void validate()const;
 };
 
-struct smt_cap_commitment
-{
-   share_type            lower_bound;
-   share_type            upper_bound;
-   digest_type           hash;
-
-   void validate()const;
-
-   // helper to get what the hash should be when lower_bound == upper_bound and nonce == 0
-   static void fillin_nonhidden_value_hash( fc::sha256& result, share_type amount );
-   // like fillin_nonhidden_value_hash, but returns a new object instead of modify-in-place
-   static fc::sha256 get_nonhidden_value_hash( share_type amount )
-   {
-      fc::sha256 h;
-      fillin_nonhidden_value_hash( h, amount );
-      return h;
-   }
-
-   // helper to fill in the fields so that lower_bound == upper_bound and nonce == 0
-   void fillin_nonhidden_value( share_type amount );
-   // like fillin_nonhidden_value, but returns a new object instead of modify-in-place
-   static smt_cap_commitment get_nonhidden_value( share_type amount )
-   {
-      smt_cap_commitment c;
-      c.fillin_nonhidden_value( amount );
-      return c;
-   }
-};
-
 struct smt_capped_generation_policy
 {
    smt_generation_unit pre_soft_cap_unit;
    smt_generation_unit post_soft_cap_unit;
-
-   smt_cap_commitment  min_steem_units_commitment;
-   smt_cap_commitment  hard_cap_steem_units_commitment;
 
    uint16_t            soft_cap_percent = 0;
 
@@ -124,63 +69,28 @@ typedef static_variant<
    smt_capped_generation_policy
    > smt_generation_policy;
 
-struct smt_setup_operation : public smt_base_operation
+struct smt_setup_operation : public base_operation
 {
-   uint8_t                 decimal_places = 0;
+   account_name_type control_account;
+   asset_symbol_type symbol;
+
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
    smt_generation_policy   initial_generation_policy;
 
-   time_point_sec          generation_begin_time;
-   time_point_sec          generation_end_time;
-   time_point_sec          announced_launch_time;
-   time_point_sec          launch_expiration_time;
+   time_point_sec          contribution_begin_time;
+   time_point_sec          contribution_end_time;
+   time_point_sec          launch_time;
+
+   share_type              steem_units_soft_cap;
+   share_type              steem_units_hard_cap;
 
    extensions_type         extensions;
 
    void validate()const;
-};
 
-struct smt_revealed_cap
-{
-   share_type            amount;
-   uint128_t             nonce;
-
-   void validate( const smt_cap_commitment& commitment )const;
-
-   // helper to fill in share_type to the given value and nonce = 0
-   void fillin_nonhidden_value( share_type amnt )
-   {
-      amount = amnt;
-      nonce = 0;
-   }
-
-   // like fillin_nonhidden_value, but returns a new object instead of modify-in-place
-   static smt_revealed_cap get_nonhidden_value( share_type amnt )
-   {
-      smt_revealed_cap rc;
-      rc.fillin_nonhidden_value( amnt );
-      return rc;
-   }
-};
-
-struct smt_cap_reveal_operation : public smt_base_operation
-{
-   smt_revealed_cap  cap;
-
-   extensions_type   extensions;
-
-   void validate()const;
-};
-
-struct smt_refund_operation : public smt_executor_base_operation
-{
-   account_name_type       contributor;
-   contribution_id_type    contribution_id;
-   asset                   amount;
-   extensions_type         extensions;
-
-   void validate()const;
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
 struct smt_emissions_unit
@@ -188,8 +98,11 @@ struct smt_emissions_unit
    flat_map< account_name_type, uint16_t >        token_unit;
 };
 
-struct smt_setup_emissions_operation : public smt_base_operation
+struct smt_setup_emissions_operation : public base_operation
 {
+   account_name_type   control_account;
+   asset_symbol_type   symbol;
+
    time_point_sec      schedule_time;
    smt_emissions_unit  emissions_unit;
 
@@ -210,6 +123,9 @@ struct smt_setup_emissions_operation : public smt_base_operation
    extensions_type     extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
 struct smt_param_allow_voting
@@ -253,20 +169,30 @@ typedef static_variant<
    smt_param_allow_downvotes
    > smt_runtime_parameter;
 
-struct smt_set_setup_parameters_operation : public smt_base_operation
+struct smt_set_setup_parameters_operation : public base_operation
 {
+   account_name_type                control_account;
+   asset_symbol_type                symbol;
    flat_set< smt_setup_parameter >  setup_parameters;
    extensions_type                  extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
-struct smt_set_runtime_parameters_operation : public smt_base_operation
+struct smt_set_runtime_parameters_operation : public base_operation
 {
+   account_name_type                   control_account;
+   asset_symbol_type                   symbol;
    flat_set< smt_runtime_parameter >   runtime_parameters;
    extensions_type                     extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
 struct smt_contribute_operation : public base_operation
@@ -285,34 +211,24 @@ struct smt_contribute_operation : public base_operation
 } }
 
 FC_REFLECT(
-   steem::protocol::smt_base_operation,
+   steem::protocol::smt_create_operation,
    (control_account)
    (symbol)
-)
-
-FC_REFLECT(
-   steem::protocol::smt_executor_base_operation,
-   (executor)
-   (symbol)
-)
-
-FC_REFLECT_DERIVED(
-   steem::protocol::smt_create_operation,
-   (steem::protocol::smt_base_operation),
    (smt_creation_fee)
    (extensions)
 )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_setup_operation,
-   (steem::protocol::smt_base_operation),
-   (decimal_places)
+   (control_account)
+   (symbol)
    (max_supply)
    (initial_generation_policy)
-   (generation_begin_time)
-   (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
+   (contribution_begin_time)
+   (contribution_end_time)
+   (launch_time)
+   (steem_units_soft_cap)
+   (steem_units_hard_cap)
    (extensions)
    )
 
@@ -322,44 +238,14 @@ FC_REFLECT(
    (token_unit)
    )
 
-FC_REFLECT(
-   steem::protocol::smt_cap_commitment,
-   (lower_bound)
-   (upper_bound)
-   (hash)
-   )
-
-FC_REFLECT(
-   steem::protocol::smt_revealed_cap,
-   (amount)
-   (nonce)
-   )
-
-FC_REFLECT_DERIVED(
-   steem::protocol::smt_cap_reveal_operation,
-   (steem::protocol::smt_base_operation),
-   (cap)
-   (extensions)
-   )
 
 FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
-   (min_steem_units_commitment)
-   (hard_cap_steem_units_commitment)
    (soft_cap_percent)
    (min_unit_ratio)
    (max_unit_ratio)
-   (extensions)
-   )
-
-FC_REFLECT_DERIVED(
-   steem::protocol::smt_refund_operation,
-   (steem::protocol::smt_executor_base_operation),
-   (contributor)
-   (contribution_id)
-   (amount)
    (extensions)
    )
 
@@ -368,9 +254,10 @@ FC_REFLECT(
    (token_unit)
    )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_setup_emissions_operation,
-   (steem::protocol::smt_base_operation),
+   (control_account)
+   (symbol)
    (schedule_time)
    (emissions_unit)
    (interval_seconds)
@@ -422,16 +309,18 @@ FC_REFLECT_TYPENAME(
    steem::protocol::smt_runtime_parameter
    )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_set_setup_parameters_operation,
-   (steem::protocol::smt_base_operation),
+   (control_account)
+   (symbol)
    (setup_parameters)
    (extensions)
    )
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steem::protocol::smt_set_runtime_parameters_operation,
-   (steem::protocol::smt_base_operation),
+   (control_account)
+   (symbol)
    (runtime_parameters)
    (extensions)
    )

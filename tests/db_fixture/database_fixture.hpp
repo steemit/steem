@@ -316,13 +316,10 @@ struct t_smt_database_fixture : public T
 
    //smt_setup_operation
    smt_generation_unit get_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
-   smt_cap_commitment get_cap_commitment( share_type amount = 0, uint128_t nonce = 0 );
    smt_capped_generation_policy get_capped_generation_policy
    (
       const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
       const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
-      const smt_cap_commitment& min_steem_units_commitment = smt_cap_commitment(),
-      const smt_cap_commitment& hard_cap_steem_units_commitment = smt_cap_commitment(),
       uint16_t soft_cap_percent = 0,
       uint32_t min_unit_ratio = 0,
       uint32_t max_unit_ratio = 0

@@ -2631,6 +2631,8 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_apply )
       SMT_SYMBOL( alice, 3, db );
       SMT_SYMBOL( bob, 3, db );
 
+      generate_block();
+
       db_plugin->debug_update( [=](database& db)
       {
          db.create< smt_token_object >( [&]( smt_token_object& o )
