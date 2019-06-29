@@ -83,7 +83,7 @@
 #define DPN_100_PERCENT                     10000
 #define DPN_1_PERCENT                       (DPN_100_PERCENT/100)
 
-#define DPN_BLOCK_INTERVAL                  0.5
+#define DPN_BLOCK_INTERVAL                  1
 #define DPN_BLOCKS_PER_YEAR                 (365*24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_BLOCKS_PER_DAY                  (24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_START_VESTING_BLOCK             (DPN_BLOCKS_PER_DAY * 7)
