@@ -11,10 +11,10 @@
 #ifdef IS_TEST_NET
 #define DPN_BLOCKCHAIN_VERSION              ( version(0, 22, 0) )
 
-#define DPN_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
+#define DPN_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("secretkey"))))
 #define DPN_INIT_PUBLIC_KEY_STR             (std::string( dpn::protocol::public_key_type(DPN_INIT_PRIVATE_KEY.get_public_key()) ))
-#define DPN_CHAIN_ID (fc::sha256::hash("testnet"))
-#define DPN_ADDRESS_PREFIX                  "TST"
+#define DPN_CHAIN_ID (fc::sha256::hash("dappnet"))
+#define DPN_ADDRESS_PREFIX                  "DPN"
 
 #define DPN_GENESIS_TIME                    (fc::time_point_sec(1451606400))
 #define DPN_MINING_TIME                     (fc::time_point_sec(1451606400))
@@ -46,9 +46,9 @@
 
 #define DPN_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
 
-#define DPN_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define DPN_CHAIN_ID fc::sha256()
-#define DPN_ADDRESS_PREFIX                  "STM"
+#define DPN_INIT_PUBLIC_KEY_STR             "DPN8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
+#define DPN_CHAIN_ID (fc::sha256::hash("dappnet"))
+#define DPN_ADDRESS_PREFIX                  "DPN"
 
 #define DPN_GENESIS_TIME                    (fc::time_point_sec(1458835200))
 #define DPN_MINING_TIME                     (fc::time_point_sec(1458838800))
