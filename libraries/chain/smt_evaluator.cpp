@@ -305,7 +305,7 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
       FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
 
-      const smt_ico_object* token_ico = db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
+      const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
       FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
       FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
 
