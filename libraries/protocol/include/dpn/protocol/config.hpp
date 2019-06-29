@@ -83,7 +83,7 @@
 #define DPN_100_PERCENT                     10000
 #define DPN_1_PERCENT                       (DPN_100_PERCENT/100)
 
-#define DPN_BLOCK_INTERVAL                  0.5
+#define DPN_BLOCK_INTERVAL                  1
 #define DPN_BLOCKS_PER_YEAR                 (365*24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_BLOCKS_PER_DAY                  (24*60*60/DPN_BLOCK_INTERVAL)
 #define DPN_START_VESTING_BLOCK             (DPN_BLOCKS_PER_DAY * 7)
@@ -93,15 +93,19 @@
 #define DPN_NUM_INIT_MINERS                 1
 #define DPN_INIT_TIME                       (fc::time_point_sec());
 
-#define DPN_MAX_WITNESSES                   21
+#define DPN_MAX_WITNESSES                   63
 
-#define DPN_MAX_VOTED_WITNESSES_HF0         19
-#define DPN_MAX_MINER_WITNESSES_HF0         1
-#define DPN_MAX_RUNNER_WITNESSES_HF0        1
+#define DPN_MAX_VOTED_WITNESSES_HF0         60
+#define DPN_MAX_MINER_WITNESSES_HF0         0
+#define DPN_MAX_RUNNER_WITNESSES_HF0        3
 
-#define DPN_MAX_VOTED_WITNESSES_HF17        20
+#define DPN_MAX_VOTED_WITNESSES_HF17        60
 #define DPN_MAX_MINER_WITNESSES_HF17        0
-#define DPN_MAX_RUNNER_WITNESSES_HF17       1
+#define DPN_MAX_RUNNER_WITNESSES_HF17       3
+
+#define DPN_MAX_VOTED_WITNESSES_HF21        60
+#define DPN_MAX_MINER_WITNESSES_HF21        0
+#define DPN_MAX_RUNNER_WITNESSES_HF21       3
 
 #define DPN_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define DPN_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
@@ -168,7 +172,7 @@
 #define DPN_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
 #define DPN_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
 #define DPN_LIQUIDITY_REWARD_BLOCKS         (DPN_LIQUIDITY_REWARD_PERIOD_SEC/DPN_BLOCK_INTERVAL)
-#define DPN_MIN_LIQUIDITY_REWARD            (asset( 1000*DPN_LIQUIDITY_REWARD_BLOCKS, DPN_SYMBOL )) // Minumum reward to be paid out to liquidity providers
+#define DPN_MIN_LIQUIDITY_REWARD            (asset( 7200*DPN_LIQUIDITY_REWARD_BLOCKS, DPN_SYMBOL )) // Minumum reward to be paid out to liquidity providers
 #define DPN_MIN_CONTENT_REWARD              DPN_MINING_REWARD
 #define DPN_MIN_CURATE_REWARD               DPN_MINING_REWARD
 #define DPN_MIN_PRODUCER_REWARD             DPN_MINING_REWARD
