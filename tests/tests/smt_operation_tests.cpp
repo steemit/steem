@@ -2806,6 +2806,13 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
             o.control_account = "alice";
             o.liquid_symbol = alice_symbol;
          } );
+
+         db.create< smt_ico_object >( [&]( smt_ico_object& o )
+         {
+            o.symbol = alice_symbol;
+            o.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+            o.steem_units_hard_cap = 99000;
+         } );
       } );
 
       smt_contribute_operation bob_op;
@@ -2906,6 +2913,18 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          sam_asset_accumulator += sam_op.contribution;
       }
 
+      BOOST_TEST_MESSAGE( " -- Fail to contribute after hard cap (alice)" );
+      alice_op.contribution_id = alice_contribution_counter + 1;
+      FAIL_WITH_OP( alice_op, alice_private_key, fc::exception );
+
+      BOOST_TEST_MESSAGE( " -- Fail to contribute after hard cap (bob)" );
+      bob_op.contribution_id = bob_contribution_counter + 1;
+      FAIL_WITH_OP( bob_op, bob_private_key, fc::exception );
+
+      BOOST_TEST_MESSAGE( " -- Fail to contribute after hard cap (sam)" );
+      sam_op.contribution_id = sam_contribution_counter + 1;
+      FAIL_WITH_OP( sam_op, sam_private_key, fc::exception );
+
       validate_database();
 
       generate_block();
@@ -2965,17 +2984,24 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          ++itr;
       }
 
+      BOOST_TEST_MESSAGE( " -- Checking account contributions" );
       BOOST_REQUIRE( alices_contributions == alice_asset_accumulator );
       BOOST_REQUIRE( bobs_contributions == bob_asset_accumulator );
       BOOST_REQUIRE( sams_contributions == sam_asset_accumulator );
 
+      BOOST_TEST_MESSAGE( " -- Checking contribution counts" );
       BOOST_REQUIRE( alices_num_contributions == alice_contribution_counter );
       BOOST_REQUIRE( bobs_num_contributions == bob_contribution_counter );
       BOOST_REQUIRE( sams_num_contributions == sam_contribution_counter );
 
+      BOOST_TEST_MESSAGE( " -- Checking account balances" );
       BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - alice_asset_accumulator );
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - bob_asset_accumulator );
       BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == ASSET( "1000.000 TESTS" ) - sam_asset_accumulator );
+
+      BOOST_TEST_MESSAGE( " -- Checking ICO total contributions" );
+      const auto* ico_obj = db->find< smt_ico_object, by_symbol >( alice_symbol );
+      BOOST_REQUIRE( ico_obj->contributed == alice_asset_accumulator + bob_asset_accumulator + sam_asset_accumulator );
 
       validate_database();
    }
