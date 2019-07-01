@@ -42,7 +42,7 @@ void new_chain_banner( const chain::database& db )
       "********************************\n"
       "*                              *\n"
       "*   ------- NEW CHAIN ------   *\n"
-      "*   -   Welcome to Dpn!  -   *\n"
+      "*   -   Welcome to DPN!  -   *\n"
       "*   ------------------------   *\n"
       "*                              *\n"
       "********************************\n"

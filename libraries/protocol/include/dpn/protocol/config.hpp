@@ -11,10 +11,10 @@
 #ifdef IS_TEST_NET
 #define DPN_BLOCKCHAIN_VERSION              ( version(0, 22, 0) )
 
-#define DPN_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
+#define DPN_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("secretkey"))))
 #define DPN_INIT_PUBLIC_KEY_STR             (std::string( dpn::protocol::public_key_type(DPN_INIT_PRIVATE_KEY.get_public_key()) ))
-#define DPN_CHAIN_ID (fc::sha256::hash("testnet"))
-#define DPN_ADDRESS_PREFIX                  "TST"
+#define DPN_CHAIN_ID (fc::sha256::hash("dappnet"))
+#define DPN_ADDRESS_PREFIX                  "DPN"
 
 #define DPN_GENESIS_TIME                    (fc::time_point_sec(1451606400))
 #define DPN_MINING_TIME                     (fc::time_point_sec(1451606400))
@@ -46,9 +46,9 @@
 
 #define DPN_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
 
-#define DPN_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define DPN_CHAIN_ID fc::sha256()
-#define DPN_ADDRESS_PREFIX                  "STM"
+#define DPN_INIT_PUBLIC_KEY_STR             "DPN8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
+#define DPN_CHAIN_ID (fc::sha256::hash("dappnet"))
+#define DPN_ADDRESS_PREFIX                  "DPN"
 
 #define DPN_GENESIS_TIME                    (fc::time_point_sec(1458835200))
 #define DPN_MINING_TIME                     (fc::time_point_sec(1458838800))
@@ -93,15 +93,19 @@
 #define DPN_NUM_INIT_MINERS                 1
 #define DPN_INIT_TIME                       (fc::time_point_sec());
 
-#define DPN_MAX_WITNESSES                   21
+#define DPN_MAX_WITNESSES                   63
 
-#define DPN_MAX_VOTED_WITNESSES_HF0         19
-#define DPN_MAX_MINER_WITNESSES_HF0         1
-#define DPN_MAX_RUNNER_WITNESSES_HF0        1
+#define DPN_MAX_VOTED_WITNESSES_HF0         60
+#define DPN_MAX_MINER_WITNESSES_HF0         0
+#define DPN_MAX_RUNNER_WITNESSES_HF0        3
 
-#define DPN_MAX_VOTED_WITNESSES_HF17        20
+#define DPN_MAX_VOTED_WITNESSES_HF17        60
 #define DPN_MAX_MINER_WITNESSES_HF17        0
-#define DPN_MAX_RUNNER_WITNESSES_HF17       1
+#define DPN_MAX_RUNNER_WITNESSES_HF17       3
+
+#define DPN_MAX_VOTED_WITNESSES_HF21        60
+#define DPN_MAX_MINER_WITNESSES_HF21        0
+#define DPN_MAX_RUNNER_WITNESSES_HF21       3
 
 #define DPN_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define DPN_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
@@ -168,7 +172,7 @@
 #define DPN_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
 #define DPN_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
 #define DPN_LIQUIDITY_REWARD_BLOCKS         (DPN_LIQUIDITY_REWARD_PERIOD_SEC/DPN_BLOCK_INTERVAL)
-#define DPN_MIN_LIQUIDITY_REWARD            (asset( 1000*DPN_LIQUIDITY_REWARD_BLOCKS, DPN_SYMBOL )) // Minumum reward to be paid out to liquidity providers
+#define DPN_MIN_LIQUIDITY_REWARD            (asset( 7200*DPN_LIQUIDITY_REWARD_BLOCKS, DPN_SYMBOL )) // Minumum reward to be paid out to liquidity providers
 #define DPN_MIN_CONTENT_REWARD              DPN_MINING_REWARD
 #define DPN_MIN_CURATE_REWARD               DPN_MINING_REWARD
 #define DPN_MIN_PRODUCER_REWARD             DPN_MINING_REWARD

@@ -2368,7 +2368,8 @@ asset database::get_pow_reward()const
 #endif
 
    static_assert( DPN_BLOCK_INTERVAL == 1, "this code assumes a 3-second time interval" );
-   static_assert( DPN_MAX_WITNESSES == 21, "this code assumes 21 per round" );
+
+   static_assert( DPN_MAX_WITNESSES == 63, "this code assumes 21 per round" );
    asset percent( calc_percent_reward_per_round< DPN_POW_APR_PERCENT >( props.virtual_supply.amount ), DPN_SYMBOL);
    return std::max( percent, DPN_MIN_POW_REWARD );
 }
@@ -5036,12 +5037,15 @@ void database::apply_hardfork( uint32_t hardfork )
             static_assert(
                DPN_MAX_VOTED_WITNESSES_HF17 + DPN_MAX_MINER_WITNESSES_HF17 + DPN_MAX_RUNNER_WITNESSES_HF17 == DPN_MAX_WITNESSES,
                "HF17 witness counts must add up to DPN_MAX_WITNESSES" );
+             static_assert(
+               DPN_MAX_VOTED_WITNESSES_HF21 + DPN_MAX_MINER_WITNESSES_HF21 + DPN_MAX_RUNNER_WITNESSES_HF21 == DPN_MAX_WITNESSES,
+               "HF21 witness counts must add up to DPN_MAX_WITNESSES" );
 
             modify( get_witness_schedule_object(), [&]( witness_schedule_object& wso )
             {
-               wso.max_voted_witnesses = DPN_MAX_VOTED_WITNESSES_HF17;
-               wso.max_miner_witnesses = DPN_MAX_MINER_WITNESSES_HF17;
-               wso.max_runner_witnesses = DPN_MAX_RUNNER_WITNESSES_HF17;
+               wso.max_voted_witnesses = DPN_MAX_VOTED_WITNESSES_HF21;
+               wso.max_miner_witnesses = DPN_MAX_MINER_WITNESSES_HF21;
+               wso.max_runner_witnesses = DPN_MAX_RUNNER_WITNESSES_HF21;
             });
 
             const auto& gpo = get_dynamic_global_properties();
