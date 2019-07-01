@@ -47,7 +47,7 @@ class DBBlockCacheTest : public DBTestBase {
     return options;
   }
 
-  void InitTable(const Options& options) {
+  void InitTable(const Options& /*options*/) {
     std::string value(kValueSize, 'a');
     for (size_t i = 0; i < kNumBlocks; i++) {
       ASSERT_OK(Put(ToString(i), value.c_str()));
@@ -111,6 +111,31 @@ class DBBlockCacheTest : public DBTestBase {
   }
 };
 
+TEST_F(DBBlockCacheTest, IteratorBlockCacheUsage) {
+  ReadOptions read_options;
+  read_options.fill_cache = false;
+  auto table_options = GetTableOptions();
+  auto options = GetOptions(table_options);
+  InitTable(options);
+
+  std::shared_ptr<Cache> cache = NewLRUCache(0, 0, false);
+  table_options.block_cache = cache;
+  options.table_factory.reset(new BlockBasedTableFactory(table_options));
+  Reopen(options);
+  RecordCacheCounters(options);
+
+  std::vector<std::unique_ptr<Iterator>> iterators(kNumBlocks - 1);
+  Iterator* iter = nullptr;
+
+  ASSERT_EQ(0, cache->GetUsage());
+  iter = db_->NewIterator(read_options);
+  iter->Seek(ToString(0));
+  ASSERT_LT(0, cache->GetUsage());
+  delete iter;
+  iter = nullptr;
+  ASSERT_EQ(0, cache->GetUsage());
+}
+
 TEST_F(DBBlockCacheTest, TestWithoutCompressedBlockCache) {
   ReadOptions read_options;
   auto table_options = GetTableOptions();
@@ -148,7 +173,7 @@ TEST_F(DBBlockCacheTest, TestWithoutCompressedBlockCache) {
   delete iter;
   iter = nullptr;
 
-  // Release interators and access cache again.
+  // Release iterators and access cache again.
   for (size_t i = 0; i < kNumBlocks - 1; i++) {
     iterators[i].reset();
     CheckCacheCounters(options, 0, 0, 0, 0);
@@ -280,6 +305,41 @@ TEST_F(DBBlockCacheTest, IndexAndFilterBlocksOfNewTableAddedToCache) {
             TestGetTickerCount(options, BLOCK_CACHE_INDEX_HIT));
 }
 
+// With fill_cache = false, fills up the cache, then iterates over the entire
+// db, verify dummy entries inserted in `BlockBasedTable::NewDataBlockIterator`
+// does not cause heap-use-after-free errors in COMPILE_WITH_ASAN=1 runs
+TEST_F(DBBlockCacheTest, FillCacheAndIterateDB) {
+  ReadOptions read_options;
+  read_options.fill_cache = false;
+  auto table_options = GetTableOptions();
+  auto options = GetOptions(table_options);
+  InitTable(options);
+
+  std::shared_ptr<Cache> cache = NewLRUCache(10, 0, true);
+  table_options.block_cache = cache;
+  options.table_factory.reset(new BlockBasedTableFactory(table_options));
+  Reopen(options);
+  ASSERT_OK(Put("key1", "val1"));
+  ASSERT_OK(Put("key2", "val2"));
+  ASSERT_OK(Flush());
+  ASSERT_OK(Put("key3", "val3"));
+  ASSERT_OK(Put("key4", "val4"));
+  ASSERT_OK(Flush());
+  ASSERT_OK(Put("key5", "val5"));
+  ASSERT_OK(Put("key6", "val6"));
+  ASSERT_OK(Flush());
+
+  Iterator* iter = nullptr;
+
+  iter = db_->NewIterator(read_options);
+  iter->Seek(ToString(0));
+  while (iter->Valid()) {
+    iter->Next();
+  }
+  delete iter;
+  iter = nullptr;
+}
+
 TEST_F(DBBlockCacheTest, IndexAndFilterBlocksStats) {
   Options options = CurrentOptions();
   options.create_if_missing = true;
@@ -289,7 +349,7 @@ TEST_F(DBBlockCacheTest, IndexAndFilterBlocksStats) {
   // 200 bytes are enough to hold the first two blocks
   std::shared_ptr<Cache> cache = NewLRUCache(200, 0, false);
   table_options.block_cache = cache;
-  table_options.filter_policy.reset(NewBloomFilterPolicy(20));
+  table_options.filter_policy.reset(NewBloomFilterPolicy(20, true));
   options.table_factory.reset(new BlockBasedTableFactory(table_options));
   CreateAndReopenWithCF({"pikachu"}, options);
 
@@ -330,11 +390,14 @@ class MockCache : public LRUCache {
   static uint32_t high_pri_insert_count;
   static uint32_t low_pri_insert_count;
 
-  MockCache() : LRUCache(1 << 25, 0, false, 0.0) {}
+  MockCache()
+      : LRUCache((size_t)1 << 25 /*capacity*/, 0 /*num_shard_bits*/,
+                 false /*strict_capacity_limit*/, 0.0 /*high_pri_pool_ratio*/) {
+  }
 
-  virtual Status Insert(const Slice& key, void* value, size_t charge,
-                        void (*deleter)(const Slice& key, void* value),
-                        Handle** handle, Priority priority) override {
+  Status Insert(const Slice& key, void* value, size_t charge,
+                void (*deleter)(const Slice& key, void* value), Handle** handle,
+                Priority priority) override {
     if (priority == Priority::LOW) {
       low_pri_insert_count++;
     } else {
@@ -565,6 +628,74 @@ TEST_F(DBBlockCacheTest, CompressedCache) {
 
     options.create_if_missing = true;
     DestroyAndReopen(options);
+  }
+}
+
+TEST_F(DBBlockCacheTest, CacheCompressionDict) {
+  const int kNumFiles = 4;
+  const int kNumEntriesPerFile = 128;
+  const int kNumBytesPerEntry = 1024;
+
+  // Try all the available libraries that support dictionary compression
+  std::vector<CompressionType> compression_types;
+#ifdef ZLIB
+  compression_types.push_back(kZlibCompression);
+#endif  // ZLIB
+#if LZ4_VERSION_NUMBER >= 10400
+  compression_types.push_back(kLZ4Compression);
+  compression_types.push_back(kLZ4HCCompression);
+#endif  // LZ4_VERSION_NUMBER >= 10400
+#if ZSTD_VERSION_NUMBER >= 500
+  compression_types.push_back(kZSTD);
+#endif  // ZSTD_VERSION_NUMBER >= 500
+  Random rnd(301);
+  for (auto compression_type : compression_types) {
+    Options options = CurrentOptions();
+    options.compression = compression_type;
+    options.compression_opts.max_dict_bytes = 4096;
+    options.create_if_missing = true;
+    options.num_levels = 2;
+    options.statistics = rocksdb::CreateDBStatistics();
+    options.target_file_size_base = kNumEntriesPerFile * kNumBytesPerEntry;
+    BlockBasedTableOptions table_options;
+    table_options.cache_index_and_filter_blocks = true;
+    table_options.block_cache.reset(new MockCache());
+    options.table_factory.reset(new BlockBasedTableFactory(table_options));
+    DestroyAndReopen(options);
+
+    for (int i = 0; i < kNumFiles; ++i) {
+      ASSERT_EQ(i, NumTableFilesAtLevel(0, 0));
+      for (int j = 0; j < kNumEntriesPerFile; ++j) {
+        std::string value = RandomString(&rnd, kNumBytesPerEntry);
+        ASSERT_OK(Put(Key(j * kNumFiles + i), value.c_str()));
+      }
+      ASSERT_OK(Flush());
+    }
+    dbfull()->TEST_WaitForCompact();
+    ASSERT_EQ(0, NumTableFilesAtLevel(0));
+    ASSERT_EQ(kNumFiles, NumTableFilesAtLevel(1));
+
+    // Seek to a key in a file. It should cause the SST's dictionary meta-block
+    // to be read.
+    RecordCacheCounters(options);
+    ASSERT_EQ(0,
+              TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_MISS));
+    ASSERT_EQ(0, TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_ADD));
+    ASSERT_EQ(
+        TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT),
+        0);
+    ReadOptions read_options;
+    ASSERT_NE("NOT_FOUND", Get(Key(kNumFiles * kNumEntriesPerFile - 1)));
+    // Two blocks missed/added: dictionary and data block
+    // One block hit: index since it's prefetched
+    CheckCacheCounters(options, 2 /* expected_misses */, 1 /* expected_hits */,
+                       2 /* expected_inserts */, 0 /* expected_failures */);
+    ASSERT_EQ(1,
+              TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_MISS));
+    ASSERT_EQ(1, TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_ADD));
+    ASSERT_GT(
+        TestGetTickerCount(options, BLOCK_CACHE_COMPRESSION_DICT_BYTES_INSERT),
+        0);
   }
 }
 

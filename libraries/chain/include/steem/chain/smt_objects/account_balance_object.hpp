@@ -14,7 +14,7 @@ namespace steem { namespace chain {
  */
 class account_regular_balance_object : public object< account_regular_balance_object_type, account_regular_balance_object >
 {
-   account_regular_balance_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_regular_balance_object );
 
 public:   
    template <typename Constructor, typename Allocator>
@@ -62,7 +62,7 @@ public:
  */
 class account_rewards_balance_object : public object< account_rewards_balance_object_type, account_rewards_balance_object >
 {
-   account_rewards_balance_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_rewards_balance_object );
 
 public:   
    template <typename Constructor, typename Allocator>

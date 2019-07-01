@@ -45,9 +45,24 @@ enum sort_order_type
    by_comment_voter,
    by_voter_comment,
    by_price,
+   by_symbol_contributor,
    by_symbol,
    by_control_account,
-   by_symbol_time
+   by_symbol_time,
+   by_creator,
+   by_start_date,
+   by_end_date,
+   by_total_votes,
+   by_voter_proposal,
+   by_proposal_voter,
+   by_contributor,
+   by_symbol_id
+};
+
+enum order_direction_type
+{
+   ascending, ///< sort with ascending order
+   descending ///< sort with descending order
 };
 
 struct list_object_args_type
@@ -421,6 +436,50 @@ struct get_order_book_args
 typedef order_book get_order_book_return;
 
 
+/* Proposals */
+
+struct list_proposals_args
+{
+   // starting value for querying results
+   fc::variant start;
+
+   // query limit
+   uint32_t limit = 0;
+
+   // name of the field by which results will be sorted.
+   sort_order_type order;
+
+   // sorting order (ascending or descending) of the result vector. Default is ascending
+   order_direction_type order_direction;
+
+   // result will contain only data with status flag set to this value. Default is all
+   proposal_status status;
+};
+
+struct list_proposals_return
+{
+   vector< api_proposal_object > proposals;
+};
+
+
+struct find_proposals_args
+{
+   vector< api_id_type > proposal_ids;
+};
+
+typedef list_proposals_return find_proposals_return;
+
+
+/* Proposal Votes */
+
+typedef list_proposals_args list_proposal_votes_args;
+
+struct list_proposal_votes_return
+{
+   vector< api_proposal_vote_object > proposal_votes;
+};
+
+
 struct get_transaction_hex_args
 {
    signed_transaction trx;
@@ -514,12 +573,27 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
+typedef list_object_args_type list_smt_contributions_args;
+
+struct list_smt_contributions_return
+{
+   vector< smt_contribution_object > contributions;
+};
+
+struct find_smt_contributions_args
+{
+   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributors;
+};
+
+typedef list_smt_contributions_return find_smt_contributions_return;
+
+typedef list_object_args_type list_smt_token_emissions_args;
 
 typedef list_object_args_type list_smt_tokens_args;
 
 struct list_smt_tokens_return
 {
-   vector< smt_token_object > tokens;
+   vector< api_smt_token_object > tokens;
 };
 
 struct find_smt_tokens_args
@@ -581,9 +655,22 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter)
    (by_voter_comment)
    (by_price)
+   (by_symbol_contributor)
    (by_symbol)
    (by_control_account)
-   (by_symbol_time) )
+   (by_symbol_time)
+   (by_creator)
+   (by_start_date)
+   (by_end_date)
+   (by_total_votes)
+   (by_voter_proposal)
+   (by_proposal_voter)
+   (by_contributor)
+   (by_symbol_id) )
+
+FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
+  (ascending)
+  (descending) )
 
 FC_REFLECT( steem::plugins::database_api::list_object_args_type,
    (start)(limit)(order) )
@@ -694,6 +781,18 @@ FC_REFLECT( steem::plugins::database_api::find_limit_orders_args,
 FC_REFLECT( steem::plugins::database_api::get_order_book_args,
    (limit) )
 
+FC_REFLECT( steem::plugins::database_api::list_proposals_args,
+   (start)(limit)(order)(order_direction)(status) )
+
+FC_REFLECT( steem::plugins::database_api::list_proposals_return,
+   (proposals) )
+
+FC_REFLECT( steem::plugins::database_api::find_proposals_args,
+   (proposal_ids) )
+
+FC_REFLECT( steem::plugins::database_api::list_proposal_votes_return,
+   (proposal_votes) )
+
 FC_REFLECT( steem::plugins::database_api::get_transaction_hex_args,
    (trx) )
 
@@ -735,6 +834,12 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
 
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
+
+FC_REFLECT( steem::plugins::database_api::list_smt_contributions_return,
+   (contributions) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_contributions_args,
+   (symbol_contributors) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )

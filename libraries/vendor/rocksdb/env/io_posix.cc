@@ -35,6 +35,11 @@
 #include "util/string_util.h"
 #include "util/sync_point.h"
 
+#if defined(OS_LINUX) && !defined(F_SET_RW_HINT)
+#define F_LINUX_SPECIFIC_BASE 1024
+#define F_SET_RW_HINT         (F_LINUX_SPECIFIC_BASE + 12)
+#endif
+
 namespace rocksdb {
 
 // A wrapper for fadvise, if the platform doesn't support fadvise,
@@ -43,6 +48,10 @@ int Fadvise(int fd, off_t offset, size_t len, int advice) {
 #ifdef OS_LINUX
   return posix_fadvise(fd, offset, len, advice);
 #else
+  (void)fd;
+  (void)offset;
+  (void)len;
+  (void)advice;
   return 0;  // simply do nothing.
 #endif
 }
@@ -74,10 +83,14 @@ size_t GetLogicalBufferSize(int __attribute__((__unused__)) fd) {
   if (!device_dir.empty() && device_dir.back() == '/') {
     device_dir.pop_back();
   }
-  // NOTE: sda3 does not have a `queue/` subdir, only the parent sda has it.
+  // NOTE: sda3 and nvme0n1p1 do not have a `queue/` subdir, only the parent sda
+  // and nvme0n1 have it.
   // $ ls -al '/sys/dev/block/8:3'
   // lrwxrwxrwx. 1 root root 0 Jun 26 01:38 /sys/dev/block/8:3 ->
   // ../../block/sda/sda3
+  // $ ls -al '/sys/dev/block/259:4'
+  // lrwxrwxrwx 1 root root 0 Jan 31 16:04 /sys/dev/block/259:4 ->
+  // ../../devices/pci0000:17/0000:17:00.0/0000:18:00.0/nvme/nvme0/nvme0n1/nvme0n1p1
   size_t parent_end = device_dir.rfind('/', device_dir.length() - 1);
   if (parent_end == std::string::npos) {
     return kDefaultPageSize;
@@ -86,8 +99,11 @@ size_t GetLogicalBufferSize(int __attribute__((__unused__)) fd) {
   if (parent_begin == std::string::npos) {
     return kDefaultPageSize;
   }
-  if (device_dir.substr(parent_begin + 1, parent_end - parent_begin - 1) !=
-      "block") {
+  std::string parent =
+      device_dir.substr(parent_begin + 1, parent_end - parent_begin - 1);
+  std::string child = device_dir.substr(parent_end + 1, std::string::npos);
+  if (parent != "block" &&
+      (child.compare(0, 4, "nvme") || child.find('p') != std::string::npos)) {
     device_dir = device_dir.substr(0, parent_end);
   }
   std::string fname = device_dir + "/queue/logical_block_size";
@@ -175,16 +191,15 @@ Status PosixSequentialFile::Read(size_t n, Slice* result, char* scratch) {
 
 Status PosixSequentialFile::PositionedRead(uint64_t offset, size_t n,
                                            Slice* result, char* scratch) {
-  if (use_direct_io()) {
-    assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
-    assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
-    assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
-  }
+  assert(use_direct_io());
+  assert(IsSectorAligned(offset, GetRequiredBufferAlignment()));
+  assert(IsSectorAligned(n, GetRequiredBufferAlignment()));
+  assert(IsSectorAligned(scratch, GetRequiredBufferAlignment()));
+
   Status s;
   ssize_t r = -1;
   size_t left = n;
   char* ptr = scratch;
-  assert(use_direct_io());
   while (left > 0) {
     r = pread(fd_, ptr, left, static_cast<off_t>(offset));
     if (r <= 0) {
@@ -222,6 +237,8 @@ Status PosixSequentialFile::Skip(uint64_t n) {
 
 Status PosixSequentialFile::InvalidateCache(size_t offset, size_t length) {
 #ifndef OS_LINUX
+  (void)offset;
+  (void)length;
   return Status::OK();
 #else
   if (!use_direct_io()) {
@@ -405,6 +422,8 @@ Status PosixRandomAccessFile::InvalidateCache(size_t offset, size_t length) {
     return Status::OK();
   }
 #ifndef OS_LINUX
+  (void)offset;
+  (void)length;
   return Status::OK();
 #else
   // free OS pages
@@ -429,6 +448,9 @@ PosixMmapReadableFile::PosixMmapReadableFile(const int fd,
                                              void* base, size_t length,
                                              const EnvOptions& options)
     : fd_(fd), filename_(fname), mmapped_region_(base), length_(length) {
+#ifdef NDEBUG
+  (void)options;
+#endif
   fd_ = fd_ + 0;  // suppress the warning for used variables
   assert(options.use_mmap_reads);
   assert(!options.use_direct_reads);
@@ -440,10 +462,11 @@ PosixMmapReadableFile::~PosixMmapReadableFile() {
     fprintf(stdout, "failed to munmap %p length %" ROCKSDB_PRIszt " \n",
             mmapped_region_, length_);
   }
+  close(fd_);
 }
 
 Status PosixMmapReadableFile::Read(uint64_t offset, size_t n, Slice* result,
-                                   char* scratch) const {
+                                   char* /*scratch*/) const {
   Status s;
   if (offset > length_) {
     *result = Slice();
@@ -459,6 +482,8 @@ Status PosixMmapReadableFile::Read(uint64_t offset, size_t n, Slice* result,
 
 Status PosixMmapReadableFile::InvalidateCache(size_t offset, size_t length) {
 #ifndef OS_LINUX
+  (void)offset;
+  (void)length;
   return Status::OK();
 #else
   // free OS pages
@@ -567,6 +592,8 @@ PosixMmapFile::PosixMmapFile(const std::string& fname, int fd, size_t page_size,
 #ifdef ROCKSDB_FALLOCATE_PRESENT
   allow_fallocate_ = options.allow_fallocate;
   fallocate_with_keep_size_ = options.fallocate_with_keep_size;
+#else
+  (void)options;
 #endif
   assert((page_size & (page_size - 1)) == 0);
   assert(options.use_mmap_writes);
@@ -667,6 +694,8 @@ uint64_t PosixMmapFile::GetFileSize() {
 
 Status PosixMmapFile::InvalidateCache(size_t offset, size_t length) {
 #ifndef OS_LINUX
+  (void)offset;
+  (void)length;
   return Status::OK();
 #else
   // free OS pages
@@ -794,7 +823,7 @@ Status PosixWritableFile::Close() {
     // trim the extra space preallocated at the end of the file
     // NOTE(ljin): we probably don't want to surface failure as an IOError,
     // but it will be nice to log these errors.
-    int dummy __attribute__((unused));
+    int dummy __attribute__((__unused__));
     dummy = ftruncate(fd_, filesize_);
 #if defined(ROCKSDB_FALLOCATE_PRESENT) && !defined(TRAVIS)
     // in some file systems, ftruncate only trims trailing space if the
@@ -858,11 +887,31 @@ bool PosixWritableFile::IsSyncThreadSafe() const { return true; }
 
 uint64_t PosixWritableFile::GetFileSize() { return filesize_; }
 
+void PosixWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
+#ifdef OS_LINUX
+// Suppress Valgrind "Unimplemented functionality" error.
+#ifndef ROCKSDB_VALGRIND_RUN
+  if (hint == write_hint_) {
+    return;
+  }
+  if (fcntl(fd_, F_SET_RW_HINT, &hint) == 0) {
+    write_hint_ = hint;
+  }
+#else
+  (void)hint;
+#endif // ROCKSDB_VALGRIND_RUN
+#else
+  (void)hint;
+#endif // OS_LINUX
+}
+
 Status PosixWritableFile::InvalidateCache(size_t offset, size_t length) {
   if (use_direct_io()) {
     return Status::OK();
   }
 #ifndef OS_LINUX
+  (void)offset;
+  (void)length;
   return Status::OK();
 #else
   // free OS pages
@@ -922,7 +971,7 @@ size_t PosixWritableFile::GetUniqueId(char* id, size_t max_size) const {
  */
 
 PosixRandomRWFile::PosixRandomRWFile(const std::string& fname, int fd,
-                                     const EnvOptions& options)
+                                     const EnvOptions& /*options*/)
     : filename_(fname), fd_(fd) {}
 
 PosixRandomRWFile::~PosixRandomRWFile() {
@@ -1008,6 +1057,11 @@ Status PosixRandomRWFile::Close() {
   }
   fd_ = -1;
   return Status::OK();
+}
+
+PosixMemoryMappedFileBuffer::~PosixMemoryMappedFileBuffer() {
+  // TODO should have error handling though not much we can do...
+  munmap(this->base_, length_);
 }
 
 /*

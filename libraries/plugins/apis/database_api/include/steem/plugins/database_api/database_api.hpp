@@ -101,6 +101,14 @@ class database_api
          (find_limit_orders)
          (get_order_book)
 
+         /////////
+         // SPS //
+         /////////
+
+         (list_proposals)
+         (find_proposals)
+         (list_proposal_votes)
+
          ////////////////////////////
          // Authority / validation //
          ////////////////////////////
@@ -142,6 +150,9 @@ class database_api
          * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
          */
          (get_nai_pool)
+
+         (list_smt_contributions)
+         (find_smt_contributions)
 
          (list_smt_tokens)
          (find_smt_tokens)

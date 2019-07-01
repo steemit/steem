@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/plugins/database_api/database_api.hpp>
 #include <steem/plugins/block_api/block_api.hpp>
@@ -9,7 +10,6 @@
 #include <steem/plugins/follow_api/follow_api.hpp>
 #include <steem/plugins/reputation_api/reputation_api.hpp>
 #include <steem/plugins/market_history_api/market_history_api.hpp>
-
 #include <steem/plugins/condenser_api/condenser_api_legacy_objects.hpp>
 
 #include <fc/optional.hpp>
@@ -357,6 +357,7 @@ struct extended_dynamic_global_properties
       virtual_supply( legacy_asset::from_asset( o.virtual_supply ) ),
       current_supply( legacy_asset::from_asset( o.current_supply ) ),
       confidential_supply( legacy_asset::from_asset( o.confidential_supply ) ),
+      init_sbd_supply( legacy_asset::from_asset( o.init_sbd_supply ) ),
       current_sbd_supply( legacy_asset::from_asset( o.current_sbd_supply ) ),
       confidential_sbd_supply( legacy_asset::from_asset( o.confidential_sbd_supply ) ),
       total_vesting_fund_steem( legacy_asset::from_asset( o.total_vesting_fund_steem ) ),
@@ -391,6 +392,7 @@ struct extended_dynamic_global_properties
    legacy_asset      virtual_supply;
    legacy_asset      current_supply;
    legacy_asset      confidential_supply;
+   legacy_asset      init_sbd_supply;
    legacy_asset      current_sbd_supply;
    legacy_asset      confidential_sbd_supply;
    legacy_asset      total_vesting_fund_steem;
@@ -1014,6 +1016,9 @@ DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
+DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
+DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
+DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
 
 #undef DEFINE_API_ARGS
 
@@ -1108,6 +1113,9 @@ public:
       (get_recent_trades)
       (get_market_history)
       (get_market_history_buckets)
+      (list_proposals)
+      (find_proposals)
+      (list_proposal_votes)
    )
 
    private:
@@ -1171,7 +1179,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_comment_object,
 FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (head_block_number)(head_block_id)(time)
             (current_witness)(total_pow)(num_pow_witnesses)
-            (virtual_supply)(current_supply)(confidential_supply)(current_sbd_supply)(confidential_sbd_supply)
+            (virtual_supply)(current_supply)(confidential_supply)(init_sbd_supply)(current_sbd_supply)(confidential_sbd_supply)
             (total_vesting_fund_steem)(total_vesting_shares)
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)

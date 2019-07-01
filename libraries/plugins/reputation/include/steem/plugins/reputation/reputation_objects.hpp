@@ -1,8 +1,6 @@
 #pragma once
 #include <steem/chain/steem_object_types.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
 namespace steem { namespace chain {
 struct by_account;
 } }

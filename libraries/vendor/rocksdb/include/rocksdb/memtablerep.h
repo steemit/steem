@@ -39,17 +39,19 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <stdlib.h>
+#include <rocksdb/slice.h>
 
 namespace rocksdb {
 
 class Arena;
 class Allocator;
 class LookupKey;
-class Slice;
 class SliceTransform;
 class Logger;
 
 typedef void* KeyHandle;
+
+extern Slice GetLengthPrefixedSlice(const char* data);
 
 class MemTableRep {
  public:
@@ -57,6 +59,14 @@ class MemTableRep {
   // concatenated with values.
   class KeyComparator {
    public:
+    typedef rocksdb::Slice DecodedType;
+
+    virtual DecodedType decode_key(const char* key) const {
+      // The format of key is frozen and can be terated as a part of the API
+      // contract. Refer to MemTable::Add for details.
+      return GetLengthPrefixedSlice(key);
+    }
+
     // Compare a and b. Return a negative value if a is less than b, 0 if they
     // are equal, and a positive value if a is greater than b
     virtual int operator()(const char* prefix_len_key1,
@@ -83,25 +93,46 @@ class MemTableRep {
   // collection, and no concurrent modifications to the table in progress
   virtual void Insert(KeyHandle handle) = 0;
 
+  // Same as ::Insert
+  // Returns false if MemTableRepFactory::CanHandleDuplicatedKey() is true and
+  // the <key, seq> already exists.
+  virtual bool InsertKey(KeyHandle handle) {
+    Insert(handle);
+    return true;
+  }
+
   // Same as Insert(), but in additional pass a hint to insert location for
   // the key. If hint points to nullptr, a new hint will be populated.
   // otherwise the hint will be updated to reflect the last insert location.
   //
   // Currently only skip-list based memtable implement the interface. Other
   // implementations will fallback to Insert() by default.
-  virtual void InsertWithHint(KeyHandle handle, void** hint) {
+  virtual void InsertWithHint(KeyHandle handle, void** /*hint*/) {
     // Ignore the hint by default.
     Insert(handle);
   }
 
+  // Same as ::InsertWithHint
+  // Returns false if MemTableRepFactory::CanHandleDuplicatedKey() is true and
+  // the <key, seq> already exists.
+  virtual bool InsertKeyWithHint(KeyHandle handle, void** hint) {
+    InsertWithHint(handle, hint);
+    return true;
+  }
+
   // Like Insert(handle), but may be called concurrent with other calls
-  // to InsertConcurrently for other handles
-  virtual void InsertConcurrently(KeyHandle handle) {
-#ifndef ROCKSDB_LITE
-    throw std::runtime_error("concurrent insert not supported");
-#else
-    abort();
-#endif
+  // to InsertConcurrently for other handles.
+  //
+  // Returns false if MemTableRepFactory::CanHandleDuplicatedKey() is true and
+  // the <key, seq> already exists.
+  virtual void InsertConcurrently(KeyHandle handle);
+
+  // Same as ::InsertConcurrently
+  // Returns false if MemTableRepFactory::CanHandleDuplicatedKey() is true and
+  // the <key, seq> already exists.
+  virtual bool InsertKeyConcurrently(KeyHandle handle) {
+    InsertConcurrently(handle);
+    return true;
   }
 
   // Returns true iff an entry that compares equal to key is in the collection.
@@ -112,6 +143,14 @@ class MemTableRep {
   // not be written to (ie No more calls to Allocate(), Insert(),
   // or any writes done directly to entries accessed through the iterator.)
   virtual void MarkReadOnly() { }
+
+  // Notify this table rep that it has been flushed to stable storage.
+  // By default, does nothing.
+  //
+  // Invariant: MarkReadOnly() is called, before MarkFlushed().
+  // Note that this method if overridden, should not run for an extended period
+  // of time. Otherwise, RocksDB may be blocked.
+  virtual void MarkFlushed() { }
 
   // Look up key from the mem table, since the first key in the mem table whose
   // user_key matches the one given k, call the function callback_func(), with
@@ -128,8 +167,8 @@ class MemTableRep {
   virtual void Get(const LookupKey& k, void* callback_args,
                    bool (*callback_func)(void* arg, const char* entry));
 
-  virtual uint64_t ApproximateNumEntries(const Slice& start_ikey,
-                                         const Slice& end_key) {
+  virtual uint64_t ApproximateNumEntries(const Slice& /*start_ikey*/,
+                                         const Slice& /*end_key*/) {
     return 0;
   }
 
@@ -232,6 +271,12 @@ class MemTableRepFactory {
   // Return true if the current MemTableRep supports concurrent inserts
   // Default: false
   virtual bool IsInsertConcurrentlySupported() const { return false; }
+
+  // Return true if the current MemTableRep supports detecting duplicate
+  // <key,seq> at insertion time. If true, then MemTableRep::Insert* returns
+  // false when if the <key,seq> already exists.
+  // Default: false
+  virtual bool CanHandleDuplicatedKey() const { return false; }
 };
 
 // This uses a skip list to store keys. It is the default.
@@ -252,6 +297,8 @@ class SkipListFactory : public MemTableRepFactory {
   virtual const char* Name() const override { return "SkipListFactory"; }
 
   bool IsInsertConcurrentlySupported() const override { return true; }
+
+  bool CanHandleDuplicatedKey() const override { return true; }
 
  private:
   const size_t lookahead_;
@@ -315,39 +362,5 @@ extern MemTableRepFactory* NewHashLinkListRepFactory(
     bool if_log_bucket_dist_when_flash = true,
     uint32_t threshold_use_skiplist = 256);
 
-// This factory creates a cuckoo-hashing based mem-table representation.
-// Cuckoo-hash is a closed-hash strategy, in which all key/value pairs
-// are stored in the bucket array itself intead of in some data structures
-// external to the bucket array.  In addition, each key in cuckoo hash
-// has a constant number of possible buckets in the bucket array.  These
-// two properties together makes cuckoo hash more memory efficient and
-// a constant worst-case read time.  Cuckoo hash is best suitable for
-// point-lookup workload.
-//
-// When inserting a key / value, it first checks whether one of its possible
-// buckets is empty.  If so, the key / value will be inserted to that vacant
-// bucket.  Otherwise, one of the keys originally stored in one of these
-// possible buckets will be "kicked out" and move to one of its possible
-// buckets (and possibly kicks out another victim.)  In the current
-// implementation, such "kick-out" path is bounded.  If it cannot find a
-// "kick-out" path for a specific key, this key will be stored in a backup
-// structure, and the current memtable to be forced to immutable.
-//
-// Note that currently this mem-table representation does not support
-// snapshot (i.e., it only queries latest state) and iterators.  In addition,
-// MultiGet operation might also lose its atomicity due to the lack of
-// snapshot support.
-//
-// Parameters:
-//   write_buffer_size: the write buffer size in bytes.
-//   average_data_size: the average size of key + value in bytes.  This value
-//     together with write_buffer_size will be used to compute the number
-//     of buckets.
-//   hash_function_count: the number of hash functions that will be used by
-//     the cuckoo-hash.  The number also equals to the number of possible
-//     buckets each key will have.
-extern MemTableRepFactory* NewHashCuckooRepFactory(
-    size_t write_buffer_size, size_t average_data_size = 64,
-    unsigned int hash_function_count = 4);
 #endif  // ROCKSDB_LITE
 }  // namespace rocksdb

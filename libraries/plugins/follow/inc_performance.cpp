@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/database.hpp>
@@ -31,8 +33,10 @@ class performance_impl
       performance_impl( database& _db );
       ~performance_impl();
 
+#ifndef ENABLE_MIRA
       template< performance_data::t_creation_type CreationType, typename Index >
-      uint32_t delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+      uint32_t delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+#endif
 };
 
 
@@ -144,7 +148,8 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
          init = false;
       else
       {
-         auto removed = std::prev( actual );
+         auto removed = actual;
+         --removed;
          if( CreationType == performance_data::t_creation_type::full_feed )
             skip_modify( removed, pd );
          db.remove( *removed );
@@ -158,8 +163,9 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
    }
 }
 
+#ifndef ENABLE_MIRA
 template< performance_data::t_creation_type CreationType, typename Index >
-uint32_t performance_impl::delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
+uint32_t performance_impl::delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
    auto it_l = old_idx.lower_bound( start_account );
    auto it_u = old_idx.upper_bound( start_account );
@@ -184,10 +190,14 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
       }
 
    if( !is_init )
-     modify< CreationType >( *std::prev( it ), start_account, next_id, pd );
+   {
+      auto prev = it;
+      modify< CreationType >( *(--prev), start_account, next_id, pd );
+   }
 
    return next_id;
 }
+#endif
 
 performance::performance( database& _db )
          : my( new performance_impl( _db ) )
@@ -200,8 +210,9 @@ performance::~performance()
 
 }
 
+#ifndef ENABLE_MIRA
 template< performance_data::t_creation_type CreationType, typename Index >
-uint32_t performance::delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
+uint32_t performance::delete_old_objects( Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
    FC_ASSERT( my );
    return my->delete_old_objects< CreationType >( old_idx, start_account, max_size, pd );
@@ -213,5 +224,6 @@ using t_blog = decltype( ((database*)nullptr)->get_index< blog_index >().indices
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_feed >( t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::part_feed >( t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_blog >( t_blog& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+#endif
 
 } } } //steem::follow

@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #define STEEM_ACCOUNT_HISTORY_PLUGIN_NAME "account_history"

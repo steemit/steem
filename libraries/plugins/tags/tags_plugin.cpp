@@ -119,9 +119,6 @@ void tags_plugin_impl::add_stats( const tag_object& tag, const tag_stats_object&
 
 void tags_plugin_impl::remove_tag( const tag_object& tag )const
 {
-   /// TODO: update tag stats object
-   _db.remove(tag);
-
    const auto& idx = _db.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
    auto itr = idx.lower_bound( boost::make_tuple(tag.author,tag.tag) );
    if( itr != idx.end() && itr->author == tag.author && itr->tag == tag.tag )
@@ -131,6 +128,9 @@ void tags_plugin_impl::remove_tag( const tag_object& tag )const
          stats.total_posts--;
       });
    }
+
+   /// TODO: update tag stats object
+   _db.remove(tag);
 }
 
 const tag_stats_object& tags_plugin_impl::get_stats( const string& tag )const
@@ -531,9 +531,9 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
       });
    }
 
-   add_plugin_index< tag_index               >( my->_db );
-   add_plugin_index< tag_stats_index         >( my->_db );
-   add_plugin_index< author_tag_stats_index  >( my->_db );
+   STEEM_ADD_PLUGIN_INDEX(my->_db, tag_index);
+   STEEM_ADD_PLUGIN_INDEX(my->_db, tag_stats_index);
+   STEEM_ADD_PLUGIN_INDEX(my->_db, author_tag_stats_index);
 
    fc::mutable_variant_object state_opts;
 

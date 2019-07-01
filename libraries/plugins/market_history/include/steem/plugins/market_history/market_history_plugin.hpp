@@ -1,9 +1,8 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -122,6 +121,8 @@ struct order_history_object : public object< order_history_object_type, order_hi
       c( *this );
    }
 
+   order_history_object() {}
+
    id_type                          id;
 
    fc::time_point_sec               time;
@@ -152,7 +153,12 @@ typedef multi_index_container<
    order_history_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< order_history_object, order_history_id_type, &order_history_object::id > >,
-      ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
+      ordered_unique< tag< by_time >,
+         composite_key< order_history_object,
+            member< order_history_object, time_point_sec, &order_history_object::time >,
+            member< order_history_object, order_history_id_type, &order_history_object::id >
+         >
+      >
    >,
    allocator< order_history_object >
 > order_history_index;

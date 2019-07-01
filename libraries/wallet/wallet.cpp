@@ -1,8 +1,11 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/utilities/git_revision.hpp>
 #include <steem/utilities/key_conversion.hpp>
 #include <steem/utilities/words.hpp>
 
 #include <steem/protocol/base.hpp>
+#include <steem/protocol/sps_operations.hpp>
 #include <steem/wallet/wallet.hpp>
 #include <steem/wallet/api_documentation.hpp>
 #include <steem/wallet/reflect_util.hpp>
@@ -2401,5 +2404,92 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    return my->sign_transaction( trx, broadcast );
 }
+
+   condenser_api::legacy_signed_transaction  wallet_api::create_proposal(
+      account_name_type creator,
+      account_name_type receiver,
+      time_point_sec start_date,
+      time_point_sec end_date,
+      condenser_api::legacy_asset daily_pay,
+      string subject,
+      string permlink,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      create_proposal_operation cp;
+      cp.creator = creator;
+      cp.receiver = receiver;
+      cp.start_date = start_date;
+      cp.end_date = end_date;
+      cp.daily_pay = daily_pay;
+      cp.subject = subject;
+      cp.permlink = permlink;
+
+      signed_transaction trx;
+      trx.operations.push_back( cp );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction  wallet_api::update_proposal_votes(
+      account_name_type voter,
+      flat_set< int64_t > proposals,
+      bool approve,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      update_proposal_votes_operation upv;
+
+      upv.voter = voter;
+      upv.proposal_ids = proposals;
+      upv.approve = approve;
+
+      signed_transaction trx;
+      trx.operations.push_back( upv );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::list_proposals_return wallet_api::list_proposals(
+      fc::variant start,
+      database_api::sort_order_type order_by,
+      uint32_t limit,
+      database_api::order_direction_type order_type,
+      database_api::proposal_status status )
+   {
+      return my->_remote_api->list_proposals( start, limit, order_by, order_type, status );
+   }
+
+   condenser_api::find_proposals_return wallet_api::find_proposals( vector< int64_t > proposal_ids )
+   {
+      return my->_remote_api->find_proposals( proposal_ids );
+   }
+
+   condenser_api::list_proposal_votes_return wallet_api::list_proposal_votes(
+      fc::variant start,
+      database_api::sort_order_type order_by,
+      uint32_t limit,
+      database_api::order_direction_type order_type,
+      database_api::proposal_status status )
+   {
+      return my->_remote_api->list_proposal_votes( start, limit, order_by, order_type, status );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::remove_proposal(account_name_type deleter,
+                                                                        flat_set< int64_t > ids, bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      remove_proposal_operation rp;
+      rp.proposal_owner = deleter;
+      rp.proposal_ids   = ids;
+
+      signed_transaction trx;
+      trx.operations.push_back( rp );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
 
 } } // steem::wallet

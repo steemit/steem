@@ -1,16 +1,13 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/comment_object.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 
 namespace steem { namespace plugins { namespace tags {
 
 using namespace steem::chain;
-using namespace boost::multi_index;
 
 using namespace appbase;
 
@@ -265,7 +262,7 @@ typedef multi_index_container<
          composite_key_compare< std::less< tag_name_type >, std::greater< uint32_t > >
       >,
       */
-      ordered_non_unique< tag< by_trending >,
+      ordered_unique< tag< by_trending >,
          composite_key< tag_stats_object,
             member< tag_stats_object, fc::uint128 , &tag_stats_object::total_trending >,
             member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
@@ -285,12 +282,14 @@ typedef multi_index_container<
  */
 class author_tag_stats_object : public object< author_tag_stats_object_type, author_tag_stats_object >
 {
-  public:
+   public:
       template< typename Constructor, typename Allocator >
       author_tag_stats_object( Constructor&& c, allocator< Allocator > )
       {
          c( *this );
       }
+
+      author_tag_stats_object() {}
 
       id_type         id;
       account_id_type author;
@@ -305,7 +304,7 @@ struct by_author_posts_tag;
 using std::less;
 using std::greater;
 
-typedef chainbase::shared_multi_index_container<
+typedef multi_index_container<
   author_tag_stats_object,
   indexed_by<
       ordered_unique< tag< by_id >,
@@ -327,7 +326,8 @@ typedef chainbase::shared_multi_index_container<
          >,
          composite_key_compare< less< account_id_type >, less< tag_name_type >, greater< uint32_t > >
       >
-  >
+  >,
+  allocator< author_tag_stats_object >
 > author_tag_stats_index;
 
 /**

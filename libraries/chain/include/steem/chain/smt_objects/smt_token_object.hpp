@@ -1,8 +1,8 @@
 #pragma once
 
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
-#include <boost/multi_index/composite_key.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -16,7 +16,6 @@ enum class smt_phase : uint8_t
    setup_completed,
    contribution_begin_time_completed,
    contribution_end_time_completed,
-   launch_time_completed,              /// launch window opened
    launch_failed,                      /// launch window closed with either not enough contributions or some cap not revealed
    launch_success                      /// enough contributions were declared and caps revealed before launch windows closed
 };
@@ -26,7 +25,7 @@ enum class smt_phase : uint8_t
  */
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
-   smt_token_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_object );
 
 public:
 
@@ -38,6 +37,7 @@ public:
    };
 
 public:
+
    template< typename Constructor, typename Allocator >
    smt_token_object( Constructor&& c, allocator< Allocator > a )
    {
@@ -109,21 +109,33 @@ public:
 
    ///parameters for 'smt_setup_operation'
    int64_t                       max_supply = 0;
+};
+
+class smt_ico_object : public object< smt_ico_object_type, smt_ico_object >
+{
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_object );
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_ico_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type id;
+   asset_symbol_type             symbol;
    steem::protocol::
    smt_capped_generation_policy  capped_generation_policy;
-   time_point_sec                generation_begin_time;
-   time_point_sec                generation_end_time;
-   time_point_sec                announced_launch_time;
-   time_point_sec                launch_expiration_time;
-
-   // smt_cap_reveal
-   share_type  steem_units_min_cap = -1;
-   share_type  steem_units_hard_cap = -1;
+   time_point_sec                contribution_begin_time;
+   time_point_sec                contribution_end_time;
+   time_point_sec                launch_time;
+   share_type                    steem_units_soft_cap = -1;
+   share_type                    steem_units_hard_cap = -1;
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
 {
-   smt_token_emissions_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_emissions_object );
 
 public:
    template< typename Constructor, typename Allocator >
@@ -147,29 +159,59 @@ public:
    uint8_t                               rel_amount_denom_bits = 0;
 };
 
-class smt_event_token_object : public object< smt_event_token_object_type, smt_event_token_object >
+class smt_contribution_object : public object< smt_contribution_object_type, smt_contribution_object >
 {
-   smt_event_token_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_contribution_object );
 
 public:
    template< typename Constructor, typename Allocator >
-   smt_event_token_object( Constructor&& c, allocator< Allocator > a )
+   smt_contribution_object( Constructor&& c, allocator< Allocator > a )
    {
       c( *this );
    }
 
-   // id_type is actually oid<smt_event_token_object>
-   id_type           id;
-
-   smt_token_id_type             parent;
-
-   smt_phase                     phase = smt_phase::setup_completed;
-
-   time_point_sec                generation_begin_time;
-   time_point_sec                generation_end_time;
-   time_point_sec                announced_launch_time;
-   time_point_sec                launch_expiration_time;
+   id_type                               id;
+   asset_symbol_type                     symbol;
+   account_name_type                     contributor;
+   uint32_t                              contribution_id;
+   asset                                 contribution;
 };
+
+struct by_symbol_contributor;
+struct by_contributor;
+struct by_symbol_id;
+
+typedef multi_index_container <
+   smt_contribution_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_contribution_object, smt_contribution_object_id_type, &smt_contribution_object::id > >,
+      ordered_unique< tag< by_symbol_contributor >,
+         composite_key< smt_contribution_object,
+            member< smt_contribution_object, asset_symbol_type, &smt_contribution_object::symbol >,
+            member< smt_contribution_object, account_name_type, &smt_contribution_object::contributor >,
+            member< smt_contribution_object, uint32_t, &smt_contribution_object::contribution_id >
+         >
+      >,
+      ordered_unique< tag< by_symbol_id >,
+         composite_key< smt_contribution_object,
+            member< smt_contribution_object, asset_symbol_type, &smt_contribution_object::symbol >,
+            member< smt_contribution_object, smt_contribution_object_id_type, &smt_contribution_object::id >
+         >
+      >
+#ifndef IS_LOW_MEM
+      ,
+      ordered_unique< tag< by_contributor >,
+         composite_key< smt_contribution_object,
+            member< smt_contribution_object, account_name_type, &smt_contribution_object::contributor >,
+            member< smt_contribution_object, asset_symbol_type, &smt_contribution_object::symbol >,
+            member< smt_contribution_object, uint32_t, &smt_contribution_object::contribution_id >
+         >
+      >
+#endif
+   >,
+   allocator< smt_contribution_object >
+> smt_contribution_index;
 
 struct by_symbol;
 struct by_control_account;
@@ -191,6 +233,17 @@ typedef multi_index_container <
    allocator< smt_token_object >
 > smt_token_index;
 
+typedef multi_index_container <
+   smt_ico_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_ico_object, smt_ico_object_id_type, &smt_ico_object::id > >,
+      ordered_unique< tag< by_symbol >,
+         member< smt_ico_object, asset_symbol_type, &smt_ico_object::symbol > >
+   >,
+   allocator< smt_ico_object >
+> smt_ico_index;
+
 struct by_symbol_time;
 
 typedef multi_index_container <
@@ -208,44 +261,6 @@ typedef multi_index_container <
    allocator< smt_token_emissions_object >
 > smt_token_emissions_index;
 
-struct by_interval_gen_begin;
-struct by_interval_gen_end;
-struct by_interval_launch;
-struct by_interval_launch_exp;
-typedef multi_index_container <
-   smt_event_token_object,
-   indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_event_token_object, smt_event_token_id_type, &smt_event_token_object::id > >,
-
-      ordered_non_unique< tag< by_interval_gen_begin >,
-         composite_key< smt_event_token_object,
-            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_begin_time >
-         >
-      >,
-      ordered_non_unique< tag< by_interval_gen_end >,
-         composite_key< smt_event_token_object,
-            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::generation_end_time >
-         >
-      >,
-      ordered_non_unique< tag< by_interval_launch >,
-         composite_key< smt_event_token_object,
-            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::announced_launch_time >
-         >
-      >,
-      ordered_non_unique< tag< by_interval_launch_exp >,
-         composite_key< smt_event_token_object,
-            member< smt_event_token_object, smt_phase, &smt_event_token_object::phase >,
-            member< smt_event_token_object, time_point_sec, &smt_event_token_object::launch_expiration_time >
-         >
-      >
-   >,
-   allocator< smt_event_token_object >
-> smt_event_token_index;
-
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_phase,
@@ -253,7 +268,6 @@ FC_REFLECT_ENUM( steem::chain::smt_phase,
                   (setup_completed)
                   (contribution_begin_time_completed)
                   (contribution_end_time_completed)
-                  (launch_time_completed)
                   (launch_failed)
                   (launch_success)
 )
@@ -286,12 +300,16 @@ FC_REFLECT( steem::chain::smt_token_object,
    (author_reward_curve)
    (curation_reward_curve)
    (max_supply)
+)
+
+FC_REFLECT( steem::chain::smt_ico_object,
+   (id)
+   (symbol)
    (capped_generation_policy)
-   (generation_begin_time)
-   (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
-   (steem_units_min_cap)
+   (contribution_begin_time)
+   (contribution_end_time)
+   (launch_time)
+   (steem_units_soft_cap)
    (steem_units_hard_cap)
 )
 
@@ -311,18 +329,17 @@ FC_REFLECT( steem::chain::smt_token_emissions_object,
    (rel_amount_denom_bits)
 )
 
-FC_REFLECT( steem::chain::smt_event_token_object,
+FC_REFLECT( steem::chain::smt_contribution_object,
    (id)
-   (parent)
-   (phase)
-   (generation_begin_time)
-   (generation_end_time)
-   (announced_launch_time)
-   (launch_expiration_time)
+   (symbol)
+   (contributor)
+   (contribution_id)
+   (contribution)
 )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
-CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_event_token_object, steem::chain::smt_event_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
 
 #endif

@@ -28,13 +28,13 @@ namespace {
 class NoSleepEnv : public EnvWrapper {
  public:
   NoSleepEnv(Env* base) : EnvWrapper(base) {}
-  virtual void SleepForMicroseconds(int micros) override {
+  void SleepForMicroseconds(int micros) override {
     fake_time_ += static_cast<uint64_t>(micros);
   }
 
-  virtual uint64_t NowNanos() override { return fake_time_ * 1000; }
+  uint64_t NowNanos() override { return fake_time_ * 1000; }
 
-  virtual uint64_t NowMicros() override { return fake_time_; }
+  uint64_t NowMicros() override { return fake_time_; }
 
  private:
   uint64_t fake_time_ = 6666666666;
@@ -71,9 +71,10 @@ class AutoRollLoggerTest : public testing::Test {
 
 const std::string AutoRollLoggerTest::kSampleMessage(
     "this is the message to be written to the log file!!");
-const std::string AutoRollLoggerTest::kTestDir(test::TmpDir() + "/db_log_test");
-const std::string AutoRollLoggerTest::kLogFile(test::TmpDir() +
-                                               "/db_log_test/LOG");
+const std::string AutoRollLoggerTest::kTestDir(
+    test::PerThreadDBPath("db_log_test"));
+const std::string AutoRollLoggerTest::kLogFile(
+    test::PerThreadDBPath("db_log_test") + "/LOG");
 Env* AutoRollLoggerTest::default_env = Env::Default();
 
 // In this test we only want to Log some simple log message with
@@ -229,7 +230,7 @@ TEST_F(AutoRollLoggerTest, CompositeRollByTimeAndSizeLogger) {
 TEST_F(AutoRollLoggerTest, CreateLoggerFromOptions) {
   DBOptions options;
   NoSleepEnv nse(Env::Default());
-  shared_ptr<Logger> logger;
+  std::shared_ptr<Logger> logger;
 
   // Normal logger
   ASSERT_OK(CreateLoggerFromOptions(kTestDir, options, &logger));
@@ -272,7 +273,7 @@ TEST_F(AutoRollLoggerTest, CreateLoggerFromOptions) {
 
 TEST_F(AutoRollLoggerTest, LogFlushWhileRolling) {
   DBOptions options;
-  shared_ptr<Logger> logger;
+  std::shared_ptr<Logger> logger;
 
   InitTestDb();
   options.max_log_file_size = 1024 * 5;
@@ -347,6 +348,45 @@ TEST_F(AutoRollLoggerTest, InfoLogLevel) {
       log_lines += InfoLogLevel::HEADER_LEVEL - log_level + 1;
     }
   }
+  std::ifstream inFile(AutoRollLoggerTest::kLogFile.c_str());
+  size_t lines = std::count(std::istreambuf_iterator<char>(inFile),
+                         std::istreambuf_iterator<char>(), '\n');
+  ASSERT_EQ(log_lines, lines);
+  inFile.close();
+}
+
+TEST_F(AutoRollLoggerTest, Close) {
+  InitTestDb();
+
+  size_t log_size = 8192;
+  size_t log_lines = 0;
+  AutoRollLogger logger(Env::Default(), kTestDir, "", log_size, 0);
+  for (int log_level = InfoLogLevel::HEADER_LEVEL;
+       log_level >= InfoLogLevel::DEBUG_LEVEL; log_level--) {
+    logger.SetInfoLogLevel((InfoLogLevel)log_level);
+    for (int log_type = InfoLogLevel::DEBUG_LEVEL;
+         log_type <= InfoLogLevel::HEADER_LEVEL; log_type++) {
+      // log messages with log level smaller than log_level will not be
+      // logged.
+      LogMessage((InfoLogLevel)log_type, &logger, kSampleMessage.c_str());
+    }
+    log_lines += InfoLogLevel::HEADER_LEVEL - log_level + 1;
+  }
+  for (int log_level = InfoLogLevel::HEADER_LEVEL;
+       log_level >= InfoLogLevel::DEBUG_LEVEL; log_level--) {
+    logger.SetInfoLogLevel((InfoLogLevel)log_level);
+
+    // again, messages with level smaller than log_level will not be logged.
+    ROCKS_LOG_HEADER(&logger, "%s", kSampleMessage.c_str());
+    ROCKS_LOG_DEBUG(&logger, "%s", kSampleMessage.c_str());
+    ROCKS_LOG_INFO(&logger, "%s", kSampleMessage.c_str());
+    ROCKS_LOG_WARN(&logger, "%s", kSampleMessage.c_str());
+    ROCKS_LOG_ERROR(&logger, "%s", kSampleMessage.c_str());
+    ROCKS_LOG_FATAL(&logger, "%s", kSampleMessage.c_str());
+    log_lines += InfoLogLevel::HEADER_LEVEL - log_level + 1;
+  }
+  ASSERT_EQ(logger.Close(), Status::OK());
+
   std::ifstream inFile(AutoRollLoggerTest::kLogFile.c_str());
   size_t lines = std::count(std::istreambuf_iterator<char>(inFile),
                          std::istreambuf_iterator<char>(), '\n');
@@ -481,7 +521,7 @@ int main(int argc, char** argv) {
 #else
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   fprintf(stderr,
           "SKIPPED as AutoRollLogger is not supported in ROCKSDB_LITE\n");
   return 0;

@@ -1,3 +1,4 @@
+#include <steem/protocol/config.hpp>
 
 #include <steem/plugins/rc/rc_config.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>

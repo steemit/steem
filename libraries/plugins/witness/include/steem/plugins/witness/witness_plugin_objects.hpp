@@ -28,6 +28,8 @@ class witness_custom_op_object : public object< witness_custom_op_object_type, w
          c( *this );
       }
 
+      witness_custom_op_object() {}
+
       id_type               id;
       account_name_type     account;
 };

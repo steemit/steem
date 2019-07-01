@@ -1,4 +1,7 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/protocol/authority.hpp>
 #include <steem/protocol/operations.hpp>
@@ -8,14 +11,11 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
 
-#include <boost/multi_index/composite_key.hpp>
-
-
 namespace steem { namespace chain {
 
    class operation_object : public object< operation_object_type, operation_object >
    {
-      operation_object() = delete;
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( operation_object )
 
       public:
          template< typename Constructor, typename Allocator >
@@ -44,7 +44,12 @@ namespace steem { namespace chain {
       operation_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< operation_object, operation_id_type, &operation_object::id > >,
-         ordered_non_unique< tag< by_location >, member< operation_object, uint32_t, &operation_object::block > >
+         ordered_unique< tag< by_location >,
+            composite_key< operation_object,
+               member< operation_object, uint32_t, &operation_object::block >,
+               member< operation_object, operation_id_type, &operation_object::id >
+            >
+         >
 #ifndef SKIP_BY_TX_ID
          ,
          ordered_unique< tag< by_transaction_id >,
@@ -66,6 +71,8 @@ namespace steem { namespace chain {
          {
             c( *this );
          }
+
+         account_history_object() {}
 
          id_type           id;
 
@@ -91,6 +98,14 @@ namespace steem { namespace chain {
       allocator< account_history_object >
    > account_history_index;
 } }
+
+#ifdef ENABLE_MIRA
+namespace mira {
+
+template<> struct is_static_length< steem::chain::account_history_object > : public boost::true_type {};
+
+} // mira
+#endif
 
 FC_REFLECT( steem::chain::operation_object, (id)(trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::operation_object, steem::chain::operation_index )

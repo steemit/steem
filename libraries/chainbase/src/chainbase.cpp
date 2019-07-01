@@ -1,6 +1,6 @@
 #include <chainbase/chainbase.hpp>
 #include <boost/array.hpp>
-
+#include <boost/any.hpp>
 #include <iostream>
 
 namespace chainbase {
@@ -30,14 +30,16 @@ namespace chainbase {
       bool                    windows = false;
    };
 
-   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size )
+   void database::open( const bfs::path& dir, uint32_t flags, size_t shared_file_size, const boost::any& database_cfg )
    {
+      assert( dir.is_absolute() );
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
       _data_dir = dir;
+      _database_cfg = database_cfg;
 
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       auto abs_path = bfs::absolute( dir / "shared_memory.bin" );
 
       if( bfs::exists( abs_path ) )
@@ -70,42 +72,123 @@ namespace chainbase {
       _flock = bip::file_lock( abs_path.generic_string().c_str() );
       if( !_flock.try_lock() )
          BOOST_THROW_EXCEPTION( std::runtime_error( "could not gain write access to the shared memory file" ) );
+#else
+      for( auto& item : _index_list )
+      {
+         item->open( _data_dir, _database_cfg );
+      }
 #endif
+      _is_open = true;
    }
 
    void database::flush() {
-#ifndef ENABLE_STD_ALLOCATOR
+#ifndef ENABLE_MIRA
       if( _segment )
          _segment->flush();
       if( _meta )
          _meta->flush();
+#else
+      for( auto& item : _index_list )
+      {
+         item->flush();
+      }
+#endif
+   }
+
+   size_t database::get_cache_usage() const
+   {
+#ifdef ENABLE_MIRA
+      size_t cache_size = 0;
+      for( const auto& i : _index_list )
+      {
+         cache_size += i->get_cache_usage();
+      }
+      return cache_size;
+#else
+      return 0;
+#endif
+   }
+
+   size_t database::get_cache_size() const
+   {
+#ifdef ENABLE_MIRA
+      size_t cache_size = 0;
+      for( const auto& i : _index_list )
+      {
+         cache_size += i->get_cache_size();
+      }
+      return cache_size;
+#else
+      return 0;
+#endif
+   }
+
+   void database::dump_lb_call_counts()
+   {
+#ifdef ENABLE_MIRA
+      for( const auto& i : _index_list )
+      {
+         i->dump_lb_call_counts();
+      }
+#endif
+   }
+
+   void database::trim_cache()
+   {
+#ifdef ENABLE_MIRA
+      if( _index_list.size() )
+      {
+         (*_index_list.begin())->trim_cache();
+      }
 #endif
    }
 
    void database::close()
    {
-#ifndef ENABLE_STD_ALLOCATOR
-      _segment.reset();
-      _meta.reset();
-      _data_dir = bfs::path();
+      if( _is_open )
+      {
+#ifndef ENABLE_MIRA
+         _segment.reset();
+         _meta.reset();
+         _data_dir = bfs::path();
+#else
+         undo_all();
+
+         for( auto& item : _index_list )
+         {
+            item->close();
+         }
 #endif
+         _is_open = false;
+      }
    }
 
    void database::wipe( const bfs::path& dir )
    {
-#ifndef ENABLE_STD_ALLOCATOR
+      assert( !_is_open );
+#ifndef ENABLE_MIRA
       _segment.reset();
       _meta.reset();
       bfs::remove_all( dir / "shared_memory.bin" );
       bfs::remove_all( dir / "shared_memory.meta" );
       _data_dir = bfs::path();
-#endif
       _index_list.clear();
       _index_map.clear();
+#else
+      for( auto& item : _index_list )
+      {
+         item->wipe( dir );
+      }
+
+      _index_list.clear();
+      _index_map.clear();
+      _index_types.clear();
+#endif
    }
 
    void database::resize( size_t new_shared_file_size )
    {
+#ifndef ENABLE_MIRA
       if( _undo_session_count )
          BOOST_THROW_EXCEPTION( std::runtime_error( "Cannot resize shared memory file while undo session is active" ) );
 
@@ -121,6 +204,7 @@ namespace chainbase {
       {
          index_type->add_index( *this );
       }
+#endif
    }
 
    void database::set_require_locking( bool enable_require_locking )

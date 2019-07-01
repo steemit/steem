@@ -171,8 +171,8 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       my = std::make_unique< detail::market_history_plugin_impl >();
 
       my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
-      add_plugin_index< bucket_index        >( my->_db );
-      add_plugin_index< order_history_index >( my->_db );
+      STEEM_ADD_PLUGIN_INDEX(my->_db, bucket_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, order_history_index);
 
       fc::mutable_variant_object state_opts;
 
