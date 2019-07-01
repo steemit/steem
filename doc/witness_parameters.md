@@ -53,7 +53,7 @@ The annual interest rate paid to SBD holders. SBD interest is compounded on bala
 
 ### sbd_exchange_rate
 
-The exchange rate for STEEM/SDB to be used for printing SBD as rewards as well as SBD->STEEM conversions.
+The exchange rate for STEEM/SBD to be used for printing SBD as rewards as well as SBD->STEEM conversions.
 The actual price feed is the median of medians. Every round (21 blocks) the median exchange rate is pushed to a queue and the oldest is removed. The median value of the queue is used for any calculations.
 
 ### url
