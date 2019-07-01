@@ -308,6 +308,9 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
       FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
       FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
+      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= token_ico->steem_units_hard_cap,
+         "The proposed contribution would exceed the ICO hard cap, maximum possible contribution: ${c}",
+         ("c", asset( token_ico->steem_units_hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
 
       auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
       auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );
