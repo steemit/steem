@@ -298,12 +298,19 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
+      FC_ASSERT( _db.get_balance( o.contributor, o.contribution.symbol ) >= o.contribution, "Account does not have sufficient funds for contribution" );
+
       const smt_token_object* token = util::smt::find_token( _db, o.symbol );
       FC_ASSERT( token != nullptr, "Cannot contribute to an unknown SMT" );
       FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
       FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
 
-      FC_ASSERT( _db.get_balance( o.contributor, o.contribution.symbol ) >= o.contribution, "Account does not have sufficient funds for contribution" );
+      const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
+      FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
+      FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
+      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= token_ico->steem_units_hard_cap,
+         "The proposed contribution would exceed the ICO hard cap, maximum possible contribution: ${c}",
+         ("c", asset( token_ico->steem_units_hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
 
       auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
       auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );
@@ -317,6 +324,11 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
          obj.symbol = o.symbol;
          obj.contribution_id = o.contribution_id;
          obj.contribution = o.contribution;
+      } );
+
+      _db.modify( *token_ico, [&]( smt_ico_object& ico )
+      {
+         ico.contributed += o.contribution;
       } );
    }
    FC_CAPTURE_AND_RETHROW( (o) )

@@ -131,6 +131,7 @@ public:
    time_point_sec                launch_time;
    share_type                    steem_units_soft_cap = -1;
    share_type                    steem_units_hard_cap = -1;
+   asset                         contributed = asset( 0, STEEM_SYMBOL );
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
@@ -311,6 +312,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (launch_time)
    (steem_units_soft_cap)
    (steem_units_hard_cap)
+   (contributed)
 )
 
 FC_REFLECT( steem::chain::smt_token_emissions_object,
