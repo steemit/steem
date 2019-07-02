@@ -58,7 +58,7 @@ The actual price feed is the median of medians. Every round (21 blocks) the medi
 
 ### url
 
-A witness published URL, usually to a public seed node they operate. The URL must not be longer than 2048 characters.
+A witness published URL, usually to a public seed node they operate, or a post about their witness. The URL must not be longer than 2048 characters.
 
 ### new_signing_key
 
