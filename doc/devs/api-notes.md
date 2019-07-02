@@ -2,7 +2,7 @@
 What is an API
 --------------
 
-An API is a set of related methods, accessible over Websocket / HTTP and provided by a single C++ class.  API's exist on a per-connection basis.
+An API is a set of related methods, accessible over Websocket / HTTP and provided by a single C++ class.  APIs exist on a per-connection basis.
 
 Compiling with hello_api plugin
 -------------------------------
@@ -14,7 +14,7 @@ We will use the `hello_api` example plugin.  To follow along with the examples, 
 Publicly available API's
 ------------------------
 
-Some API's are public API's which are available to clients without login.  These API's may be specified as follows in the configuration file:
+Some API's are public APIs which are available to clients without login.  These API's may be specified as follows in the configuration file:
 
     public-api = database_api login_api hello_api_api
 
@@ -22,9 +22,9 @@ Note, `hello_api` is the name of the plugin and `hello_api_api` is the name of t
 
 You may also specify `--public-api` on the command line.
 
-Server configuration note:  If you customize `public-api` configuration, you should set the first two API's to `database_api` and `login_api`.
+Server configuration note:  If you customize `public-api` configuration, you should set the first two APIs to `database_api` and `login_api`.
 
-For experts:  The reason for recommending `database_api` and `login_api` to be the first two API's is that many clients expect these to be first two API's.
+For experts:  The reason for recommending `database_api` and `login_api` to be the first two APIs is that many clients expect these to be first two APIs.
 Additionally, the string API identifier feature's FC implementation requires a working `get_api_by_name` method to be available on API ID 1, so effectively
 any client that uses string API identifiers (as recommended) requires `login_api` to be on API ID 1 even if no client uses the login feature.
 
