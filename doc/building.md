@@ -1,5 +1,7 @@
 # Building Steem
 
+Building Steeem requires 8GB of RAM.
+
 ## Compile-Time Options (cmake)
 
 ### CMAKE_BUILD_TYPE=[Release/Debug]
