@@ -107,7 +107,7 @@
 #define DPN_MAX_MINER_WITNESSES_HF21        0
 #define DPN_MAX_RUNNER_WITNESSES_HF21       3
 
-#define DPN_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
+#define DPN_HARDFORK_REQUIRED_WITNESSES     15 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define DPN_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define DPN_MAX_MEMO_SIZE                   2048
 #define DPN_MAX_PROXY_RECURSION_DEPTH       4
@@ -143,7 +143,7 @@
 #define DPN_VESTING_FUND_PERCENT_HF16       (15*DPN_1_PERCENT) //15% of inflation, 1.425% inflation
 #define DPN_PROPOSAL_FUND_PERCENT_HF0       (0)
 
-#define DPN_CONTENT_REWARD_PERCENT_HF21     (65*DPN_1_PERCENT)
+#define DPN_CONTENT_REWARD_PERCENT_HF21     (0*DPN_1_PERCENT)
 #define DPN_PROPOSAL_FUND_PERCENT_HF21      (10*DPN_1_PERCENT)
 
 #define DPN_HF21_CONVERGENT_LINEAR_RECENT_CLAIMS (fc::uint128_t(0,503600561838938636ull))
