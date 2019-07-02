@@ -45,7 +45,7 @@ A more detailed explanation of resource dynamics can be found [here](./devs/2018
 
 ### maximum_block_size
 
-The maximum size of a single block in bytes. The value must be not less than `65536`. The value must not be than 2MB (2097152).
+The maximum size of a single block in bytes. The value must be not less than `65536`. The value must not be more than 2MB (`2097152`).
 
 ### sbd_interest_rate
 
