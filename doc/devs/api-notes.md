@@ -11,10 +11,10 @@ We will use the `hello_api` example plugin.  To follow along with the examples, 
 
     ln -s ../example_plugins/hello_api external_plugins/hello_api
 
-Publicly available API's
+Publicly available APIs
 ------------------------
 
-Some API's are public APIs which are available to clients without login.  These API's may be specified as follows in the configuration file:
+Some APIs are public APIs which are available to clients without login.  These APIs may be specified as follows in the configuration file:
 
     public-api = database_api login_api hello_api_api
 
@@ -31,7 +31,7 @@ any client that uses string API identifiers (as recommended) requires `login_api
 Numeric API identifiers
 -----------------------
 
-API's are assigned numeric ID's in the order they are specified as public API's.  So for example you can access `hello_api_api` over HTTP like this:
+APIs are assigned numeric ID's in the order they are specified as public APIs.  So for example you can access `hello_api_api` over HTTP like this:
 
     curl --data '{"jsonrpc": "2.0", "params": [2, "get_message", []], "id":1, "method":"call"}' http://127.0.0.1:8090/rpc
 
@@ -45,13 +45,13 @@ The `get_api_by_name` method on API 1 (the `login_api`) can be used to query the
 String API identifiers
 ----------------------
 
-Client code that references API's by their numeric identifiers have to coordinated with server-side configuration.
+Client code that references APIs by their numeric identifiers have to coordinated with server-side configuration.
 This is inconvenient, so the API server supports identifying the API by name as well, like this:
 
     curl --data '{"jsonrpc": "2.0", "params": ["hello_api_api", "get_message", []], "id":1, "method":"call"}' http://127.0.0.1:8090/rpc
 
-It is considered best practice for API clients to use this syntax to reference API's by their string identifiers.  The reason is that the client becomes robust against
-server-side configuration changes which result in renumbering of API's.
+It is considered best practice for API clients to use this syntax to reference APIs by their string identifiers.  The reason is that the client becomes robust against
+server-side configuration changes which result in renumbering of APIs.
 
 API access control methods
 --------------------------
@@ -60,17 +60,17 @@ There are three methods to secure the API:
 
 - Limit access to the API socket to a trusted machine by binding the RPC server to localhost
 - Limit access to the API socket to a trusted LAN by firewall configuration
-- Limit access to particular API's with username/password authentication
+- Limit access to particular APIs with username/password authentication
 
 The Steem developers recommend using the first of these methods to secure the API by binding to localhost, as follows:
 
     rpc-endpoint = 127.0.0.1:8090
 
-Securing specific API's
+Securing specific APIs
 -----------------------
 
-The problem with securing API's at the network level is that there are deployment scenarios where a node may want to have some API's public, but other API's private.
-The `steemd` process includes username/password based authentication to individual API's.
+The problem with securing APIs at the network level is that there are deployment scenarios where a node may want to have some APIs public, but other APIs private.
+The `steemd` process includes username/password based authentication to individual APIs.
 
 Since the username/password is sent directly over the wire, you should use a TLS connection when authenticating with username and password.  TLS connection can be achieved by one of two methods:
 
@@ -117,4 +117,4 @@ Username/password access is only available through websockets, since login is in
     {"jsonrpc": "2.0", "params": ["hello_api_api", "get_message", []], "id":4, "method":"call"}
     < (ok)
 
-The `cli_wallet` also has the capability to login to provide access to restricted API's.
+The `cli_wallet` also has the capability to login to provide access to restricted APIs.
