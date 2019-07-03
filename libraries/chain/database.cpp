@@ -3230,6 +3230,10 @@ void database::_apply_block( const signed_block& next_block )
 
    process_hardforks();
 
+#ifdef STEEM_ENABLE_SMT
+   process_icos();
+#endif
+
    // notify observers that the block has been applied
    notify_post_apply_block( note );
 
@@ -5682,5 +5686,11 @@ optional< chainbase::database::session >& database::pending_transaction_session(
 {
    return _pending_tx_session;
 }
+
+#ifdef STEEM_ENABLE_SMT
+void database::process_icos()
+{
+}
+#endif
 
 } } //steem::chain

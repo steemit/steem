@@ -95,6 +95,8 @@ enum object_type
    smt_token_emissions_object_type,
    smt_contribution_object_type,
    smt_ico_object_type,
+   smt_ico_processing_queue_object_type,
+   smt_ico_launch_queue_object_type
 #endif
 };
 
@@ -139,6 +141,8 @@ class nai_pool_object;
 class smt_token_emissions_object;
 class smt_contribution_object;
 class smt_ico_object;
+class smt_ico_processing_queue_object;
+class smt_ico_launch_queue_object;
 #endif
 
 class proposal_object;
@@ -185,6 +189,8 @@ typedef oid< nai_pool_object                        > nai_pool_id_type;
 typedef oid< smt_token_emissions_object             > smt_token_emissions_object_id_type;
 typedef oid< smt_contribution_object                > smt_contribution_object_id_type;
 typedef oid< smt_ico_object                         > smt_ico_object_id_type;
+typedef oid< smt_ico_processing_queue_object        > smt_ico_processing_queue_object_id_type;
+typedef oid< smt_ico_launch_queue_object            > smt_ico_launch_queue_object_id_type;
 #endif
 
 typedef oid< proposal_object > proposal_id_type;
@@ -397,6 +403,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (smt_token_emissions_object_type)
                  (smt_contribution_object_type)
                  (smt_ico_object_type)
+                 (smt_ico_processing_queue_object_type)
+                 (smt_ico_launch_queue_object_type)
 #endif
                )
 

@@ -178,6 +178,38 @@ public:
    asset                                 contribution;
 };
 
+class smt_ico_processing_queue_object : public object< smt_ico_processing_queue_object_type, smt_ico_processing_queue_object >
+{
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_processing_queue_object );
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_ico_processing_queue_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type              id;
+   asset_symbol_type    symbol;
+   time_point_sec       contribution_end_time;
+};
+
+class smt_ico_launch_queue_object : public object< smt_ico_launch_queue_object_type, smt_ico_launch_queue_object >
+{
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_launch_queue_object );
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_ico_launch_queue_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type             id;
+   asset_symbol_type   symbol;
+   time_point_sec      launch_time;
+};
+
 struct by_symbol_contributor;
 struct by_contributor;
 struct by_symbol_id;
@@ -262,6 +294,32 @@ typedef multi_index_container <
    allocator< smt_token_emissions_object >
 > smt_token_emissions_index;
 
+struct by_launch_time;
+
+typedef multi_index_container <
+   smt_ico_launch_queue_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_ico_launch_queue_object, smt_ico_launch_queue_object_id_type, &smt_ico_launch_queue_object::id > >,
+      ordered_unique< tag< by_launch_time >,
+         member< smt_ico_launch_queue_object, time_point_sec, &smt_ico_launch_queue_object::launch_time > >
+   >,
+   allocator< smt_ico_launch_queue_object >
+> smt_ico_launch_queue_index;
+
+struct by_contribution_end_time;
+
+typedef multi_index_container <
+   smt_ico_processing_queue_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_ico_processing_queue_object, smt_ico_processing_queue_object_id_type, &smt_ico_processing_queue_object::id > >,
+      ordered_unique< tag< by_contribution_end_time >,
+         member< smt_ico_processing_queue_object, time_point_sec, &smt_ico_processing_queue_object::contribution_end_time > >
+   >,
+   allocator< smt_ico_processing_queue_object >
+> smt_ico_processing_queue_index;
+
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_phase,
@@ -339,9 +397,23 @@ FC_REFLECT( steem::chain::smt_contribution_object,
    (contribution)
 )
 
+FC_REFLECT( steem::chain::smt_ico_processing_queue_object,
+   (id)
+   (symbol)
+   (contribution_end_time)
+)
+
+FC_REFLECT( steem::chain::smt_ico_launch_queue_object,
+   (id)
+   (symbol)
+   (launch_time)
+)
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_processing_queue_object, steem::chain::smt_ico_processing_queue_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_launch_queue_object, steem::chain::smt_ico_launch_queue_index )
 
 #endif
