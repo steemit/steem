@@ -1,5 +1,7 @@
 # Building Steem
 
+Building Steeem requires 8GB of RAM.
+
 ## Compile-Time Options (cmake)
 
 ### CMAKE_BUILD_TYPE=[Release/Debug]
@@ -40,6 +42,8 @@ We ship a Dockerfile.  This builds both common node type binaries.
 
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
 will build out of the box without further effort:
+
+    sudo apt-get update
 
     # Required packages
     sudo apt-get install -y \
