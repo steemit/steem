@@ -30,6 +30,7 @@
 #include <steem/chain/util/rd_setup.hpp>
 #include <steem/chain/util/nai_generator.hpp>
 #include <steem/chain/util/sps_processor.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -3228,11 +3229,12 @@ void database::_apply_block( const signed_block& next_block )
    process_required_actions( req_actions );
    process_optional_actions( opt_actions );
 
-   process_hardforks();
-
 #ifdef STEEM_ENABLE_SMT
    process_icos();
+   launch_icos();
 #endif
+
+   process_hardforks();
 
    // notify observers that the block has been applied
    notify_post_apply_block( note );
@@ -5690,6 +5692,38 @@ optional< chainbase::database::session >& database::pending_transaction_session(
 #ifdef STEEM_ENABLE_SMT
 void database::process_icos()
 {
+   const auto& ico_processing_queue = get_index< smt_ico_processing_queue_index, by_contribution_end_time >();
+   std::size_t num_processed = 0;
+
+   auto itr = ico_processing_queue.begin();
+   while ( itr != ico_processing_queue.end() && num_processed < SMT_MAX_ICO_PROCESSING_PER_BLOCK )
+   {
+      if ( head_block_time() < itr->contribution_end_time )
+         break;
+
+      util::smt::process_ico( *this, *itr );
+
+      num_processed++;
+      itr = ico_processing_queue.begin();
+   }
+}
+
+void database::launch_icos()
+{
+   const auto& ico_launch_queue = get_index< smt_ico_launch_queue_index, by_launch_time >();
+   std::size_t num_processed = 0;
+
+   auto itr = ico_launch_queue.begin();
+   while ( itr != ico_launch_queue.end() && num_processed < SMT_MAX_ICO_LAUNCHES_PER_BLOCK )
+   {
+      if ( head_block_time() < itr->launch_time )
+         break;
+
+      util::smt::launch_ico( *this, *itr );
+
+      num_processed++;
+      itr = ico_launch_queue.begin();
+   }
 }
 #endif
 

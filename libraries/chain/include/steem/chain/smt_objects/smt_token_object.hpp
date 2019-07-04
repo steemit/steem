@@ -301,6 +301,8 @@ typedef multi_index_container <
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_ico_launch_queue_object, smt_ico_launch_queue_object_id_type, &smt_ico_launch_queue_object::id > >,
+      ordered_unique< tag< by_symbol >,
+         member< smt_ico_launch_queue_object, asset_symbol_type, &smt_ico_launch_queue_object::symbol > >,
       ordered_unique< tag< by_launch_time >,
          member< smt_ico_launch_queue_object, time_point_sec, &smt_ico_launch_queue_object::launch_time > >
    >,
@@ -314,6 +316,8 @@ typedef multi_index_container <
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_ico_processing_queue_object, smt_ico_processing_queue_object_id_type, &smt_ico_processing_queue_object::id > >,
+      ordered_unique< tag< by_symbol >,
+         member< smt_ico_processing_queue_object, asset_symbol_type, &smt_ico_processing_queue_object::symbol > >,
       ordered_unique< tag< by_contribution_end_time >,
          member< smt_ico_processing_queue_object, time_point_sec, &smt_ico_processing_queue_object::contribution_end_time > >
    >,

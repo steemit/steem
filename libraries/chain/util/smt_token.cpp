@@ -1,6 +1,7 @@
 #include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/util/smt_token.hpp>
 #include <steem/chain/steem_object_types.hpp>
+
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain { namespace util { namespace smt {
@@ -66,6 +67,63 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    }
 
    return {};
+}
+
+void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue_obj )
+{
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_queue_obj.symbol );
+   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
+
+   // ICO Success
+   if ( ico.contributed.amount >= ico.steem_units_soft_cap )
+   {
+      db.modify( token, []( smt_token_object& o )
+      {
+         o.phase = smt_phase::contribution_end_time_completed;
+      } );
+
+      db.create< smt_ico_launch_queue_object >( [&]( smt_ico_launch_queue_object& o )
+      {
+         o.symbol = token.liquid_symbol;
+         o.launch_time = ico.launch_time;
+      } );
+   }
+   // ICO Failure
+   else
+   {
+      db.modify( token, []( smt_token_object& o )
+      {
+         o.phase = smt_phase::launch_failed;
+      } );
+
+      db.remove( ico );
+
+      FC_TODO( "Issue ICO refunds" );
+      FC_TODO( "Issue #2736" );
+      FC_TODO( "Issue #2731" );
+   }
+
+   db.remove( ico_queue_obj );
+}
+
+void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
+{
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
+   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
+
+   FC_TODO( "Payout founders and contributors" );
+   FC_TODO( "Issue #2732" );
+   FC_TODO( "Issue #2733" );
+   FC_TODO( "Issue #2734" );
+   FC_TODO( "Issue #2735" );
+
+   db.modify( token, []( smt_token_object& o )
+   {
+      o.phase = smt_phase::launch_success;
+   } );
+
+   db.remove( ico );
+   db.remove( ico_launch_obj );
 }
 
 } } } } // steem::chain::util::smt
