@@ -98,9 +98,19 @@ void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue
 
       db.remove( ico );
 
-      FC_TODO( "Issue ICO refunds" );
-      FC_TODO( "Issue #2736" );
-      FC_TODO( "Issue #2731" );
+      // The ICO has failed, we trigger cascading SMT contribution refunds
+      auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
+      auto itr = idx.lower_bound( boost::make_tuple( token.liquid_symbol, account_name_type(), 0 ) );
+
+      if ( itr != idx.end() && itr->symbol == token.liquid_symbol )
+      {
+         smt_refund_action refund;
+         refund.symbol = itr->symbol;
+         refund.contributor = itr->contributor;
+         refund.contribution_id = itr->contribution_id;
+
+         db.push_required_action( refund, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      }
    }
 
    db.remove( ico_queue_obj );
