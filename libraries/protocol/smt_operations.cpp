@@ -11,18 +11,11 @@
 
 namespace steem { namespace protocol {
 
-void common_symbol_validation( const asset_symbol_type& symbol )
-{
-   symbol.validate();
-   FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
-   FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
-}
-
 template < class Operation >
 void smt_admin_operation_validate( const Operation& o )
 {
    validate_account_name( o.control_account );
-   common_symbol_validation( o.symbol );
+   validate_smt_symbol( o.symbol );
 }
 
 void smt_create_operation::validate()const
@@ -297,7 +290,7 @@ void smt_set_setup_parameters_operation::validate() const
 void smt_contribute_operation::validate() const
 {
    validate_account_name( contributor );
-   common_symbol_validation( symbol );
+   validate_smt_symbol( symbol );
    FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contributions must be made in STEEM" );
    FC_ASSERT( contribution.amount > 0, "Contribution amount must be greater than 0" );
 }

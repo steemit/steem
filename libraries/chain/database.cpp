@@ -2674,6 +2674,10 @@ void database::initialize_evaluators()
 
    _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
 #endif
+
+#ifdef STEEM_ENABLE_SMT
+   _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator          >();
+#endif
 }
 
 

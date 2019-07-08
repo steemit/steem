@@ -12,4 +12,8 @@ using namespace steem::protocol;
 STEEM_DEFINE_ACTION_EVALUATOR( example_required, required_automated_action )
 #endif
 
+#ifdef STEEM_ENABLE_SMT
+STEEM_DEFINE_ACTION_EVALUATOR( smt_refund, required_automated_action )
+#endif
+
 } } //steem::chain

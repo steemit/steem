@@ -11,6 +11,12 @@ namespace steem { namespace protocol {
    typedef fc::static_variant<
 #ifdef IS_TEST_NET
             example_required_action
+   #ifdef STEEM_ENABLE_SMT
+            ,
+   #endif
+#endif
+#ifdef STEEM_ENABLE_SMT
+            smt_refund_action
 #endif
          > required_automated_action;
 
@@ -18,7 +24,7 @@ namespace steem { namespace protocol {
 
 STEEM_DECLARE_OPERATION_TYPE( steem::protocol::required_automated_action );
 
-FC_TODO( "Remove ifdef when first required automated action is added" )
-#ifdef IS_TEST_NET
+//FC_TODO( "Remove ifdef when first required automated action is added" )
+//#ifdef IS_TEST_NET
 FC_REFLECT_TYPENAME( steem::protocol::required_automated_action );
-#endif
+//#endif

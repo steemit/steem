@@ -15,4 +15,19 @@ bool operator==( const example_required_action& lhs, const example_required_acti
 }
 #endif
 
+#ifdef STEEM_ENABLE_SMT
+void smt_refund_action::validate() const
+{
+   validate_account_name( contributor );
+   validate_smt_symbol( symbol );
+}
+
+bool operator==( const smt_refund_action& lhs, const smt_refund_action& rhs )
+{
+   return
+      lhs.symbol == rhs.symbol &&
+      lhs.contribution_id == rhs.contribution_id;
+}
+#endif
+
 } } //steem::protocol
