@@ -194,13 +194,13 @@ public:
    time_point_sec       contribution_end_time;
 };
 
-class smt_ico_launch_queue_object : public object< smt_ico_launch_queue_object_type, smt_ico_launch_queue_object >
+class smt_token_launch_queue_object : public object< smt_token_launch_queue_object_type, smt_token_launch_queue_object >
 {
-   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_launch_queue_object );
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_launch_queue_object );
 
 public:
    template< typename Constructor, typename Allocator >
-   smt_ico_launch_queue_object( Constructor&& c, allocator< Allocator > a )
+   smt_token_launch_queue_object( Constructor&& c, allocator< Allocator > a )
    {
       c( *this );
    }
@@ -297,17 +297,17 @@ typedef multi_index_container <
 struct by_launch_time;
 
 typedef multi_index_container <
-   smt_ico_launch_queue_object,
+   smt_token_launch_queue_object,
    indexed_by <
       ordered_unique< tag< by_id >,
-         member< smt_ico_launch_queue_object, smt_ico_launch_queue_object_id_type, &smt_ico_launch_queue_object::id > >,
+         member< smt_token_launch_queue_object, smt_token_launch_queue_object_id_type, &smt_token_launch_queue_object::id > >,
       ordered_unique< tag< by_symbol >,
-         member< smt_ico_launch_queue_object, asset_symbol_type, &smt_ico_launch_queue_object::symbol > >,
+         member< smt_token_launch_queue_object, asset_symbol_type, &smt_token_launch_queue_object::symbol > >,
       ordered_unique< tag< by_launch_time >,
-         member< smt_ico_launch_queue_object, time_point_sec, &smt_ico_launch_queue_object::launch_time > >
+         member< smt_token_launch_queue_object, time_point_sec, &smt_token_launch_queue_object::launch_time > >
    >,
-   allocator< smt_ico_launch_queue_object >
-> smt_ico_launch_queue_index;
+   allocator< smt_token_launch_queue_object >
+> smt_token_launch_queue_index;
 
 struct by_contribution_end_time;
 
@@ -407,7 +407,7 @@ FC_REFLECT( steem::chain::smt_ico_processing_queue_object,
    (contribution_end_time)
 )
 
-FC_REFLECT( steem::chain::smt_ico_launch_queue_object,
+FC_REFLECT( steem::chain::smt_token_launch_queue_object,
    (id)
    (symbol)
    (launch_time)
@@ -418,6 +418,6 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_in
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_processing_queue_object, steem::chain::smt_ico_processing_queue_index )
-CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_launch_queue_object, steem::chain::smt_ico_launch_queue_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_launch_queue_object, steem::chain::smt_token_launch_queue_index )
 
 #endif

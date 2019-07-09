@@ -3235,7 +3235,7 @@ void database::_apply_block( const signed_block& next_block )
 
 #ifdef STEEM_ENABLE_SMT
    process_icos();
-   launch_icos();
+   launch_tokens();
 #endif
 
    process_hardforks();
@@ -5712,9 +5712,9 @@ void database::process_icos()
    }
 }
 
-void database::launch_icos()
+void database::launch_tokens()
 {
-   const auto& ico_launch_queue = get_index< smt_ico_launch_queue_index, by_launch_time >();
+   const auto& ico_launch_queue = get_index< smt_token_launch_queue_index, by_launch_time >();
    std::size_t num_processed = 0;
 
    auto itr = ico_launch_queue.begin();
@@ -5723,7 +5723,7 @@ void database::launch_icos()
       if ( head_block_time() < itr->launch_time )
          break;
 
-      util::smt::launch_ico( *this, *itr );
+      util::smt::launch_token( *this, *itr );
 
       num_processed++;
       itr = ico_launch_queue.begin();

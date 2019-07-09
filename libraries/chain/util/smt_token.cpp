@@ -82,7 +82,7 @@ void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue
          o.phase = smt_phase::contribution_end_time_completed;
       } );
 
-      db.create< smt_ico_launch_queue_object >( [&]( smt_ico_launch_queue_object& o )
+      db.create< smt_token_launch_queue_object >( [&]( smt_token_launch_queue_object& o )
       {
          o.symbol = token.liquid_symbol;
          o.launch_time = ico.launch_time;
@@ -104,7 +104,7 @@ void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue
    db.remove( ico_queue_obj );
 }
 
-void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
+void launch_token( database& db, const smt_token_launch_queue_object& ico_launch_obj )
 {
    const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
