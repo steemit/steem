@@ -17,7 +17,7 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 void process_ico( database& db, const smt_ico_processing_queue_object& obj );
 void launch_ico( database& db, const smt_ico_launch_queue_object& obj );
 
-void refund_next_contributor( database& db, const asset_symbol_type& a );
+void schedule_next_refund( database& db, const asset_symbol_type& a );
 
 } } } } // steem::chain::util::smt
 

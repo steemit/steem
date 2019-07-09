@@ -98,7 +98,7 @@ void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue
 
       db.remove( ico );
 
-      refund_next_contributor( db, token.liquid_symbol );
+      schedule_next_refund( db, token.liquid_symbol );
    }
 
    db.remove( ico_queue_obj );
@@ -124,7 +124,7 @@ void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj
    db.remove( ico_launch_obj );
 }
 
-void refund_next_contributor( database& db, const asset_symbol_type& a )
+void schedule_next_refund( database& db, const asset_symbol_type& a )
 {
    auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
    auto itr = idx.lower_bound( boost::make_tuple( a, account_name_type(), 0 ) );
