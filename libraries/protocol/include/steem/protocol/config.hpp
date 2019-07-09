@@ -364,5 +364,7 @@
 #define SMT_MAX_ICO_PROCESSING_PER_BLOCK        (10)
 #define SMT_MAX_ICO_LAUNCHES_PER_BLOCK          (10)
 
+#define SMT_REFUND_INTERVAL                     (STEEM_BLOCK_INTERVAL)
+
 #endif /// STEEM_ENABLE_SMT
 

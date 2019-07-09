@@ -136,7 +136,7 @@ void refund_next_contributor( database& db, const asset_symbol_type& a )
       refund.contributor = itr->contributor;
       refund.contribution_id = itr->contribution_id;
 
-      db.push_required_action( refund, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.push_required_action( refund, db.head_block_time() + SMT_REFUND_INTERVAL );
    }
 }
 
