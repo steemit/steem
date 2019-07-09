@@ -126,8 +126,8 @@ void launch_token( database& db, const smt_token_launch_queue_object& ico_launch
 
 void schedule_next_refund( database& db, const asset_symbol_type& a )
 {
-   auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
-   auto itr = idx.lower_bound( boost::make_tuple( a, account_name_type(), 0 ) );
+   auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
+   auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
 
    if ( itr != idx.end() && itr->symbol == a )
    {

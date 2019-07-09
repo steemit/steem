@@ -19,10 +19,12 @@ void smt_refund_evaluator::do_apply( const smt_refund_action& a )
    auto itr = idx.find( boost::make_tuple( a.symbol, a.contributor, a.contribution_id ) );
    FC_ASSERT( itr != idx.end(), "Unable to find contribution object for the provided action: ${a}", ("a", a) );
 
-   util::smt::schedule_next_refund( _db, itr->symbol );
+   auto symbol = itr->symbol;
 
    _db.adjust_balance( itr->contributor, itr->contribution );
    _db.remove( *itr );
+
+   util::smt::schedule_next_refund( _db, symbol );
 }
 #endif
 

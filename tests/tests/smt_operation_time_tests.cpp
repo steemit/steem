@@ -12,6 +12,7 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/smt_objects.hpp>
 
 #include <steem/chain/util/reward.hpp>
 
@@ -658,6 +659,137 @@ BOOST_AUTO_TEST_CASE( smt_liquidity_rewards )
       validate_database();
    }
    FC_LOG_AND_RETHROW();
+}
+
+BOOST_AUTO_TEST_CASE( smt_refunds )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(sam)(dave) )
+
+      generate_block();
+
+      auto bobs_balance  = asset( 1000000, STEEM_SYMBOL );
+      auto sams_balance  = asset( 800000, STEEM_SYMBOL );
+      auto daves_balance = asset( 600000, STEEM_SYMBOL );
+
+      FUND( "bob", bobs_balance );
+      FUND( "sam", sams_balance );
+      FUND( "dave", daves_balance );
+
+      generate_block();
+
+      auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+      signed_transaction tx;
+      smt_setup_operation setup_op;
+
+      uint64_t contribution_window_blocks = 10;
+      setup_op.control_account = "alice";
+      setup_op.symbol = symbol;
+      setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_soft_cap = 2400001;
+      setup_op.steem_units_hard_cap = 4000000;
+      setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+      setup_op.initial_generation_policy = get_capped_generation_policy
+      (
+         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* pre_soft_cap_unit */
+         get_generation_unit(),                                         /* post_soft_cap_unit */
+         STEEM_100_PERCENT,                                             /* soft_cap_percent */
+         1,                                                             /* min_unit_ratio */
+         2                                                              /* max_unit_ratio */
+      );
+
+      tx.operations.push_back( setup_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      generate_block();
+
+      FC_TODO( "Implement this so that we don't need to change the phase manually" );
+      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+      db_plugin->debug_update( [&]( database& db )
+      {
+         db.modify( token, [] ( smt_token_object& o )
+         {
+            o.phase = smt_phase::contribution_begin_time_completed;
+         } );
+      } );
+
+      uint32_t num_contributions = 0;
+      for ( uint64_t i = 0; i < contribution_window_blocks; i++ )
+      {
+         smt_contribute_operation contrib_op;
+
+         contrib_op.symbol = symbol;
+         contrib_op.contribution_id = i;
+
+         contrib_op.contributor = "bob";
+         contrib_op.contribution = asset( bobs_balance.amount / contribution_window_blocks, STEEM_SYMBOL );
+
+
+         tx.operations.push_back( contrib_op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, bob_private_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+         num_contributions++;
+
+         contrib_op.contributor = "sam";
+         contrib_op.contribution = asset( sams_balance.amount / contribution_window_blocks, STEEM_SYMBOL );
+
+         tx.operations.push_back( contrib_op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, sam_private_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+         num_contributions++;
+
+         contrib_op.contributor = "dave";
+         contrib_op.contribution = asset( daves_balance.amount / contribution_window_blocks, STEEM_SYMBOL );
+
+         tx.operations.push_back( contrib_op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, dave_private_key );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+         num_contributions++;
+
+         if ( i < contribution_window_blocks - 1 )
+            generate_block();
+
+         validate_database();
+      }
+
+      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::launch_failed );
+
+      BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( db->get_balance( "dave", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
+
+      validate_database();
+
+      generate_blocks( num_contributions * ( SMT_REFUND_INTERVAL / STEEM_BLOCK_INTERVAL ) );
+
+      BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == bobs_balance );
+      BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == sams_balance );
+      BOOST_REQUIRE( db->get_balance( "dave", STEEM_SYMBOL ) == daves_balance );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
