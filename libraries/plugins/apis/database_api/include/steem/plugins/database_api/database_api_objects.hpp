@@ -573,7 +573,8 @@ struct api_proposal_object
    api_proposal_object() = default;
 
    api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
-      id(po.proposal_id),
+      id(po.id),
+      proposal_id(po.proposal_id),
       creator(po.creator),
       receiver(po.receiver),
       start_date(po.start_date),
