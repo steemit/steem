@@ -5697,56 +5697,32 @@ optional< chainbase::database::session >& database::pending_transaction_session(
 #ifdef STEEM_ENABLE_SMT
 void database::evaluate_icos()
 {
-   const auto& ico_evaluation_queue = get_index< smt_ico_evaluation_queue_index, by_contribution_end_time_symbol >();
-   std::size_t num_evaluations_processed = 0;
-
-   auto itr = ico_evaluation_queue.begin();
-   while ( itr != ico_evaluation_queue.end() && num_evaluations_processed < SMT_MAX_ICO_EVALUATIONS_PER_BLOCK )
-   {
-      if ( head_block_time() < itr->contribution_end_time )
-         break;
-
-      util::smt::evaluate_ico( *this, *itr );
-
-      num_evaluations_processed++;
-      itr = ico_evaluation_queue.begin();
-   }
+   util::smt::process_queue<
+      smt_ico_evaluation_queue_index,
+      by_contribution_end_time_symbol,
+      smt_ico_evaluation_queue_object,
+      SMT_MAX_ICO_EVALUATIONS_PER_BLOCK
+   >( *this, []( const smt_ico_evaluation_queue_object& o ) { return o.contribution_end_time; }, util::smt::evaluate_ico );
 }
 
 void database::launch_icos()
 {
-   const auto& ico_launch_queue = get_index< smt_ico_launch_queue_index, by_contribution_begin_time_symbol >();
-   std::size_t num_launches_processed = 0;
-
-   auto itr = ico_launch_queue.begin();
-   while ( itr != ico_launch_queue.end() && num_launches_processed < SMT_MAX_ICO_LAUNCHES_PER_BLOCK )
-   {
-      if ( head_block_time() < itr->contribution_begin_time )
-         break;
-
-      util::smt::launch_ico( *this, *itr );
-
-      num_launches_processed++;
-      itr = ico_launch_queue.begin();
-   }
+   util::smt::process_queue<
+      smt_ico_launch_queue_index,
+      by_contribution_begin_time_symbol,
+      smt_ico_launch_queue_object,
+      SMT_MAX_ICO_LAUNCHES_PER_BLOCK
+   >( *this, []( const smt_ico_launch_queue_object& o ) { return o.contribution_begin_time; }, util::smt::launch_ico );
 }
 
 void database::launch_tokens()
 {
-   const auto& ico_launch_queue = get_index< smt_token_launch_queue_index, by_launch_time_symbol >();
-   std::size_t num_processed = 0;
-
-   auto itr = ico_launch_queue.begin();
-   while ( itr != ico_launch_queue.end() && num_processed < SMT_MAX_TOKEN_LAUNCHES_PER_BLOCK )
-   {
-      if ( head_block_time() < itr->launch_time )
-         break;
-
-      util::smt::launch_token( *this, *itr );
-
-      num_processed++;
-      itr = ico_launch_queue.begin();
-   }
+   util::smt::process_queue<
+      smt_token_launch_queue_index,
+      by_launch_time_symbol,
+      smt_token_launch_queue_object,
+      SMT_MAX_TOKEN_LAUNCHES_PER_BLOCK
+   >( *this, []( const smt_token_launch_queue_object& o ) { return o.launch_time; }, util::smt::launch_token );
 }
 #endif
 
