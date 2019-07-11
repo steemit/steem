@@ -680,6 +680,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       generate_block();
 
       auto symbol = create_smt( "alice", alice_private_key, 3 );
+      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
 
       signed_transaction tx;
       smt_setup_operation setup_op;
@@ -709,17 +710,11 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       tx.operations.clear();
       tx.signatures.clear();
 
+      BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
+
       generate_block();
 
-      FC_TODO( "Implement this so that we don't need to change the phase manually" );
-      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
-      db_plugin->debug_update( [&]( database& db )
-      {
-         db.modify( token, [] ( smt_token_object& o )
-         {
-            o.phase = smt_phase::contribution_begin_time_completed;
-         } );
-      } );
+      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
 
       uint32_t num_contributions = 0;
       for ( uint64_t i = 0; i < contribution_window_blocks; i++ )
