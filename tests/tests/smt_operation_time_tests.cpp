@@ -787,5 +787,135 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
+{
+   try
+   {
+      ACTORS( (alice) )
+
+      generate_block();
+
+      auto symbol = create_smt( "alice", alice_private_key, 3 );
+      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+
+      auto *ico = db->find< smt_ico_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico == nullptr );
+
+      auto *ico_launch_queue_obj = db->find< smt_ico_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_launch_queue_obj == nullptr );
+
+      auto *ico_evaluation_queue_obj = db->find< smt_ico_evaluation_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_evaluation_queue_obj == nullptr );
+
+      auto *token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( token_launch_queue_obj == nullptr );
+
+      signed_transaction tx;
+      smt_setup_operation setup_op;
+
+      uint64_t contribution_window_blocks = 10;
+      setup_op.control_account = "alice";
+      setup_op.symbol = symbol;
+      setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_soft_cap = 2400000;
+      setup_op.steem_units_hard_cap = 4000000;
+      setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+      setup_op.initial_generation_policy = get_capped_generation_policy
+      (
+         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* pre_soft_cap_unit */
+         get_generation_unit(),                                         /* post_soft_cap_unit */
+         STEEM_100_PERCENT,                                             /* soft_cap_percent */
+         1,                                                             /* min_unit_ratio */
+         2                                                              /* max_unit_ratio */
+      );
+
+      tx.operations.push_back( setup_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
+
+      ico = db->find< smt_ico_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico != nullptr );
+
+      ico_launch_queue_obj = db->find< smt_ico_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_launch_queue_obj != nullptr );
+
+      ico_evaluation_queue_obj = db->find< smt_ico_evaluation_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_evaluation_queue_obj == nullptr );
+
+      token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( token_launch_queue_obj == nullptr );
+
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+
+      ico = db->find< smt_ico_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico != nullptr );
+
+      ico_launch_queue_obj = db->find< smt_ico_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_launch_queue_obj == nullptr );
+
+      ico_evaluation_queue_obj = db->find< smt_ico_evaluation_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_evaluation_queue_obj != nullptr );
+
+      token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( token_launch_queue_obj == nullptr );
+
+      generate_blocks( contribution_window_blocks - 1 );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_ico_object, by_symbol >( symbol ), [&]( smt_ico_object& a )
+         {
+            a.contributed = asset( 2400000, STEEM_SYMBOL );
+         });
+      }, database::skip_witness_signature );
+
+      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::contribution_end_time_completed );
+
+      ico = db->find< smt_ico_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico != nullptr );
+
+      ico_launch_queue_obj = db->find< smt_ico_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_launch_queue_obj == nullptr );
+
+      ico_evaluation_queue_obj = db->find< smt_ico_evaluation_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_evaluation_queue_obj == nullptr );
+
+      token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( token_launch_queue_obj != nullptr );
+
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::launch_success );
+
+      ico = db->find< smt_ico_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico == nullptr );
+
+      ico_launch_queue_obj = db->find< smt_ico_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_launch_queue_obj == nullptr );
+
+      ico_evaluation_queue_obj = db->find< smt_ico_evaluation_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( ico_evaluation_queue_obj == nullptr );
+
+      token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
+      BOOST_REQUIRE( token_launch_queue_obj == nullptr );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
