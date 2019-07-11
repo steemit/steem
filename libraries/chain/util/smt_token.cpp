@@ -69,9 +69,28 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    return {};
 }
 
-void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue_obj )
+void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
 {
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_queue_obj.symbol );
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
+   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
+
+   db.modify( token, []( smt_token_object& o )
+   {
+      o.phase = smt_phase::contribution_begin_time_completed;
+   } );
+
+   db.create< smt_ico_evaluation_queue_object >( [&]( smt_ico_evaluation_queue_object& obj )
+   {
+      obj.symbol = token.liquid_symbol;
+      obj.contribution_end_time = ico.contribution_end_time;
+   } );
+
+   db.remove( ico_launch_obj );
+}
+
+void evaluate_ico( database& db, const smt_ico_evaluation_queue_object& ico_evaluation_obj )
+{
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_evaluation_obj.symbol );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    // ICO Success
@@ -101,12 +120,12 @@ void process_ico( database& db, const smt_ico_processing_queue_object& ico_queue
       schedule_next_refund( db, token.liquid_symbol );
    }
 
-   db.remove( ico_queue_obj );
+   db.remove( ico_evaluation_obj );
 }
 
-void launch_token( database& db, const smt_token_launch_queue_object& ico_launch_obj )
+void launch_token( database& db, const smt_token_launch_queue_object& token_launch_obj )
 {
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( token_launch_obj.symbol );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    FC_TODO( "Payout founders and contributors" );
@@ -121,7 +140,7 @@ void launch_token( database& db, const smt_token_launch_queue_object& ico_launch
    } );
 
    db.remove( ico );
-   db.remove( ico_launch_obj );
+   db.remove( token_launch_obj );
 }
 
 void schedule_next_refund( database& db, const asset_symbol_type& a )

@@ -164,14 +164,14 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
    } );
 
-   _db.create< smt_ico_processing_queue_object >( [&] ( smt_ico_processing_queue_object& queue_obj )
-   {
-      queue_obj.symbol = _token->liquid_symbol;
-      queue_obj.contribution_end_time = o.contribution_end_time;
-   } );
-
    smt_setup_evaluator_visitor visitor( token_ico, _db );
    o.initial_generation_policy.visit( visitor );
+
+   _db.create< smt_ico_launch_queue_object >( [&] ( smt_ico_launch_queue_object& queue_obj )
+   {
+      queue_obj.symbol = _token->liquid_symbol;
+      queue_obj.contribution_begin_time = o.contribution_begin_time;
+   } );
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )

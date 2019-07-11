@@ -3234,7 +3234,8 @@ void database::_apply_block( const signed_block& next_block )
    process_optional_actions( opt_actions );
 
 #ifdef STEEM_ENABLE_SMT
-   process_icos();
+   launch_icos();
+   evaluate_icos();
    launch_tokens();
 #endif
 
@@ -5694,31 +5695,49 @@ optional< chainbase::database::session >& database::pending_transaction_session(
 }
 
 #ifdef STEEM_ENABLE_SMT
-void database::process_icos()
+void database::evaluate_icos()
 {
-   const auto& ico_processing_queue = get_index< smt_ico_processing_queue_index, by_contribution_end_time >();
-   std::size_t num_processed = 0;
+   const auto& ico_evaluation_queue = get_index< smt_ico_evaluation_queue_index, by_contribution_end_time_symbol >();
+   std::size_t num_evaluations_processed = 0;
 
-   auto itr = ico_processing_queue.begin();
-   while ( itr != ico_processing_queue.end() && num_processed < SMT_MAX_ICO_PROCESSING_PER_BLOCK )
+   auto itr = ico_evaluation_queue.begin();
+   while ( itr != ico_evaluation_queue.end() && num_evaluations_processed < SMT_MAX_ICO_EVALUATIONS_PER_BLOCK )
    {
       if ( head_block_time() < itr->contribution_end_time )
          break;
 
-      util::smt::process_ico( *this, *itr );
+      util::smt::evaluate_ico( *this, *itr );
 
-      num_processed++;
-      itr = ico_processing_queue.begin();
+      num_evaluations_processed++;
+      itr = ico_evaluation_queue.begin();
+   }
+}
+
+void database::launch_icos()
+{
+   const auto& ico_launch_queue = get_index< smt_ico_launch_queue_index, by_contribution_begin_time_symbol >();
+   std::size_t num_launches_processed = 0;
+
+   auto itr = ico_launch_queue.begin();
+   while ( itr != ico_launch_queue.end() && num_launches_processed < SMT_MAX_ICO_LAUNCHES_PER_BLOCK )
+   {
+      if ( head_block_time() < itr->contribution_begin_time )
+         break;
+
+      util::smt::launch_ico( *this, *itr );
+
+      num_launches_processed++;
+      itr = ico_launch_queue.begin();
    }
 }
 
 void database::launch_tokens()
 {
-   const auto& ico_launch_queue = get_index< smt_token_launch_queue_index, by_launch_time >();
+   const auto& ico_launch_queue = get_index< smt_token_launch_queue_index, by_launch_time_symbol >();
    std::size_t num_processed = 0;
 
    auto itr = ico_launch_queue.begin();
-   while ( itr != ico_launch_queue.end() && num_processed < SMT_MAX_ICO_LAUNCHES_PER_BLOCK )
+   while ( itr != ico_launch_queue.end() && num_processed < SMT_MAX_TOKEN_LAUNCHES_PER_BLOCK )
    {
       if ( head_block_time() < itr->launch_time )
          break;

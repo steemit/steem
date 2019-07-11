@@ -566,7 +566,8 @@ namespace steem { namespace chain {
          void adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account,
                                   balance_operator_type balance_operator );
 
-         void process_icos();
+         void launch_icos();
+         void evaluate_icos();
          void launch_tokens();
 #endif
          void modify_balance( const account_object& a, const asset& delta, bool check_balance );
