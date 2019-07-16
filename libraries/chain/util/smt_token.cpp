@@ -143,20 +143,36 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
    db.remove( token_launch_obj );
 }
 
-void schedule_next_refund( database& db, const asset_symbol_type& a )
+static void cascading_contribution_action(
+   database& db,
+   const asset_symbol_type& a,
+   std::function< const required_automated_action&( const smt_contribution_object& ) > f,
+   uint32_t interval )
 {
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
    auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
 
    if ( itr != idx.end() && itr->symbol == a )
    {
-      smt_refund_action refund;
-      refund.symbol = itr->symbol;
-      refund.contributor = itr->contributor;
-      refund.contribution_id = itr->contribution_id;
-
-      db.push_required_action( refund, db.head_block_time() + SMT_REFUND_INTERVAL );
+      db.push_required_action( f( *itr ), db.head_block_time() + interval );
    }
+}
+
+void schedule_next_refund( database& db, const asset_symbol_type& a )
+{
+   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
+      smt_refund_action refund;
+      refund.symbol = o.symbol;
+      refund.contributor = o.contributor;
+      refund.contribution_id = o.contribution_id;
+      return refund;
+   }, SMT_REFUND_INTERVAL );
+}
+
+void schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
+{
+//   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
+//   }, SMT_CONTRIBUTOR_PAYOUT_INTERVAL );
 }
 
 } } } } // steem::chain::util::smt

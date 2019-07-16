@@ -2676,7 +2676,8 @@ void database::initialize_evaluators()
 #endif
 
 #ifdef STEEM_ENABLE_SMT
-   _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator          >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator             >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_contributor_payout_evaluator >();
 #endif
 }
 

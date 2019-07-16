@@ -27,6 +27,17 @@ namespace steem { namespace protocol {
 
       friend bool operator==( const smt_refund_action& lhs, const smt_refund_action& rhs );
    };
+
+   struct smt_contributor_payout_action : public base_operation
+   {
+      asset_symbol_type symbol;
+      account_name_type contributor;
+      uint32_t          contribution_id;
+
+      void validate()const;
+
+      friend bool operator==( const smt_contributor_payout_action& lhs, const smt_contributor_payout_action& rhs );
+   };
 #endif
 } } // steem::protocol
 
@@ -36,4 +47,5 @@ FC_REFLECT( steem::protocol::example_required_action, (account) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::smt_refund_action, (symbol)(contributor)(contribution_id) )
+FC_REFLECT( steem::protocol::smt_contributor_payout_action, (symbol)(contributor)(contribution_id) )
 #endif
