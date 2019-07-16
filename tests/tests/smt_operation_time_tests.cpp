@@ -665,6 +665,8 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 {
    try
    {
+
+      BOOST_TEST_MESSAGE( "Testing SMT contribution refunds" );
       ACTORS( (alice)(bob)(sam)(dave) )
 
       generate_block();
@@ -679,9 +681,11 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       generate_block();
 
+      BOOST_TEST_MESSAGE( " --- SMT creation" );
       auto symbol = create_smt( "alice", alice_private_key, 3 );
       const auto& token = db->get< smt_token_object, by_symbol >( symbol );
 
+      BOOST_TEST_MESSAGE( " --- SMT setup" );
       signed_transaction tx;
       smt_setup_operation setup_op;
 
@@ -716,6 +720,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
 
+      BOOST_TEST_MESSAGE( " --- SMT contributions" );
       uint32_t num_contributions = 0;
       for ( uint64_t i = 0; i < contribution_window_blocks; i++ )
       {
@@ -770,13 +775,19 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_failed );
 
+      BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
+
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
       BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
       BOOST_REQUIRE( db->get_balance( "dave", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
 
       validate_database();
 
+      BOOST_TEST_MESSAGE( " --- Starting the cascading refunds" );
+
       generate_blocks( num_contributions * ( SMT_REFUND_INTERVAL / STEEM_BLOCK_INTERVAL ) );
+
+      BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == bobs_balance );
       BOOST_REQUIRE( db->get_balance( "sam", STEEM_SYMBOL ) == sams_balance );
@@ -791,12 +802,19 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
 {
    try
    {
+
+      BOOST_TEST_MESSAGE( "Testing ICO queue processing" );
+
       ACTORS( (alice) )
 
       generate_block();
 
+      BOOST_TEST_MESSAGE( " --- SMT creation" );
+
       auto symbol = create_smt( "alice", alice_private_key, 3 );
       const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+
+      BOOST_TEST_MESSAGE( " --- Checking queue state" );
 
       auto *ico = db->find< smt_ico_object, by_symbol >( symbol );
       BOOST_REQUIRE( ico == nullptr );
@@ -810,6 +828,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
       auto *token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
       BOOST_REQUIRE( token_launch_queue_obj == nullptr );
 
+      BOOST_TEST_MESSAGE( " --- SMT setup" );
       signed_transaction tx;
       smt_setup_operation setup_op;
 
@@ -840,6 +859,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
 
       BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
 
+      BOOST_TEST_MESSAGE( " --- Checking queue state" );
+
       ico = db->find< smt_ico_object, by_symbol >( symbol );
       BOOST_REQUIRE( ico != nullptr );
 
@@ -852,7 +873,11 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
       token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
       BOOST_REQUIRE( token_launch_queue_obj == nullptr );
 
+      BOOST_TEST_MESSAGE( " --- Begin contribution phase" );
+
       generate_block();
+
+      BOOST_TEST_MESSAGE( " --- Checking queue state" );
 
       BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
 
@@ -870,6 +895,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
 
       generate_blocks( contribution_window_blocks - 1 );
 
+      BOOST_TEST_MESSAGE( " --- Meeting contribution requirements" );
+
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get< smt_ico_object, by_symbol >( symbol ), [&]( smt_ico_object& a )
@@ -880,9 +907,13 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
 
       BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
 
+      BOOST_TEST_MESSAGE( " --- End contribution phase" );
+
       generate_block();
 
       BOOST_REQUIRE( token.phase == smt_phase::contribution_end_time_completed );
+
+      BOOST_TEST_MESSAGE( " --- Checking queue state" );
 
       ico = db->find< smt_ico_object, by_symbol >( symbol );
       BOOST_REQUIRE( ico != nullptr );
@@ -896,9 +927,13 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
       token_launch_queue_obj = db->find< smt_token_launch_queue_object, by_symbol >( symbol );
       BOOST_REQUIRE( token_launch_queue_obj != nullptr );
 
+      BOOST_TEST_MESSAGE( " --- Entering successful launch phase" );
+
       generate_block();
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
+
+      BOOST_TEST_MESSAGE( " --- Checking queue state" );
 
       ico = db->find< smt_ico_object, by_symbol >( symbol );
       BOOST_REQUIRE( ico == nullptr );
