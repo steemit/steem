@@ -171,8 +171,13 @@ void schedule_next_refund( database& db, const asset_symbol_type& a )
 
 void schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
 {
-//   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
-//   }, SMT_CONTRIBUTOR_PAYOUT_INTERVAL );
+   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
+      smt_contributor_payout_action contributor_payout;
+      contributor_payout.symbol = o.symbol;
+      contributor_payout.contributor = o.contributor;
+      contributor_payout.contribution_id = o.contribution_id;
+      return contributor_payout;
+   }, SMT_CONTRIBUTOR_PAYOUT_INTERVAL );
 }
 
 } } } } // steem::chain::util::smt
