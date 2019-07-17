@@ -128,16 +128,12 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
    const smt_token_object& token = db.get< smt_token_object, by_symbol >( token_launch_obj.symbol );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
-   FC_TODO( "Payout founders and contributors" );
-   FC_TODO( "Issue #2732" );
-   FC_TODO( "Issue #2733" );
-   FC_TODO( "Issue #2734" );
-   FC_TODO( "Issue #2735" );
-
    db.modify( token, []( smt_token_object& o )
    {
       o.phase = smt_phase::launch_success;
    } );
+
+   schedule_next_contributor_payout( db, token.liquid_symbol );
 
    db.remove( ico );
    db.remove( token_launch_obj );
