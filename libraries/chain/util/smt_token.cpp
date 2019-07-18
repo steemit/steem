@@ -69,6 +69,17 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    return {};
 }
 
+account_name_type get_effective_account_name( const account_name_type& name, const account_name_type& from )
+{
+   if ( name == SMT_DESTINATION_FROM )
+      return from;
+//   SMT_DESTINATION_FROM_VESTING
+//   SMT_DESTINATION_MARKET_MAKER
+//   SMT_DESTINATION_REWARDS
+//   SMT_DESTINATION_VESTING
+   return name;
+}
+
 void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
 {
    const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
@@ -137,24 +148,27 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
    db.remove( token_launch_obj );
 }
 
-static void cascading_contribution_action(
+static bool cascading_contribution_action(
    database& db,
    const asset_symbol_type& a,
    std::function< const required_automated_action&( const smt_contribution_object& ) > f,
    uint32_t interval )
 {
+   bool action_scheduled = false;
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
    auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
 
    if ( itr != idx.end() && itr->symbol == a )
    {
       db.push_required_action( f( *itr ), db.head_block_time() + interval );
+      action_scheduled = true;
    }
+   return action_scheduled;
 }
 
-void schedule_next_refund( database& db, const asset_symbol_type& a )
+bool schedule_next_refund( database& db, const asset_symbol_type& a )
 {
-   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
+   return cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
       smt_refund_action refund;
       refund.symbol = o.symbol;
       refund.contributor = o.contributor;
@@ -163,9 +177,9 @@ void schedule_next_refund( database& db, const asset_symbol_type& a )
    }, SMT_REFUND_INTERVAL );
 }
 
-void schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
+bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
 {
-   cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
+   return cascading_contribution_action( db, a, []( const smt_contribution_object& o) {
       smt_contributor_payout_action contributor_payout;
       contributor_payout.symbol = o.symbol;
       contributor_payout.contributor = o.contributor;

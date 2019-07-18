@@ -17,8 +17,9 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 void launch_ico( database& db, const smt_ico_launch_queue_object& obj );
 void evaluate_ico( database& db, const smt_ico_evaluation_queue_object& obj );
 void launch_token( database& db, const smt_token_launch_queue_object& obj );
-void schedule_next_refund( database& db, const asset_symbol_type& a );
-void schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
+bool schedule_next_refund( database& db, const asset_symbol_type& a );
+bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
+account_name_type get_effective_account_name( const account_name_type& name, const account_name_type& from );
 
 template< class QueueIndex, class SortOrder, class QueueObject, uint64_t MaxPerBlock >
 void process_queue( database& db, std::function< time_point_sec( const QueueObject& ) > get_time, std::function< void( database&, const QueueObject& ) > process_item )
@@ -40,11 +41,12 @@ void process_queue( database& db, std::function< time_point_sec( const QueueObje
 }
 
 template< class ActionType >
-void cascading_contributor_action_handler(
+void cascading_contributor_action_applier(
    database &db,
    ActionType a,
-   std::function< void( database&, const smt_contribution_object& ) > process,
-   std::function< void( database&, const asset_symbol_type& ) > then )
+   std::function< void( database&, const smt_contribution_object& ) > _do,
+   std::function< bool( database&, const asset_symbol_type& ) > _then,
+   fc::optional< std::function< void( database&, const asset_symbol_type& ) > > _finally = fc::optional< std::function< void( database&, const asset_symbol_type& ) > >() )
 {
    auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
    auto itr = idx.find( boost::make_tuple( a.symbol, a.contributor, a.contribution_id ) );
@@ -52,11 +54,14 @@ void cascading_contributor_action_handler(
 
    auto symbol = itr->symbol;
 
-   process( db, *itr );
+   _do( db, *itr );
 
    db.remove( *itr );
 
-   then( db, symbol );
+   if ( !_then( db, symbol ) && _finally )
+   {
+      (*_finally)( db, symbol );
+   }
 }
 
 } } } } // steem::chain::util::smt
