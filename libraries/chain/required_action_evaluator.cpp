@@ -45,10 +45,11 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
       for ( auto& e : token_unit )
       {
          auto effective_account = util::smt::get_effective_account_name( e.first, o.contributor );
+         auto effective_symbol = util::smt::effective_account_is_vesting( e.first ) ? o.symbol.get_paired_symbol() : o.symbol;
 
          auto token_share = e.second * steem_units_sent * effective_unit_ratio;
 
-         db.adjust_balance( effective_account, asset( token_share, o.symbol ) );
+         db.adjust_balance( effective_account, asset( token_share, effective_symbol ) );
 
          db.modify( token, [&]( smt_token_object& obj )
          {
@@ -59,7 +60,9 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
       for ( auto& e : steem_unit )
       {
          auto effective_account = util::smt::get_effective_account_name( e.first, o.contributor );
-         db.adjust_balance( effective_account, asset( e.second * steem_units_sent, STEEM_SYMBOL ) );
+         auto effective_symbol = util::smt::effective_account_is_vesting( e.first ) ? VESTS_SYMBOL : STEEM_SYMBOL;
+
+         db.adjust_balance( effective_account, asset( e.second * steem_units_sent, effective_symbol ) );
       }
    },
    util::smt::schedule_next_contributor_payout,

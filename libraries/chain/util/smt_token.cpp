@@ -73,11 +73,22 @@ account_name_type get_effective_account_name( const account_name_type& name, con
 {
    if ( name == SMT_DESTINATION_FROM )
       return from;
-//   SMT_DESTINATION_FROM_VESTING
-//   SMT_DESTINATION_MARKET_MAKER
-//   SMT_DESTINATION_REWARDS
-//   SMT_DESTINATION_VESTING
+   if ( name == SMT_DESTINATION_FROM_VESTING )
+      return from;
+
+   FC_TODO( "Handle SMT_DESTINATION_MARKET_MAKER, SMT_DESTINATION_REWARDS, and SMT_DESTINATION_VESTING" );
+
    return name;
+}
+
+bool effective_account_is_vesting( const account_name_type& name )
+{
+   if ( name == SMT_DESTINATION_FROM_VESTING )
+      return true;
+   if ( name == SMT_DESTINATION_VESTING )
+      return true;
+
+   return false;
 }
 
 void launch_ico( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
@@ -143,7 +154,14 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
       o.phase = smt_phase::launch_success;
    } );
 
-   schedule_next_contributor_payout( db, token.liquid_symbol );
+   /*
+    * If there are no contributions to schedule payouts for we no longer require
+    * the ICO object.
+    */
+   if ( !schedule_next_contributor_payout( db, token.liquid_symbol ) )
+   {
+      db.remove( db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
+   }
 
    db.remove( token_launch_obj );
 }
