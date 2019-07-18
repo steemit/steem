@@ -126,7 +126,6 @@ void evaluate_ico( database& db, const smt_ico_evaluation_queue_object& ico_eval
 void launch_token( database& db, const smt_token_launch_queue_object& token_launch_obj )
 {
    const smt_token_object& token = db.get< smt_token_object, by_symbol >( token_launch_obj.symbol );
-   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    db.modify( token, []( smt_token_object& o )
    {
@@ -135,7 +134,6 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
 
    schedule_next_contributor_payout( db, token.liquid_symbol );
 
-   db.remove( ico );
    db.remove( token_launch_obj );
 }
 

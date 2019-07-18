@@ -39,6 +39,26 @@ void process_queue( database& db, std::function< time_point_sec( const QueueObje
    }
 }
 
+template< class ActionType >
+void cascading_contributor_action_handler(
+   database &db,
+   ActionType a,
+   std::function< void( database&, const smt_contribution_object& ) > process,
+   std::function< void( database&, const asset_symbol_type& ) > then )
+{
+   auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
+   auto itr = idx.find( boost::make_tuple( a.symbol, a.contributor, a.contribution_id ) );
+   FC_ASSERT( itr != idx.end(), "Unable to find contribution object for the provided action: ${a}", ("a", a) );
+
+   auto symbol = itr->symbol;
+
+   process( db, *itr );
+
+   db.remove( *itr );
+
+   then( db, symbol );
+}
+
 } } } } // steem::chain::util::smt
 
 #endif

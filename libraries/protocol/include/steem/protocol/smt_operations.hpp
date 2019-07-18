@@ -13,6 +13,12 @@
 #define SMT_MIN_SATURATION_STEEM_UNITS 1000
 #define SMT_MIN_SOFT_CAP_STEEM_UNITS   1000
 
+#define SMT_DESTINATION_FROM          account_name_type( "$from" )
+#define SMT_DESTINATION_FROM_VESTING  account_name_type( "$from.vesting" )
+#define SMT_DESTINATION_MARKET_MAKER  account_name_type( "$market_maker" )
+#define SMT_DESTINATION_REWARDS       account_name_type( "$rewards" )
+#define SMT_DESTINATION_VESTING       account_name_type( "$vesting" )
+
 namespace steem { namespace protocol {
 
 
