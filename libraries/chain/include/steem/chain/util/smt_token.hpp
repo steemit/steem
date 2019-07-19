@@ -23,31 +23,43 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a );
 bool schedule_next_payout( database& db, const asset_symbol_type& a );
 
 template< class QueueIndex, class SortOrder, class QueueObject, uint64_t MaxPerBlock >
-void process_queue( database& db, std::function< time_point_sec( const QueueObject& ) > get_time, std::function< void( database&, const QueueObject& ) > process_item )
-{
-   const auto& queue = db.get_index< QueueIndex, SortOrder >();
-   std::size_t num_processed = 0;
+struct queue_processor {
+   using get_time_func     = std::function< time_point_sec( const QueueObject& ) >;
+   using process_item_func = std::function< void( database&, const QueueObject& ) >;
 
-   auto itr = queue.begin();
-   while ( itr != queue.end() && num_processed < MaxPerBlock )
+   static void process( database& db, get_time_func get_time, process_item_func process_item )
    {
-      if ( db.head_block_time() < get_time( *itr ) )
-         break;
+      const auto& queue = db.get_index< QueueIndex, SortOrder >();
+      std::size_t num_processed = 0;
 
-      process_item( db, *itr );
+      auto itr = queue.begin();
+      while ( itr != queue.end() && num_processed < MaxPerBlock )
+      {
+         if ( db.head_block_time() < get_time( *itr ) )
+            break;
 
-      num_processed++;
-      itr = queue.begin();
+         process_item( db, *itr );
+
+         num_processed++;
+         itr = queue.begin();
+      }
    }
-}
+
+private:
+   queue_processor() = delete;
+};
+
+using cascading_action_applier_do_func      = std::function< void( database&, const smt_contribution_object& ) >;
+using cascading_action_applier_then_func    = std::function< bool( database&, const asset_symbol_type& ) >;
+using cascading_action_applier_finally_func = std::function< void( database&, const asset_symbol_type& ) >;
 
 template< class ActionType >
 void cascading_action_applier(
    database &db,
    ActionType a,
-   std::function< void( database&, const smt_contribution_object& ) > _do,
-   std::function< bool( database&, const asset_symbol_type& ) > _then,
-   fc::optional< std::function< void( database&, const asset_symbol_type& ) > > _finally = fc::optional< std::function< void( database&, const asset_symbol_type& ) > >() )
+   cascading_action_applier_do_func _do,
+   cascading_action_applier_then_func _then,
+   fc::optional< cascading_action_applier_finally_func > _finally = fc::optional< cascading_action_applier_finally_func >() )
 {
    auto& idx = db.get_index< smt_contribution_index, by_symbol_contributor >();
    auto itr = idx.find( boost::make_tuple( a.symbol, a.contributor, a.contribution_id ) );

@@ -5698,32 +5698,32 @@ optional< chainbase::database::session >& database::pending_transaction_session(
 #ifdef STEEM_ENABLE_SMT
 void database::evaluate_icos()
 {
-   util::smt::ico::process_queue<
+   util::smt::ico::queue_processor<
       smt_ico_evaluation_queue_index,
       by_contribution_end_time_symbol,
       smt_ico_evaluation_queue_object,
       SMT_MAX_ICO_EVALUATIONS_PER_BLOCK
-   >( *this, []( const smt_ico_evaluation_queue_object& o ) { return o.contribution_end_time; }, util::smt::ico::evaluate );
+   >::process( *this, []( const smt_ico_evaluation_queue_object& o ) { return o.contribution_end_time; }, util::smt::ico::evaluate );
 }
 
 void database::launch_icos()
 {
-   util::smt::ico::process_queue<
+   util::smt::ico::queue_processor<
       smt_ico_launch_queue_index,
       by_contribution_begin_time_symbol,
       smt_ico_launch_queue_object,
       SMT_MAX_ICO_LAUNCHES_PER_BLOCK
-   >( *this, []( const smt_ico_launch_queue_object& o ) { return o.contribution_begin_time; }, util::smt::ico::launch );
+   >::process( *this, []( const smt_ico_launch_queue_object& o ) { return o.contribution_begin_time; }, util::smt::ico::launch );
 }
 
 void database::launch_tokens()
 {
-   util::smt::ico::process_queue<
+   util::smt::ico::queue_processor<
       smt_token_launch_queue_index,
       by_launch_time_symbol,
       smt_token_launch_queue_object,
       SMT_MAX_TOKEN_LAUNCHES_PER_BLOCK
-   >( *this, []( const smt_token_launch_queue_object& o ) { return o.launch_time; }, util::smt::ico::launch_token );
+   >::process( *this, []( const smt_token_launch_queue_object& o ) { return o.launch_time; }, util::smt::ico::launch_token );
 }
 #endif
 

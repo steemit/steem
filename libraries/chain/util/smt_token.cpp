@@ -174,10 +174,12 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
    db.remove( token_launch_obj );
 }
 
+using cascading_action_func = std::function< const required_automated_action&( const smt_contribution_object& ) >;
+
 static bool cascading_action(
    database& db,
    const asset_symbol_type& a,
-   std::function< const required_automated_action&( const smt_contribution_object& ) > f,
+   cascading_action_func f,
    uint32_t interval )
 {
    bool action_scheduled = false;
