@@ -134,7 +134,6 @@ namespace steem { namespace chain {
 
          uint16_t sbd_stop_percent = 0;
          uint16_t sbd_start_percent = 0;
-         uint16_t sbd_stop_adjust = 0;
 
          //settings used to compute payments for every proposal
          time_point_sec next_maintenance_time;
