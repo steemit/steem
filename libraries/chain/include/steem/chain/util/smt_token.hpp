@@ -14,13 +14,13 @@ const smt_token_object* find_token( const database& db, asset_symbol_type symbol
 const smt_token_emissions_object* last_emission( const database& db, const asset_symbol_type& symbol );
 fc::optional< time_point_sec > last_emission_time( const database& db, const asset_symbol_type& symbol );
 
-void launch_ico( database& db, const smt_ico_launch_queue_object& obj );
-void evaluate_ico( database& db, const smt_ico_evaluation_queue_object& obj );
+namespace ico {
+
+void launch( database& db, const smt_ico_launch_queue_object& obj );
+void evaluate( database& db, const smt_ico_evaluation_queue_object& obj );
 void launch_token( database& db, const smt_token_launch_queue_object& obj );
 bool schedule_next_refund( database& db, const asset_symbol_type& a );
-bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
-account_name_type get_effective_account_name( const account_name_type& name, const account_name_type& from );
-bool effective_account_is_vesting( const account_name_type& name );
+bool schedule_next_payout( database& db, const asset_symbol_type& a );
 
 template< class QueueIndex, class SortOrder, class QueueObject, uint64_t MaxPerBlock >
 void process_queue( database& db, std::function< time_point_sec( const QueueObject& ) > get_time, std::function< void( database&, const QueueObject& ) > process_item )
@@ -42,7 +42,7 @@ void process_queue( database& db, std::function< time_point_sec( const QueueObje
 }
 
 template< class ActionType >
-void cascading_contributor_action_applier(
+void cascading_action_applier(
    database &db,
    ActionType a,
    std::function< void( database&, const smt_contribution_object& ) > _do,
@@ -64,6 +64,15 @@ void cascading_contributor_action_applier(
       (*_finally)( db, symbol );
    }
 }
+
+} // steem::chain::util::smt::ico
+
+namespace generation_unit {
+
+account_name_type get_account( const account_name_type& unit_target, const account_name_type& from );
+bool is_vesting( const account_name_type& name );
+
+} // steem::chain::util::smt::generation_unit
 
 } } } } // steem::chain::util::smt
 

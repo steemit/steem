@@ -997,12 +997,12 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       smt_setup_operation setup_op;
 
       uint64_t contribution_window_blocks = 5;
-      setup_op.control_account = "fred";
+      setup_op.control_account = "creator";
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
       setup_op.steem_units_soft_cap = 1000;
-      setup_op.steem_units_hard_cap = 300000000;
+      setup_op.steem_units_hard_cap = 150000000;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
       setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
       setup_op.initial_generation_policy = get_capped_generation_policy
@@ -1025,7 +1025,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
 
       tx.operations.push_back( setup_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, fred_private_key );
+      sign( tx, creator_private_key );
       db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
@@ -1083,14 +1083,14 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       BOOST_REQUIRE( db->get_balance( "george", STEEM_SYMBOL ).amount == 50000000 );
       BOOST_REQUIRE( db->get_balance( "henry", STEEM_SYMBOL ).amount == 0 );
 
-      BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 700000000 );
-      BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 3500000000 );
-      BOOST_REQUIRE( db->get_balance( "charlie", symbol ).amount == 1400000000 );
-      BOOST_REQUIRE( db->get_balance( "dan", symbol ).amount == 3500000000 );
-      BOOST_REQUIRE( db->get_balance( "elaine", symbol ).amount == 8400000000 );
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 420000000 );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 2100000000 );
+      BOOST_REQUIRE( db->get_balance( "charlie", symbol ).amount == 840000000 );
+      BOOST_REQUIRE( db->get_balance( "dan", symbol ).amount == 2100000000 );
+      BOOST_REQUIRE( db->get_balance( "elaine", symbol ).amount == 5040000000 );
       BOOST_REQUIRE( db->get_balance( "fred", symbol ).amount == 0 );
-      BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 2500000000 );
-      BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 5000000000 );
+      BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 1500000000 );
+      BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 3000000000 );
 
       validate_database();
    }
