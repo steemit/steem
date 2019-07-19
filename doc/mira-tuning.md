@@ -1,6 +1,6 @@
 # Preface
 
-After MIRAs initial development efforts we released the [Basic MIRA Configuration Guide](https://github.com/steemit/steem/blob/master/doc/mira.md) to help bootstrap users attempting to use MIRA enabled `steemd`. There is actually much more fine tuning that can be done to improve MIRA's performance and I'd like to take the time now to share it with the community. We will break up this process into three phases:
+After MIRAs initial development efforts we released the [Basic MIRA Configuration Guide](https://github.com/steemit/steem/blob/master/doc/mira.md) to help bootstrap users attempting to use MIRA enabled `steemd`. There is actually much more fine tuning that can be done to improve MIRA's performance. We will break up this process into three phases:
 
 * Phase 1: Gathering statistics
 * Phase 2: Analyzing statistics
