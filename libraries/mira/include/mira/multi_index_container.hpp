@@ -241,12 +241,12 @@ public:
 
       try
       {
-         if ( configuration::gather_statistics( cfg ) )
-            _stats = ::rocksdb::CreateDBStatistics();
-
          detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
 
          opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+
+         if ( configuration::gather_statistics( cfg ) )
+            opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
       }
       catch ( ... )
       {
