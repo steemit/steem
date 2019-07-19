@@ -3900,7 +3900,7 @@ void database::update_virtual_supply()
          auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
             / dgp.virtual_supply.amount.value ).to_uint64() );
 
-         if( has_hardfork( STEEM_HARDFORK_0_21 )
+         if( has_hardfork( STEEM_HARDFORK_0_21 ) )
          {
             percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT + dgp.virtual_supply.amount.value/2 )
                / dgp.virtual_supply.amount.value ).to_uint64() );
