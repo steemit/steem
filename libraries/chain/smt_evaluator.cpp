@@ -132,6 +132,8 @@ struct smt_setup_evaluator_visitor
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
+      capped_generation_policy.validate();
+
       _db.modify( _ico, [&]( smt_ico_object& ico )
       {
          ico.capped_generation_policy = capped_generation_policy;

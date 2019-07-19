@@ -26,9 +26,9 @@ bool is_valid_unit_target( const account_name_type& name )
 {
    if( is_valid_account_name(name) )
       return true;
-   if( name == account_name_type("$from") )
+   if( name == SMT_DESTINATION_FROM )
       return true;
-   if( name == account_name_type("$from.vesting") )
+   if( name == SMT_DESTINATION_FROM_VESTING )
       return true;
    return false;
 }

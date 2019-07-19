@@ -77,6 +77,7 @@ account_name_type get_account( const account_name_type& unit_target, const accou
       return from;
    if ( unit_target == SMT_DESTINATION_FROM_VESTING )
       return from;
+
    return unit_target;
 }
 
