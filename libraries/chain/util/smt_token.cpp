@@ -78,6 +78,10 @@ account_name_type get_account( const account_name_type& unit_target, const accou
    if ( unit_target == SMT_DESTINATION_FROM_VESTING )
       return from;
 
+   for ( auto& e : { SMT_DESTINATION_MARKET_MAKER, SMT_DESTINATION_VESTING, SMT_DESTINATION_REWARDS } )
+      FC_ASSERT( unit_target != e,
+         "The provided unit target '${unit_target}' is not an account.", ("unit_target", e) );
+
    return unit_target;
 }
 
