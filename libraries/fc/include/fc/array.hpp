@@ -115,7 +115,7 @@ namespace fc {
         memcpy(&bi, ve.data(), fc::min<size_t>(ve.size(),sizeof(bi)) );
     }
     else
-        memset( &bi, char(0), sizeof(bi) );
+        memset( static_cast<void*>(&bi), char(0), sizeof(bi) );
   }
 
 
