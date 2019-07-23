@@ -35,7 +35,7 @@ OBJECTS=( "account_authority"                \
 
 DATA_DIR="$HOME/.steemd"
 STEEMD_DIR="../.."
-STATS_DUMP_PERIOD=20
+STATS_DUMP_PERIOD=600
 
 ADVISOR_PATH="../../libraries/vendor/rocksdb/tools/advisor"
 
@@ -56,13 +56,13 @@ while (( "$#" )); do
       -h|--help)
          echo "Specify data directory with '--data-dir' (Default is ~/.steemd)"
          echo "Specify steemd directory with '--steemd-dir' (Default is ../..)"
-         echo "Specify stats dump period with '--stats-dump-period' (Default is 20)"
+         echo "Specify stats dump period with '--stats-dump-period' (Default is 600)"
          exit 1
          ;;
       *)
          echo "Specify data directory with '--data-dir' (Default is ~/.steemd)"
          echo "Specify steemd directory with '--steemd-dir' (Default is ../..)"
-         echo "Specify stats dump period with '--stats-dump-period' (Default is 20)"
+         echo "Specify stats dump period with '--stats-dump-period' (Default is 600)"
          exit 1
          ;;
    esac
@@ -74,9 +74,10 @@ for OBJ in "${OBJECTS[@]}"; do
    DB_PATH="$DATA_DIR/blockchain/rocksdb_"
    DB_PATH+="$OBJ"
    DB_PATH+='_object'
+   DB_OPTIONS="$(find $DB_PATH -name "OPTIONS-*" -type f -print0 | xargs -0 ls -1 -t | head -1)"
 
    echo "Advisor for $OBJ..."
-   python3 -m advisor.rule_parser_example --rules_spec=advisor/rules.ini --rocksdb_options="$DB_PATH/OPTIONS-000014" --log_files_path_prefix="$DB_PATH/LOG" --stats_dump_period_sec=$STATS_DUMP_PERIOD
+   python3 -m advisor.rule_parser_example --rules_spec=advisor/rules.ini --rocksdb_options="$DB_OPTIONS" --log_files_path_prefix="$DB_PATH/LOG" --stats_dump_period_sec=$STATS_DUMP_PERIOD
    echo ''
 done
 
