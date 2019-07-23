@@ -4528,8 +4528,10 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 {
    if ( delta.amount < 0 )
    {
-      FC_ASSERT( get_balance( a, delta.symbol ) >= -delta,
-         "Account ${acc} does not have sufficient funds for balance adjustment of ${ba}", ("acc", a.name)("ba", delta) );
+      asset available = get_balance( a, delta.symbol );
+      FC_ASSERT( available >= -delta,
+         "Account ${acc} does not have sufficient funds for balance adjustment. Required: ${r}, Available: ${a}",
+            ("acc", a.name)("r", delta)("a", available) );
    }
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
