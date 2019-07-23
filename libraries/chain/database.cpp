@@ -4526,6 +4526,12 @@ struct smt_reward_balance_operator
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
+   if ( delta.amount < 0 )
+   {
+      FC_ASSERT( get_balance( a, delta.symbol ) >= -delta,
+         "Account ${acc} does not have sufficient funds for balance adjustment of ${ba}", ("acc", a.name)("ba", delta) );
+   }
+
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
 #ifdef STEEM_ENABLE_SMT
@@ -4543,20 +4549,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
 void database::adjust_balance( const account_name_type& name, const asset& delta )
 {
-   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
-
-#ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
-   {
-      smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/, balance_operator );
-      return;
-   }
-#endif
-   const auto& a = get_account( name );
-   modify_balance( a, delta, check_balance );
+   adjust_balance( get_account( name ), delta );
 }
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
