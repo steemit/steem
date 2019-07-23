@@ -63,7 +63,7 @@ Every user has a "manabar" called *resource credits* (RC).
 You can look at this system like a market:
 
 - Supply is how many resources (bytes / accounts) the blockchain "allows" users.
-- Demand is how many RC's users who want to use resources have.
+- Demand is how many RCs users who want to use resources have.
 
 [1] In general, per resource.  So replace "bytes" with "account creations," "CPU cycles," or whatever.
 
@@ -77,7 +77,7 @@ You can look at this system like a market:
 - Each of the 6 or so resources are tracked differently.
 - Each user has only one type of RC.
 - The subsidized accounts resource is tracked in consensus.
-- RC's are wholly non-consensus, they do not exist in consensus code.
+- RCs are wholly non-consensus, they do not exist in consensus code.
 
 - Q: How are resource limits different from max block size?
 - A: Max block size is a short-term limit with a timescale of 1 block.  Resource limits are medium-to-long term limits, with timescales of dozens to millions of blocks.
@@ -101,7 +101,7 @@ wrong, and it should actually be "1.5x" or "3x".  But it will probably not be as
 
 - Q: Why not have the budget be the desired usage level of the resource?
 - A: If you say "users should use this much," how would you even enforce that?  The amount of activity that users do is nothing more, and nothing
-less, than the sum of each individual user's decisions.  The budget creates market forces that influence these decisions:  You need X Steem Power
+less, than the sum of each individual user's decisions.  The budget creates market forces that influence these decisions: You need X Steem Power
 to transact at R rate (today, and tomorrow the numbers will probably be similar, but over time they might become very different).  The code sets
 the numbers so that the budget is an upper bound on user activity.  How far below that upper bound will the actual user activity be?  That
 depends very much on the sum of users' individual decisions about how many resources to consume and how much SP heavy consumers are willing

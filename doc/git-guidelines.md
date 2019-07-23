@@ -8,26 +8,21 @@ post](http://www.draconianoverlord.com/2013/09/07/no-cherry-picking.html).
 ## Branches
 - `stable`: Points to the latest version of code that is production-ready, and has been tested in production.
  Witnesses, exchanges, seed nodes, and RPC nodes should be running this branch. 
-- `master`: Points to the current release of Steem. Each release commit will be tagged
-  `vMajor.Hardfork.Release`. When we get ready to release we will merge
-  feature branches into `develop` and then do a single merge into `master`
-  via a Pull Request. All PRs to `master` must pass automated testing to be
-  merged.
-- `develop`: The active development branch. We will strive to keep `develop`
+- `master`: The active development branch. We will strive to keep `develop`
   in a working state. All PRs must pass automated tests before being merged.
-  While this is not a guarantee that `develop` is bug-free, it will
+  While this is not a guarantee that `master` is bug-free, it will
   guarantee that the branch is buildable in our standard build configuration
   and passes the current suite of tests. That being said, running a node
-  from `develop` has risks.  We recommend that any block producing node
+  from `master` has risks.  We recommend that any block producing node
   build from `stable`. If you want to test new features, develop is the
   correct branch.
 
 ### Patch Branches
 
 All changes should be developed in their own branch. These branches
-should branch from `develop` and then merged back into `develop` when they are
+should branch from `master` and then merged back into `master` when they are
 tested and ready. If an issue needs another issue as a
-dependency, branch from `develop`, merge the dependent issue branch into the
+dependency, branch from `master`, merge the dependent issue branch into the
 new branch, and begin development. The naming scheme we use is the issue
 number, then a dash, followed by a shorthand description of the issue. For
 example, issue 22 is to allow the removal of an upvote. Branch
@@ -38,8 +33,8 @@ example, issue 22 is to allow the removal of an upvote. Branch
 Some changes are so minor as to not require an issue, e.g. changes to
 logging. Because the requirement of automated testing, create an issue for
 them. We err on the side of over-documentation rather than
-under-documentation.  Branch from `develop`, make your fix, and create a pull
-request into `develop`.
+under-documentation.  Branch from `master`, make your fix, and create a pull
+request into `master`.
 
 Suggested formatting for such branches missing an issue is
 `YYYYMMDD-shortname`, e.g. `20160913-documentation-update`.  (The date in
@@ -78,8 +73,7 @@ pull request.
 
 ### Force-Push Policy
 
-- `origin/master` should never be force pushed.
-- `origin/develop` should never be force pushed. All updates to `develop`
+- `origin/master` should never be force pushed. All updates to `master`
   are done through PRs so force pushing is not allowed.
 - Individual patch branches may be force-pushed at any time, at the
   discretion of the developer or team working on the patch.
@@ -88,16 +82,16 @@ pull request.
 
 - Tags are reserved for releases. The version scheme is
   `vMajor.Hardfork.Release` (Ex. v0.5.0 is the version for the Hardfork 5
-  release). Releases should be made only on `master`.
+  release). Releases should be made only on `stable`.
 
 ### Code Review Policy / PR Merge Process
 
 - Two developers *must* review *every* release before merging it into
-  `master`, enforced through pull requests.
+  `stable`, enforced through pull requests.
 - Two developers *must* review *every* consensus-breaking change before it
-  moves into `develop`, enforced through pull requests.
+  moves into `master`, enforced through pull requests.
 - Two developers *should* review *every* patch before it moves into
-  `develop`, enforced through pull requests.
+  `master`, enforced through pull requests.
 - One of the reviewers may be the author of the change.
 - This policy is designed to encourage you to take off your "writer hat" and
   put on your "critic/reviewer hat."  If this were a patch from an
