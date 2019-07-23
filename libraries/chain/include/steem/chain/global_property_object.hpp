@@ -205,7 +205,6 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (available_account_subsidies)
              (sbd_stop_percent)
              (sbd_start_percent)
-             (sbd_stop_adjust)
              (next_maintenance_time)
              (last_budget_time)
              (content_reward_percent)
