@@ -1252,7 +1252,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          const auto& alice = db->get_account( "alice" );
 
          gpo = db->get_dynamic_global_properties();
-         fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
+         fill_op = get_last_operations( 2 )[1].get< fill_vesting_withdraw_operation >();
 
          BOOST_REQUIRE( alice.vesting_shares.amount.value == ( vesting_shares - withdraw_rate ).amount.value );
          BOOST_REQUIRE( balance.amount.value + ( withdraw_rate * gpo.get_vesting_share_price() ).amount.value - alice.balance.amount.value <= 1 );
@@ -2062,8 +2062,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       generate_blocks( db->head_block_time() + fc::seconds( STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10.to_seconds() / 2 ), true );
 
-      ops = get_last_operations( 3 );
-      fill_order_op = ops[2].get< fill_order_operation >();
+      ops = get_last_operations( 4 );
+      fill_order_op = ops[3].get< fill_order_operation >();
 
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 6 );
