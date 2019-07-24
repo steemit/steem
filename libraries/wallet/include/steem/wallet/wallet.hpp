@@ -1104,7 +1104,7 @@ class wallet_api
        * @param status     - list only results with given status (all, inactive, active, expired, votable),
        */
       condenser_api::list_proposals_return list_proposals( fc::variant start,
-                                                           uint32_t limit = 10,
+                                                           uint32_t limit,
                                                            database_api::sort_order_type order_by,
                                                            database_api::order_direction_type order_type = database_api::descending,
                                                            database_api::proposal_status status = database_api::all );
@@ -1124,7 +1124,7 @@ class wallet_api
        * @param status     - list only results with given status (all, inactive, active, expired, votable),
        */
       condenser_api::list_proposal_votes_return list_proposal_votes( fc::variant start,
-                                                                     uint32_t limit = 10,
+                                                                     uint32_t limit,
                                                                      database_api::sort_order_type order_by,
                                                                      database_api::order_direction_type order_type = database_api::descending,
                                                                      database_api::proposal_status status = database_api::all );

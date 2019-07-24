@@ -2454,8 +2454,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    condenser_api::list_proposals_return wallet_api::list_proposals(
       fc::variant start,
-      database_api::sort_order_type order_by,
       uint32_t limit,
+      database_api::sort_order_type order_by,
       database_api::order_direction_type order_type,
       database_api::proposal_status status )
    {
@@ -2469,8 +2469,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    condenser_api::list_proposal_votes_return wallet_api::list_proposal_votes(
       fc::variant start,
-      database_api::sort_order_type order_by,
       uint32_t limit,
+      database_api::sort_order_type order_by,
       database_api::order_direction_type order_type,
       database_api::proposal_status status )
    {
