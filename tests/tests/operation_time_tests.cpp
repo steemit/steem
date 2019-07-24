@@ -2766,11 +2766,13 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          });
       }, database::skip_witness_signature );
 
+      auto current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL ) + db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
+
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( ( gpo.sbd_start_percent - 9 ) * sbd_balance.amount ) / gpo.sbd_stop_percent, SBD_SYMBOL ) + db.get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
+            gpo.current_sbd_supply = current_sbd_supply;
          });
       }, database::skip_witness_signature );
 
