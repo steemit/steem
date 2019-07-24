@@ -4732,6 +4732,11 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
    }
 }
 
+asset database::get_balance( const account_name_type& name, asset_symbol_type symbol )const
+{
+   return get_balance( get_account( name ), symbol );
+}
+
 asset database::get_savings_balance( const account_object& a, asset_symbol_type symbol )const
 {
    switch( symbol.asset_num )
