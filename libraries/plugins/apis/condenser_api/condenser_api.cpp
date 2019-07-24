@@ -1921,14 +1921,24 @@ namespace detail
       list_args.status          = args.size() > 4 ?
          args[4].as< steem::plugins::database_api::proposal_status >() : database_api::all;
 
-      return _database_api->list_proposals( list_args ).proposals;
+      const auto& proposals = _database_api->list_proposals( list_args ).proposals;
+      list_proposals_return result;
+
+      for( const auto& p : proposals ) result.emplace_back( api_proposal_object( p ) );
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, find_proposals )
    {
       CHECK_ARG_SIZE( 1 )
 
-      return _database_api->find_proposals( { args[0].as< vector< steem::plugins::database_api::api_id_type > >() } ).proposals;
+      const auto& proposals = _database_api->find_proposals( { args[0].as< vector< steem::plugins::database_api::api_id_type > >() } ).proposals;
+      find_proposals_return result;
+
+      for( const auto& p : proposals ) result.emplace_back( api_proposal_object( p ) );
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, list_proposal_votes )
