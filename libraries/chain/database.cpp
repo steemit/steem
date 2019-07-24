@@ -4537,21 +4537,45 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
 #ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
+      // No account object modification for SMT balance, hence separate handling here.
+      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
       smt_regular_balance_operator balance_operator( delta );
       adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
-      return;
    }
+   else
 #endif
-   modify_balance( a, delta, check_balance );
+   {
+      modify_balance( a, delta, check_balance );
+   }
 }
 
 void database::adjust_balance( const account_name_type& name, const asset& delta )
 {
-   adjust_balance( get_account( name ), delta );
+   if ( delta.amount < 0 )
+   {
+      asset available = get_balance( name, delta.symbol );
+      FC_ASSERT( available >= -delta,
+         "Account ${acc} does not have sufficient funds for balance adjustment. Required: ${r}, Available: ${a}",
+            ("acc", name)("r", delta)("a", available) );
+   }
+
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      // No account object modification for SMT balance, hence separate handling here.
+      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+      smt_regular_balance_operator balance_operator( delta );
+      adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
+   }
+   else
+#endif
+   {
+      modify_balance( get_account( name ), delta, check_balance );
+   }
 }
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
@@ -4713,10 +4737,9 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       default:
       {
 #ifdef STEEM_ENABLE_SMT
-         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
-         const account_regular_balance_object* arbo =
-            find< account_regular_balance_object, by_owner_liquid_symbol >(
-               boost::make_tuple(a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol ) );
+         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "Invalid symbol: ${s}", ("s", symbol) );
+         auto key = boost::make_tuple( a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
+         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
@@ -4726,7 +4749,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
             return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
          }
 #else
-      FC_ASSERT( false, "invalid symbol" );
+         FC_ASSERT( false, "Invalid symbol: ${s}", ("s", symbol) );
 #endif
       }
    }
@@ -4734,6 +4757,22 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 
 asset database::get_balance( const account_name_type& name, asset_symbol_type symbol )const
 {
+#ifdef STEEM_ENABLE_SMT
+   if ( symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      auto key = boost::make_tuple( name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
+      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+
+      if( arbo == nullptr )
+      {
+         return asset( 0, symbol );
+      }
+      else
+      {
+         return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+      }
+   }
+#endif
    return get_balance( get_account( name ), symbol );
 }
 
