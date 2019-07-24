@@ -1691,7 +1691,7 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_comment_benefactor_reward_oper
 FC_REFLECT( steem::plugins::condenser_api::legacy_producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_claim_account_operation, (creator)(fee)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_proposal_pay_operation, (receiver)(payment)(trx_id)(op_in_trx) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_sps_fund_operation, )
+FC_REFLECT( steem::plugins::condenser_api::legacy_sps_fund_operation, (additional_funds) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_create_proposal_operation, (creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink) )
 
 FC_REFLECT_TYPENAME( steem::plugins::condenser_api::legacy_operation )
