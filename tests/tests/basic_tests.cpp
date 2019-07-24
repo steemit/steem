@@ -30,6 +30,7 @@
 #include <steem/protocol/protocol.hpp>
 
 #include <steem/protocol/steem_operations.hpp>
+#include <steem/chain/account_object.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>
@@ -324,6 +325,36 @@ BOOST_AUTO_TEST_CASE( merkle_root )
 
    block.transactions.push_back( tx[9] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dO) );
+}
+
+BOOST_AUTO_TEST_CASE( adjust_balance_test )
+{
+   ACTORS( (alice) );
+
+   generate_block();
+
+   BOOST_TEST_MESSAGE( "Testing adjust_balance" );
+
+   BOOST_TEST_MESSAGE( " --- Testing adding STEEM_SYMBOL" );
+   db->adjust_balance( "alice", asset( 50000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == asset( 50000, STEEM_SYMBOL ) );
+
+   BOOST_TEST_MESSAGE( " --- Testing deducting STEEM_SYMBOL" );
+   STEEM_REQUIRE_THROW( db->adjust_balance( "alice", asset( -50001, STEEM_SYMBOL ) ), fc::assert_exception );
+   db->adjust_balance( "alice", asset( -30000, STEEM_SYMBOL ) );
+   db->adjust_balance( "alice", asset( -20000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == asset( 0, STEEM_SYMBOL ) );
+
+   BOOST_TEST_MESSAGE( " --- Testing adding SBD_SYMBOL" );
+   db->adjust_balance( "alice", asset( 100000, SBD_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", SBD_SYMBOL ) == asset( 100000, SBD_SYMBOL ) );
+
+   BOOST_TEST_MESSAGE( " --- Testing deducting SBD_SYMBOL" );
+   STEEM_REQUIRE_THROW( db->adjust_balance( "alice", asset( -100001, SBD_SYMBOL ) ), fc::assert_exception );
+   db->adjust_balance( "alice", asset( -50000, SBD_SYMBOL ) );
+   db->adjust_balance( "alice", asset( -25000, SBD_SYMBOL ) );
+   db->adjust_balance( "alice", asset( -25000, SBD_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", SBD_SYMBOL ) == asset( 0, SBD_SYMBOL ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
