@@ -3897,13 +3897,17 @@ void database::update_virtual_supply()
 
       if( !median_price.is_null() && has_hardfork( STEEM_HARDFORK_0_14__230 ) )
       {
-         auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
-            / dgp.virtual_supply.amount.value ).to_uint64() );
+         uint16_t percent_sbd = 0;
 
          if( has_hardfork( STEEM_HARDFORK_0_21 ) )
          {
             percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT + dgp.virtual_supply.amount.value/2 )
                / dgp.virtual_supply.amount.value ).to_uint64() );
+         }
+         else
+         {
+            percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
+            / dgp.virtual_supply.amount.value ).to_uint64() );
          }
 
          if( percent_sbd <= dgp.sbd_start_percent )
