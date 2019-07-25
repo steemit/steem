@@ -167,6 +167,8 @@ void smt_setup_operation::validate()const
    FC_ASSERT( steem_units_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS, "Steem units soft cap must be greater than or equal to ${n}", ("n", SMT_MIN_SOFT_CAP_STEEM_UNITS) );
    FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS, "Steem units hard cap must be greater than or equal to ${n}", ("n", SMT_MIN_HARD_CAP_STEEM_UNITS) );
    FC_ASSERT( steem_units_hard_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units hard cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
+   FC_ASSERT( steem_units_min >= 0, "Steem units min must be greater than or equal to 0" );
+   FC_ASSERT( steem_units_min <= steem_units_soft_cap, "Steem units min must be less than or equal to the steem units soft cap" );
 
    validate_visitor vtor;
    initial_generation_policy.visit( vtor );

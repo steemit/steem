@@ -694,6 +694,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_min      = 2400001;
       setup_op.steem_units_soft_cap = 2400001;
       setup_op.steem_units_hard_cap = 4000000;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;

@@ -124,7 +124,7 @@ void evaluate( database& db, const smt_ico_evaluation_queue_object& ico_evaluati
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    // ICO Success
-   if ( ico.contributed.amount >= ico.steem_units_soft_cap )
+   if ( ico.contributed.amount >= ico.steem_units_min )
    {
       db.modify( token, []( smt_token_object& o )
       {

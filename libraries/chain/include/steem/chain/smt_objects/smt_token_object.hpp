@@ -131,6 +131,7 @@ public:
    time_point_sec                launch_time;
    share_type                    steem_units_soft_cap = -1;
    share_type                    steem_units_hard_cap = -1;
+   share_type                    steem_units_min      = -1;
    asset                         contributed = asset( 0, STEEM_SYMBOL );
    share_type                    processed   = 0;
 };
@@ -418,6 +419,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (launch_time)
    (steem_units_soft_cap)
    (steem_units_hard_cap)
+   (steem_units_min)
    (contributed)
    (processed)
 )

@@ -164,6 +164,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token_ico_obj.launch_time = o.launch_time;
       token_ico_obj.steem_units_soft_cap = o.steem_units_soft_cap;
       token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
+      token_ico_obj.steem_units_min = o.steem_units_min;
    } );
 
    smt_setup_evaluator_visitor visitor( token_ico, _db );

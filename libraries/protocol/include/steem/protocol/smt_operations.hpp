@@ -86,6 +86,7 @@ struct smt_setup_operation : public base_operation
    time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
+   share_type              steem_units_min;
    share_type              steem_units_soft_cap;
    share_type              steem_units_hard_cap;
 
