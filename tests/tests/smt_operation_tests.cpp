@@ -3008,5 +3008,120 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_transfer_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_transfer_validate" );
+      ACTORS( (alice) )
+      auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+      transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.memo = "Memo";
+      op.amount = asset( 100, symbol );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " --- Invalid from account" );
+      op.from = "alice-";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.from = "alice";
+
+      BOOST_TEST_MESSAGE( " --- Invalid to account" );
+      op.to = "bob-";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.to = "bob";
+
+      BOOST_TEST_MESSAGE( " --- Memo too long" );
+      std::string memo;
+      for ( int i = 0; i < STEEM_MAX_MEMO_SIZE + 1; i++ )
+         memo += "x";
+      op.memo = memo;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.memo = "Memo";
+
+      BOOST_TEST_MESSAGE( " --- Negative amount" );
+      op.amount = -op.amount;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.amount = -op.amount;
+
+      BOOST_TEST_MESSAGE( " --- Transferring vests" );
+      op.amount = asset( 100, symbol.get_paired_symbol() );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.amount = asset( 100, symbol );
+
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_transfer_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_transfer_apply" );
+
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+      fund( "alice", asset( 10000, symbol ) );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 10000, symbol ) );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 0, symbol ) );
+
+      signed_transaction tx;
+      transfer_operation op;
+
+      op.from = "alice";
+      op.to = "bob";
+      op.amount = asset( 5000, symbol );
+
+      BOOST_TEST_MESSAGE( "--- Test normal transaction" );
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 5000, symbol ) );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 5000, symbol ) );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Generating a block" );
+      generate_block();
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 5000, symbol ) );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 5000, symbol ) );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test emptying an account" );
+      tx.signatures.clear();
+      tx.operations.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, database::skip_transaction_dupe_check );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 0, symbol ) );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 10000, symbol ) );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test transferring non-existent funds" );
+      tx.signatures.clear();
+      tx.operations.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 0, symbol ) );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 10000, symbol ) );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
