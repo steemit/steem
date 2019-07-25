@@ -83,28 +83,15 @@ void smt_capped_generation_policy::validate()const
    pre_soft_cap_unit.validate();
    post_soft_cap_unit.validate();
 
-   FC_ASSERT( soft_cap_percent > 0 );
-   FC_ASSERT( soft_cap_percent <= STEEM_100_PERCENT );
-
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() > 0 );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() > 0 );
-
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
+
+   FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
+   FC_ASSERT( post_soft_cap_unit.token_unit.size() > 0 );
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-
-   // TODO : Check account name
-
-   if( soft_cap_percent == STEEM_100_PERCENT )
-   {
-      FC_ASSERT( post_soft_cap_unit.steem_unit.size() == 0 );
-      FC_ASSERT( post_soft_cap_unit.token_unit.size() == 0 );
-   }
-   else
-   {
-      FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
-   }
 }
 
 struct validate_visitor

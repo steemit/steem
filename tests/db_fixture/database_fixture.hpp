@@ -320,7 +320,6 @@ struct t_smt_database_fixture : public T
    (
       const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
       const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
-      uint16_t soft_cap_percent = 0,
       uint32_t min_unit_ratio = 0,
       uint32_t max_unit_ratio = 0
    );

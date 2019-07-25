@@ -701,8 +701,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       setup_op.initial_generation_policy = get_capped_generation_policy
       (
          get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* pre_soft_cap_unit */
-         get_generation_unit(),                                         /* post_soft_cap_unit */
-         STEEM_100_PERCENT,                                             /* soft_cap_percent */
+         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* post_soft_cap_unit */
          1,                                                             /* min_unit_ratio */
          2                                                              /* max_unit_ratio */
       );
@@ -844,8 +843,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_queue_processing )
       setup_op.initial_generation_policy = get_capped_generation_policy
       (
          get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* pre_soft_cap_unit */
-         get_generation_unit(),                                         /* post_soft_cap_unit */
-         STEEM_100_PERCENT,                                             /* soft_cap_percent */
+         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ), /* post_soft_cap_unit */
          1,                                                             /* min_unit_ratio */
          2                                                              /* max_unit_ratio */
       );
@@ -1017,8 +1015,16 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
             { "george", 1 },
             { "henry", 2 }
          } ), /* pre_soft_cap_unit */
-         get_generation_unit(),                                         /* post_soft_cap_unit */
-         STEEM_100_PERCENT,                                             /* soft_cap_percent */
+         get_generation_unit(
+         {
+            { "fred", 3 },
+            { "george", 2}
+         },
+         {
+            { "$from", 7 },
+            { "george", 1 },
+            { "henry", 2 }
+         } ), /* post_soft_cap_unit */
          50,                                                            /* min_unit_ratio */
          100                                                            /* max_unit_ratio */
       );

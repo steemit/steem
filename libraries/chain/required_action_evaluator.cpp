@@ -34,7 +34,7 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
 
       smt_generation_unit effective_generation_unit;
 
-      if ( ico.processed < ico.steem_units_soft_cap || ico.capped_generation_policy.soft_cap_percent == STEEM_100_PERCENT )
+      if ( ico.processed < ico.steem_units_soft_cap )
          effective_generation_unit = ico.capped_generation_policy.pre_soft_cap_unit;
       else
          effective_generation_unit = ico.capped_generation_policy.post_soft_cap_unit;

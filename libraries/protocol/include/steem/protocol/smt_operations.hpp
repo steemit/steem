@@ -61,8 +61,6 @@ struct smt_capped_generation_policy
    smt_generation_unit pre_soft_cap_unit;
    smt_generation_unit post_soft_cap_unit;
 
-   uint16_t            soft_cap_percent = 0;
-
    uint32_t            min_unit_ratio = 0;
    uint32_t            max_unit_ratio = 0;
 
@@ -249,7 +247,6 @@ FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
-   (soft_cap_percent)
    (min_unit_ratio)
    (max_unit_ratio)
    (extensions)
