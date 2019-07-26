@@ -287,6 +287,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (liquid_symbol)
    (control_account)
    (phase)
+   (next_event)
    (current_supply)
    (total_vesting_fund_smt)
    (total_vesting_shares)
