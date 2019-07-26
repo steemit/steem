@@ -181,54 +181,6 @@ public:
    asset                                 contribution;
 };
 
-class smt_ico_launch_queue_object : public object< smt_ico_launch_queue_object_type, smt_ico_launch_queue_object >
-{
-   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_launch_queue_object );
-
-public:
-   template< typename Constructor, typename Allocator >
-   smt_ico_launch_queue_object( Constructor&& c, allocator< Allocator > a )
-   {
-      c( *this );
-   }
-
-   id_type              id;
-   asset_symbol_type    symbol;
-   time_point_sec       contribution_begin_time;
-};
-
-class smt_ico_evaluation_queue_object : public object< smt_ico_evaluation_queue_object_type, smt_ico_evaluation_queue_object >
-{
-   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_evaluation_queue_object );
-
-public:
-   template< typename Constructor, typename Allocator >
-   smt_ico_evaluation_queue_object( Constructor&& c, allocator< Allocator > a )
-   {
-      c( *this );
-   }
-
-   id_type              id;
-   asset_symbol_type    symbol;
-   time_point_sec       contribution_end_time;
-};
-
-class smt_token_launch_queue_object : public object< smt_token_launch_queue_object_type, smt_token_launch_queue_object >
-{
-   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_launch_queue_object );
-
-public:
-   template< typename Constructor, typename Allocator >
-   smt_token_launch_queue_object( Constructor&& c, allocator< Allocator > a )
-   {
-      c( *this );
-   }
-
-   id_type             id;
-   asset_symbol_type   symbol;
-   time_point_sec      launch_time;
-};
-
 struct by_symbol_contributor;
 struct by_contributor;
 struct by_symbol_id;
