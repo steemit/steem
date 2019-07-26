@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/util/manabar.hpp>
 
 #include <steem/plugins/rc/rc_utility.hpp>
@@ -128,6 +129,8 @@ class rc_delegation_from_account_object : public object< rc_delegation_from_acco
       {
          c( *this );
       }
+
+      rc_delegation_from_account_object() {}
 
       id_type                       id;
 
