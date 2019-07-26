@@ -673,6 +673,34 @@ struct api_convert_request_object
    time_point_sec    conversion_date;
 };
 
+struct api_proposal_object
+{
+   api_proposal_object() {}
+   api_proposal_object( const database_api::api_proposal_object& p ) :
+      id( p.id ),
+      proposal_id( p.proposal_id ),
+      creator( p.creator ),
+      receiver( p.receiver ),
+      start_date( p.start_date ),
+      end_date( p.end_date ),
+      daily_pay( legacy_asset::from_asset( p.daily_pay ) ),
+      subject( p.subject ),
+      permlink( p.permlink ),
+      total_votes( p.total_votes )
+   {}
+
+   proposal_id_type  id;
+   proposal_id_type  proposal_id;
+   account_name_type creator;
+   account_name_type receiver;
+   time_point_sec    start_date;
+   time_point_sec    end_date;
+   legacy_asset      daily_pay;
+   string            subject;
+   string            permlink;
+   uint64_t          total_votes = 0;
+};
+
 struct discussion : public api_comment_object
 {
    discussion() {}
@@ -1016,8 +1044,8 @@ DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
-DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
-DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
+DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< api_proposal_object > )
+DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
 
 #undef DEFINE_API_ARGS
@@ -1264,6 +1292,9 @@ FC_REFLECT( steem::plugins::condenser_api::api_vesting_delegation_expiration_obj
 
 FC_REFLECT( steem::plugins::condenser_api::api_convert_request_object,
              (id)(owner)(requestid)(amount)(conversion_date) )
+
+FC_REFLECT( steem::plugins::condenser_api::api_proposal_object,
+             (id)(proposal_id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes) )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::discussion, (steem::plugins::condenser_api::api_comment_object),
              (url)(root_title)(pending_payout_value)(total_pending_payout_value)

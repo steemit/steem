@@ -1,6 +1,6 @@
 # Witness Parameters
 
-The role of a witness in the Steem Blockchain is verify incoming transactions, produce blocks when scheduled, and partake in the Steem governance model by voting on several parameters.
+The role of a witness in the Steem Blockchain is to verify incoming transactions, produce blocks when scheduled, and partake in the Steem governance model by voting on several parameters.
 
 These parameters control various aspects of the operation of the blockchain that are not easily defined in code at compile time. One example is the STEEM price feed that defines the conversion rate between STEEM and SBD.
 
@@ -45,7 +45,7 @@ A more detailed explanation of resource dynamics can be found [here](./devs/2018
 
 ### maximum_block_size
 
-The maximum size of a single block in bytes. The value must be not less than `65536`.
+The maximum size of a single block in bytes. The value must be not less than `65536`. The value must not be more than 2MB (`2097152`).
 
 ### sbd_interest_rate
 
@@ -53,13 +53,13 @@ The annual interest rate paid to SBD holders. SBD interest is compounded on bala
 
 ### sbd_exchange_rate
 
-The exchange rate for STEEM/SDB to be used for printing SBD as rewards as well as SBD->STEEM conversions.
+The exchange rate for STEEM/SBD to be used for printing SBD as rewards as well as SBD->STEEM conversions.
 The actual price feed is the median of medians. Every round (21 blocks) the median exchange rate is pushed to a queue and the oldest is removed. The median value of the queue is used for any calculations.
 
 ### url
 
-A witness published URL, usually to a public seed node they operate. The URL must not be longer than 2048 characters.
+A witness published URL, usually to a public seed node they operate, or a post about their witness. The URL must not be longer than 2048 characters.
 
 ### new_signing_key
 
-Sets the signing key for the witness required to validate produced blocks.
+Sets the signing key for the witness, which is used to sign blocks.

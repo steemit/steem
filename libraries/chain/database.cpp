@@ -2874,7 +2874,6 @@ void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
          p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
          p.sbd_stop_percent = STEEM_SBD_STOP_PERCENT_HF14;
          p.sbd_start_percent = STEEM_SBD_START_PERCENT_HF14;
-         p.sbd_stop_adjust = 0;
          p.next_maintenance_time = STEEM_GENESIS_TIME;
          p.last_budget_time = STEEM_GENESIS_TIME;
       } );
@@ -3920,12 +3919,22 @@ void database::update_virtual_supply()
 
       if( !median_price.is_null() && has_hardfork( STEEM_HARDFORK_0_14__230 ) )
       {
-         auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
+         uint16_t percent_sbd = 0;
+
+         if( has_hardfork( STEEM_HARDFORK_0_21 ) )
+         {
+            percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT + dgp.virtual_supply.amount.value/2 )
+               / dgp.virtual_supply.amount.value ).to_uint64() );
+         }
+         else
+         {
+            percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEM_100_PERCENT )
             / dgp.virtual_supply.amount.value ).to_uint64() );
+         }
 
          if( percent_sbd <= dgp.sbd_start_percent )
             dgp.sbd_print_rate = STEEM_100_PERCENT;
-         else if( percent_sbd >= dgp.sbd_stop_percent - dgp.sbd_stop_adjust )
+         else if( percent_sbd >= dgp.sbd_stop_percent )
             dgp.sbd_print_rate = 0;
          else
             dgp.sbd_print_rate = ( ( dgp.sbd_stop_percent - percent_sbd ) * STEEM_100_PERCENT ) / ( dgp.sbd_stop_percent - dgp.sbd_start_percent );
@@ -4548,37 +4557,56 @@ struct smt_reward_balance_operator
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
+   if ( delta.amount < 0 )
+   {
+      asset available = get_balance( a, delta.symbol );
+      FC_ASSERT( available >= -delta,
+         "Account ${acc} does not have sufficient funds for balance adjustment. Required: ${r}, Available: ${a}",
+            ("acc", a.name)("r", delta)("a", available) );
+   }
+
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
 #ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
+      // No account object modification for SMT balance, hence separate handling here.
+      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
       smt_regular_balance_operator balance_operator( delta );
       adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
-      return;
    }
+   else
 #endif
-   modify_balance( a, delta, check_balance );
+   {
+      modify_balance( a, delta, check_balance );
+   }
 }
 
 void database::adjust_balance( const account_name_type& name, const asset& delta )
 {
+   if ( delta.amount < 0 )
+   {
+      asset available = get_balance( name, delta.symbol );
+      FC_ASSERT( available >= -delta,
+         "Account ${acc} does not have sufficient funds for balance adjustment. Required: ${r}, Available: ${a}",
+            ("acc", name)("r", delta)("a", available) );
+   }
+
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
 #ifdef STEEM_ENABLE_SMT
-   // No account object modification for SMT balance, hence separate handling here.
-   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
+      // No account object modification for SMT balance, hence separate handling here.
+      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
       smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta, true/*check_account*/, balance_operator );
-      return;
+      adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
    }
+   else
 #endif
-   const auto& a = get_account( name );
-   modify_balance( a, delta, check_balance );
+   {
+      modify_balance( get_account( name ), delta, check_balance );
+   }
 }
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
@@ -4740,10 +4768,9 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       default:
       {
 #ifdef STEEM_ENABLE_SMT
-         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
-         const account_regular_balance_object* arbo =
-            find< account_regular_balance_object, by_owner_liquid_symbol >(
-               boost::make_tuple(a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol ) );
+         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "Invalid symbol: ${s}", ("s", symbol) );
+         auto key = boost::make_tuple( a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
+         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
@@ -4753,10 +4780,31 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
             return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
          }
 #else
-      FC_ASSERT( false, "invalid symbol" );
+         FC_ASSERT( false, "Invalid symbol: ${s}", ("s", symbol) );
 #endif
       }
    }
+}
+
+asset database::get_balance( const account_name_type& name, asset_symbol_type symbol )const
+{
+#ifdef STEEM_ENABLE_SMT
+   if ( symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      auto key = boost::make_tuple( name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
+      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+
+      if( arbo == nullptr )
+      {
+         return asset( 0, symbol );
+      }
+      else
+      {
+         return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+      }
+   }
+#endif
+   return get_balance( get_account( name ), symbol );
 }
 
 asset database::get_savings_balance( const account_object& a, asset_symbol_type symbol )const
@@ -5209,7 +5257,6 @@ void database::apply_hardfork( uint32_t hardfork )
       {
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.sbd_stop_adjust = STEEM_SBD_STOP_ADJUST;
             gpo.sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF21;
             gpo.content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF21;
             gpo.downvote_pool_percent = STEEM_DOWNVOTE_POOL_PERCENT_HF21;

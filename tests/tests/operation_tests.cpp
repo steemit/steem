@@ -1199,7 +1199,42 @@ BOOST_AUTO_TEST_CASE( transfer_validate )
    {
       BOOST_TEST_MESSAGE( "Testing: transfer_validate" );
 
-      validate_database();
+      transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.memo = "Memo";
+      op.amount = asset( 100, STEEM_SYMBOL );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( " --- Invalid from account" );
+      op.from = "alice-";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.from = "alice";
+
+      BOOST_TEST_MESSAGE( " --- Invalid to account" );
+      op.to = "bob-";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.to = "bob";
+
+      BOOST_TEST_MESSAGE( " --- Memo too long" );
+      std::string memo;
+      for ( int i = 0; i < STEEM_MAX_MEMO_SIZE + 1; i++ )
+         memo += "x";
+      op.memo = memo;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.memo = "Memo";
+
+      BOOST_TEST_MESSAGE( " --- Negative amount" );
+      op.amount = -op.amount;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.amount = -op.amount;
+
+      BOOST_TEST_MESSAGE( " --- Transferring vests" );
+      op.amount = asset( 100, VESTS_SYMBOL );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.amount = asset( 100, STEEM_SYMBOL );
+
+      op.validate();
    }
    FC_LOG_AND_RETHROW()
 }

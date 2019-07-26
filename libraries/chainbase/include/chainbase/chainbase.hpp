@@ -1158,7 +1158,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
 #ifndef ENABLE_MIRA
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
@@ -1185,7 +1185,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
             write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING

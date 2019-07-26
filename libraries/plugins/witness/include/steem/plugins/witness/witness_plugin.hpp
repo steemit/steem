@@ -12,6 +12,8 @@
 #define RESERVE_RATIO_PRECISION ((int64_t)10000)
 #define RESERVE_RATIO_MIN_INCREMENT ((int64_t)5000)
 
+#define WITNESS_CUSTOM_OP_BLOCK_LIMIT 5
+
 namespace steem { namespace plugins { namespace witness {
 
 namespace detail { class witness_plugin_impl; }

@@ -387,7 +387,7 @@ namespace steem { namespace chain {
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_savings_balance( const account_object& a, asset_symbol_type symbol )const;
-         asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
+         asset       get_balance( const account_name_type& aname, asset_symbol_type symbol )const;
 
          /** this updates the votes for witnesses as a result of account voting proxy changing */
          void adjust_proxied_witness_votes( const account_object& a,
