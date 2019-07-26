@@ -1,6 +1,7 @@
 #pragma once
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/base.hpp>
+#include <steem/protocol/misc_utilities.hpp>
 
 namespace steem { namespace protocol {
 
@@ -38,6 +39,15 @@ namespace steem { namespace protocol {
 
       friend bool operator==( const smt_contributor_payout_action& lhs, const smt_contributor_payout_action& rhs );
    };
+
+   struct smt_event_action : public base_operation
+   {
+      asset_symbol_type symbol;
+      smt_event         event;
+
+      void validate()const;
+      friend bool operator==( const smt_event_action& lhs, const smt_event_action& rhs );
+   };
 #endif
 } } // steem::protocol
 
@@ -48,4 +58,5 @@ FC_REFLECT( steem::protocol::example_required_action, (account) )
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::smt_refund_action, (symbol)(contributor)(contribution_id) )
 FC_REFLECT( steem::protocol::smt_contributor_payout_action, (symbol)(contributor)(contribution_id) )
+FC_REFLECT( steem::protocol::smt_event_action, (symbol)(event) )
 #endif

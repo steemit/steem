@@ -16,38 +16,12 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace ico {
 
-void launch( database& db, const smt_ico_launch_queue_object& obj );
-void evaluate( database& db, const smt_ico_evaluation_queue_object& obj );
-void launch_token( database& db, const smt_token_launch_queue_object& obj );
+void launch( database& db, const asset_symbol_type& obj );
+void evaluate( database& db, const asset_symbol_type& obj );
+void launch_token( database& db, const asset_symbol_type& obj );
 bool schedule_next_refund( database& db, const asset_symbol_type& a );
 bool schedule_next_payout( database& db, const asset_symbol_type& a );
-
-template< class QueueIndex, class SortOrder, class QueueObject, uint64_t MaxPerBlock >
-struct queue_processor {
-   using get_time_func     = std::function< time_point_sec( const QueueObject& ) >;
-   using process_item_func = std::function< void( database&, const QueueObject& ) >;
-
-   static void process( database& db, get_time_func get_time, process_item_func process_item )
-   {
-      const auto& queue = db.get_index< QueueIndex, SortOrder >();
-      std::size_t num_processed = 0;
-
-      auto itr = queue.begin();
-      while ( itr != queue.end() && num_processed < MaxPerBlock )
-      {
-         if ( db.head_block_time() < get_time( *itr ) )
-            break;
-
-         process_item( db, *itr );
-
-         num_processed++;
-         itr = queue.begin();
-      }
-   }
-
-private:
-   queue_processor() = delete;
-};
+void schedule_next_event( database& db, const asset_symbol_type& a, smt_event event, fc::time_point_sec time );
 
 using cascading_action_applier_do_func      = std::function< void( database&, const smt_contribution_object& ) >;
 using cascading_action_applier_then_func    = std::function< bool( database&, const asset_symbol_type& ) >;
@@ -71,9 +45,17 @@ void cascading_action_applier(
 
    db.remove( *itr );
 
-   if ( !_then( db, symbol ) && _finally )
+   /*
+    * We only cascade through actions when producing blocks
+    * to avoid generating large amounts of automated actions
+    * at once.
+    */
+   if ( !db.is_pending_tx() )
    {
-      (*_finally)( db, symbol );
+      if ( !_then( db, symbol ) && _finally )
+      {
+         (*_finally)( db, symbol );
+      }
    }
 }
 

@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
          get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit()/*post_soft_cap_unit*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/
       );
@@ -413,6 +413,9 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
+      gp.post_soft_cap_unit.steem_unit = { { "alice", 3 } };
+      gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
+      op.initial_generation_policy = gp;
       op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
       op.validate();
@@ -500,7 +503,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
          get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit()/*post_soft_cap_unit*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/
       );

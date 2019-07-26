@@ -14,6 +14,26 @@ void example_required_evaluator::do_apply( const example_required_action& a ) {}
 #endif
 
 #ifdef STEEM_ENABLE_SMT
+void smt_event_evaluator::do_apply( const smt_event_action& a )
+{
+   using namespace steem::chain::util;
+
+   switch ( a.event )
+   {
+      case smt_event::ico_launch:
+         smt::ico::launch( _db, a.symbol );
+         break;
+      case smt_event::ico_evaluation:
+         smt::ico::evaluate( _db, a.symbol );
+         break;
+      case smt_event::token_launch:
+         smt::ico::launch_token( _db, a.symbol );
+         break;
+      default:
+         FC_ASSERT( false, "Invalid SMT event processing submission" );
+         break;
+   }
+}
 void smt_refund_evaluator::do_apply( const smt_refund_action& a )
 {
    using namespace steem::chain::util;

@@ -21,7 +21,6 @@
 
 namespace steem { namespace protocol {
 
-
 /**
  * This operation introduces new SMT into blockchain as identified by
  * Numerical Asset Identifier (NAI). Also the SMT precision (decimal points)

@@ -99,9 +99,9 @@ bool is_vesting( const account_name_type& name )
 
 namespace ico {
 
-void launch( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
+void launch( database& db, const asset_symbol_type& a )
 {
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_launch_obj.symbol );
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    db.modify( token, []( smt_token_object& o )
@@ -109,18 +109,12 @@ void launch( database& db, const smt_ico_launch_queue_object& ico_launch_obj )
       o.phase = smt_phase::contribution_begin_time_completed;
    } );
 
-   db.create< smt_ico_evaluation_queue_object >( [&]( smt_ico_evaluation_queue_object& obj )
-   {
-      obj.symbol = token.liquid_symbol;
-      obj.contribution_end_time = ico.contribution_end_time;
-   } );
-
-   db.remove( ico_launch_obj );
+   schedule_next_event( db, token.liquid_symbol, protocol::smt_event::ico_evaluation, ico.contribution_end_time );
 }
 
-void evaluate( database& db, const smt_ico_evaluation_queue_object& ico_evaluation_obj )
+void evaluate( database& db, const asset_symbol_type& a )
 {
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( ico_evaluation_obj.symbol );
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
    const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
    // ICO Success
@@ -131,11 +125,7 @@ void evaluate( database& db, const smt_ico_evaluation_queue_object& ico_evaluati
          o.phase = smt_phase::contribution_end_time_completed;
       } );
 
-      db.create< smt_token_launch_queue_object >( [&]( smt_token_launch_queue_object& o )
-      {
-         o.symbol = token.liquid_symbol;
-         o.launch_time = ico.launch_time;
-      } );
+      schedule_next_event( db, token.liquid_symbol, protocol::smt_event::token_launch, ico.launch_time );
    }
    // ICO Failure
    else
@@ -143,23 +133,23 @@ void evaluate( database& db, const smt_ico_evaluation_queue_object& ico_evaluati
       db.modify( token, []( smt_token_object& o )
       {
          o.phase = smt_phase::launch_failed;
+         o.next_event = smt_event::none;
       } );
 
       db.remove( ico );
 
       schedule_next_refund( db, token.liquid_symbol );
    }
-
-   db.remove( ico_evaluation_obj );
 }
 
-void launch_token( database& db, const smt_token_launch_queue_object& token_launch_obj )
+void launch_token( database& db, const asset_symbol_type& a )
 {
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( token_launch_obj.symbol );
+   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
 
    db.modify( token, []( smt_token_object& o )
    {
       o.phase = smt_phase::launch_success;
+      o.next_event = smt_event::none;
    } );
 
    /*
@@ -170,8 +160,6 @@ void launch_token( database& db, const smt_token_launch_queue_object& token_laun
    {
       db.remove( db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
    }
-
-   db.remove( token_launch_obj );
 }
 
 using cascading_action_func = std::function< const required_automated_action&( const smt_contribution_object& ) >;
@@ -193,6 +181,22 @@ static bool cascading_action(
    }
 
    return action_scheduled;
+}
+
+void schedule_next_event( database& db, const asset_symbol_type& a, smt_event event, fc::time_point_sec time )
+{
+   const auto& token = db.get< smt_token_object, by_symbol >( a );
+
+   smt_event_action action;
+   action.symbol = a;
+   action.event = event;
+
+   db.push_required_action( action, time );
+
+   db.modify( token, [&]( smt_token_object& o )
+   {
+      o.next_event = event;
+   } );
 }
 
 bool schedule_next_refund( database& db, const asset_symbol_type& a )

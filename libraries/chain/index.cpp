@@ -56,9 +56,6 @@ void initialize_core_indexes( database& db )
    STEEM_ADD_CORE_INDEX(db, smt_token_emissions_index);
    STEEM_ADD_CORE_INDEX(db, smt_contribution_index);
    STEEM_ADD_CORE_INDEX(db, smt_ico_index);
-   STEEM_ADD_CORE_INDEX(db, smt_ico_launch_queue_index);
-   STEEM_ADD_CORE_INDEX(db, smt_ico_evaluation_queue_index);
-   STEEM_ADD_CORE_INDEX(db, smt_token_launch_queue_index);
 #endif
    STEEM_ADD_CORE_INDEX(db, proposal_index);
    STEEM_ADD_CORE_INDEX(db, proposal_vote_index);

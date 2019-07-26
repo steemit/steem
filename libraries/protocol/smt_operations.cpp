@@ -89,7 +89,6 @@ void smt_capped_generation_policy::validate()const
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
-   FC_ASSERT( post_soft_cap_unit.token_unit.size() > 0 );
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 }

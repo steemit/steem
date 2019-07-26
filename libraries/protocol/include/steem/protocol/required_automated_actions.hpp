@@ -16,6 +16,7 @@ namespace steem { namespace protocol {
    #endif
 #endif
 #ifdef STEEM_ENABLE_SMT
+            smt_event_action,
             smt_refund_action,
             smt_contributor_payout_action
 #endif

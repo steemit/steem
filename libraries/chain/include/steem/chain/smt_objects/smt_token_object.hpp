@@ -16,8 +16,8 @@ enum class smt_phase : uint8_t
    setup_completed,
    contribution_begin_time_completed,
    contribution_end_time_completed,
-   launch_failed,                      /// launch window closed with either not enough contributions or some cap not revealed
-   launch_success                      /// enough contributions were declared and caps revealed before launch windows closed
+   launch_failed,
+   launch_success
 };
 
 /**Note that the object represents both liquid and vesting variant of SMT.
@@ -81,6 +81,7 @@ public:
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
    smt_phase            phase = smt_phase::account_elevated;
+   protocol::smt_event  next_event = protocol::smt_event::setup_completion;
 
    share_type           current_supply = 0;
    share_type           total_vesting_fund_smt = 0;
@@ -312,63 +313,6 @@ typedef multi_index_container <
    allocator< smt_token_emissions_object >
 > smt_token_emissions_index;
 
-struct by_launch_time_symbol;
-
-typedef multi_index_container <
-   smt_token_launch_queue_object,
-   indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_token_launch_queue_object, smt_token_launch_queue_object_id_type, &smt_token_launch_queue_object::id > >,
-      ordered_unique< tag< by_symbol >,
-         member< smt_token_launch_queue_object, asset_symbol_type, &smt_token_launch_queue_object::symbol > >,
-      ordered_unique< tag< by_launch_time_symbol >,
-         composite_key< smt_token_launch_queue_object,
-            member< smt_token_launch_queue_object, time_point_sec, &smt_token_launch_queue_object::launch_time >,
-            member< smt_token_launch_queue_object, asset_symbol_type, &smt_token_launch_queue_object::symbol >
-         >
-      >
-   >,
-   allocator< smt_token_launch_queue_object >
-> smt_token_launch_queue_index;
-
-struct by_contribution_end_time_symbol;
-
-typedef multi_index_container <
-   smt_ico_evaluation_queue_object,
-   indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_ico_evaluation_queue_object, smt_ico_evaluation_queue_object_id_type, &smt_ico_evaluation_queue_object::id > >,
-      ordered_unique< tag< by_symbol >,
-         member< smt_ico_evaluation_queue_object, asset_symbol_type, &smt_ico_evaluation_queue_object::symbol > >,
-      ordered_unique< tag< by_contribution_end_time_symbol >,
-         composite_key< smt_ico_evaluation_queue_object,
-            member< smt_ico_evaluation_queue_object, time_point_sec, &smt_ico_evaluation_queue_object::contribution_end_time >,
-            member< smt_ico_evaluation_queue_object, asset_symbol_type, &smt_ico_evaluation_queue_object::symbol >
-         >
-      >
-   >,
-   allocator< smt_ico_evaluation_queue_object >
-> smt_ico_evaluation_queue_index;
-
-struct by_contribution_begin_time_symbol;
-
-typedef multi_index_container <
-   smt_ico_launch_queue_object,
-   indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_ico_launch_queue_object, smt_ico_launch_queue_object_id_type, &smt_ico_launch_queue_object::id > >,
-      ordered_unique< tag< by_symbol >,
-         member< smt_ico_launch_queue_object, asset_symbol_type, &smt_ico_launch_queue_object::symbol > >,
-      ordered_unique< tag< by_contribution_begin_time_symbol >,
-         composite_key< smt_ico_launch_queue_object,
-            member< smt_ico_launch_queue_object, time_point_sec, &smt_ico_launch_queue_object::contribution_begin_time >,
-            member< smt_ico_launch_queue_object, asset_symbol_type, &smt_ico_launch_queue_object::symbol >
-         >
-      >
-   >,
-   allocator< smt_ico_launch_queue_object >
-> smt_ico_launch_queue_index;
-
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_phase,
@@ -448,30 +392,9 @@ FC_REFLECT( steem::chain::smt_contribution_object,
    (contribution)
 )
 
-FC_REFLECT( steem::chain::smt_ico_launch_queue_object,
-   (id)
-   (symbol)
-   (contribution_begin_time)
-)
-
-FC_REFLECT( steem::chain::smt_ico_evaluation_queue_object,
-   (id)
-   (symbol)
-   (contribution_end_time)
-)
-
-FC_REFLECT( steem::chain::smt_token_launch_queue_object,
-   (id)
-   (symbol)
-   (launch_time)
-)
-
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
-CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_launch_queue_object, steem::chain::smt_ico_launch_queue_index )
-CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_evaluation_queue_object, steem::chain::smt_ico_evaluation_queue_index )
-CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_launch_queue_object, steem::chain::smt_token_launch_queue_index )
 
 #endif
