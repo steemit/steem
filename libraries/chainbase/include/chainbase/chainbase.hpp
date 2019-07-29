@@ -1193,11 +1193,8 @@ namespace chainbase {
             int_incrementer ii( _write_lock_count );
 #endif
 
-            if( !wait_micro )
-            {
-               lock.lock();
-            }
-            else
+#if !defined ENABLE_MIRA || defined IS_TEST_NET
+            if( wait_micro )
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
@@ -1205,6 +1202,11 @@ namespace chainbase {
                   std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
                   lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
+            }
+            else
+#endif
+            {
+               lock.lock();
             }
 
             return callback();
