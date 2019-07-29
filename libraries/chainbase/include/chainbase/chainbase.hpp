@@ -400,9 +400,19 @@ namespace chainbase {
             const auto& head = _stack.back();
 
             for( auto& item : head.old_values ) {
-               auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
-                  v = std::move( item.second );
-               });
+               bool ok = false;
+               auto itr = _indices.find( item.second.id );
+               if( itr != _indices.end() )
+               {
+                  ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
+                     v = std::move( item.second );
+                  });
+               }
+               else
+               {
+                  ok = _indices.emplace( std::move( item.second ) ).second;
+               }
+
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
