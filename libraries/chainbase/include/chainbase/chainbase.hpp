@@ -404,7 +404,7 @@ namespace chainbase {
                auto itr = _indices.find( item.second.id );
                if( itr != _indices.end() )
                {
-                  ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
+                  ok = _indices.modify( itr, [&]( value_type& v ) {
                      v = std::move( item.second );
                   });
                }
