@@ -798,6 +798,11 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       BOOST_REQUIRE( db->get_balance( "dave", STEEM_SYMBOL ) == daves_balance );
 
       validate_database();
+
+      auto& ico_idx = db->get_index< smt_ico_index, by_symbol >();
+      BOOST_REQUIRE( ico_idx.find( symbol ) == ico_idx.end() );
+      auto& contribution_idx = db->get_index< smt_contribution_index, by_symbol_id >();
+      BOOST_REQUIRE( contribution_idx.find( boost::make_tuple( symbol, 0 ) ) == contribution_idx.end() );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -956,6 +961,11 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 3000000000 );
 
       validate_database();
+
+      auto& ico_idx = db->get_index< smt_ico_index, by_symbol >();
+      BOOST_REQUIRE( ico_idx.find( symbol ) == ico_idx.end() );
+      auto& contribution_idx = db->get_index< smt_contribution_index, by_symbol_id >();
+      BOOST_REQUIRE( contribution_idx.find( boost::make_tuple( symbol, 0 ) ) == contribution_idx.end() );
    }
    FC_LOG_AND_RETHROW()
 }
