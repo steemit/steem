@@ -34,6 +34,12 @@ namespace steem { namespace chain {
    using steem::protocol::price;
    using abstract_plugin = appbase::abstract_plugin;
 
+   struct hardfork_versions
+   {
+      fc::time_point_sec         times[ STEEM_NUM_HARDFORKS + 1 ];
+      protocol::hardfork_version versions[ STEEM_NUM_HARDFORKS + 1 ];
+   };
+
    class database;
 
 #ifdef ENABLE_MIRA
@@ -375,7 +381,7 @@ namespace steem { namespace chain {
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_savings_balance( const account_object& a, asset_symbol_type symbol )const;
-         asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
+         asset       get_balance( const account_name_type& aname, asset_symbol_type symbol )const;
 
          /** this updates the votes for witnesses as a result of account voting proxy changing */
          void adjust_proxied_witness_votes( const account_object& a,
@@ -599,13 +605,17 @@ namespace steem { namespace chain {
             return _benchmark_dumper;
          }
 
+         const hardfork_versions& get_hardfork_versions()
+         {
+            return _hardfork_versions;
+         }
+
       private:
 
          std::unique_ptr< database_impl > _my;
 
          fork_database                 _fork_db;
-         fc::time_point_sec            _hardfork_times[ STEEM_NUM_HARDFORKS + 1 ];
-         protocol::hardfork_version    _hardfork_versions[ STEEM_NUM_HARDFORKS + 1 ];
+         hardfork_versions             _hardfork_versions;
 
          block_log                     _block_log;
 

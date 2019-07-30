@@ -139,8 +139,6 @@ struct operation_exec_info
 #ifdef STEEM_ENABLE_SMT
    int64_t claim_reward_balance2_operation_exec_time           = 0;
    int64_t smt_setup_operation_exec_time                       = 0;
-   int64_t smt_cap_reveal_operation_exec_time                  = 0;
-   int64_t smt_refund_operation_exec_time                      = 0;
    int64_t smt_setup_emissions_operation_exec_time             = 0;
    int64_t smt_set_setup_parameters_operation_exec_time        = 0;
    int64_t smt_set_runtime_parameters_operation_exec_time      = 0;
@@ -228,8 +226,6 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
 #ifdef STEEM_ENABLE_SMT
    ( claim_reward_balance2_operation_exec_time )
    ( smt_setup_operation_exec_time )
-   ( smt_cap_reveal_operation_exec_time )
-   ( smt_refund_operation_exec_time )
    ( smt_setup_emissions_operation_exec_time )
    ( smt_set_setup_parameters_operation_exec_time )
    ( smt_set_runtime_parameters_operation_exec_time )

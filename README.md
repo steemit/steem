@@ -83,7 +83,7 @@ We provide a basic cli wallet for interfacing with `steemd`. The wallet is self-
 
 ## Testing
 
-See [doc/testing.md](doc/testing.md) for test build targets and info
+See [doc/devs/testing.md](doc/devs/testing.md) for test build targets and info
 on how to use lcov to check code test coverage.
 
 # Configuration

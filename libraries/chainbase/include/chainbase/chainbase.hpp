@@ -400,9 +400,19 @@ namespace chainbase {
             const auto& head = _stack.back();
 
             for( auto& item : head.old_values ) {
-               auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
-                  v = std::move( item.second );
-               });
+               bool ok = false;
+               auto itr = _indices.find( item.second.id );
+               if( itr != _indices.end() )
+               {
+                  ok = _indices.modify( itr, [&]( value_type& v ) {
+                     v = std::move( item.second );
+                  });
+               }
+               else
+               {
+                  ok = _indices.emplace( std::move( item.second ) ).second;
+               }
+
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
@@ -1158,7 +1168,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
 #ifndef ENABLE_MIRA
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
@@ -1185,7 +1195,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
             write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
@@ -1193,11 +1203,8 @@ namespace chainbase {
             int_incrementer ii( _write_lock_count );
 #endif
 
-            if( !wait_micro )
-            {
-               lock.lock();
-            }
-            else
+#if !defined ENABLE_MIRA || defined IS_TEST_NET
+            if( wait_micro )
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
@@ -1205,6 +1212,11 @@ namespace chainbase {
                   std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
                   lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
+            }
+            else
+#endif
+            {
+               lock.lock();
             }
 
             return callback();

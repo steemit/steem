@@ -1875,7 +1875,9 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance_01 )
                                        };
 
       for( auto item : inits )
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       for( int32_t i = 0; i < nr_proposals; ++i )
@@ -1958,8 +1960,10 @@ BOOST_AUTO_TEST_CASE( proposals_maintenance_02 )
                                        {"a04", a04_private_key },
                                        };
 
-      for( auto item : inits )
+      for( auto item : inits ) 
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       for( auto i = 0; i < nr_proposals; ++i )
@@ -2059,8 +2063,10 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold )
                                        {"a04", a04_private_key },
                                        };
 
-      for( auto item : inits )
+      for( auto item : inits ) 
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       auto item_creator = inits[ 0 ];
@@ -2157,7 +2163,9 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_01 )
                                        };
 
       for( auto item : inits )
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       auto item_creator = inits[ 0 ];
@@ -2402,8 +2410,10 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_02 )
          {"a45", a45_private_key }, {"a46", a46_private_key }, {"a47", a47_private_key }, {"a48", a48_private_key }, {"a49", a49_private_key }
       };
 
-      for( auto item : inits )
+      for( auto item : inits ) 
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       auto item_creator = inits[ 0 ];
@@ -2798,7 +2808,9 @@ BOOST_AUTO_TEST_CASE( proposals_removing_with_threshold_03 )
       };
 
       for( auto item : inits )
+      {
          FUND( item.account, ASSET( "10000.000 TBD" ) );
+      }
       //=====================preparing=====================
 
       for( auto i = 0; i < nr_proposals; ++i )
@@ -2895,7 +2907,9 @@ BOOST_AUTO_TEST_CASE( generating_payments )
       for( auto item : inits )
       {
          if( i < 5 )
+         {
             FUND( item.account, ASSET( "11.000 TBD" ) );
+         }
          vest(STEEM_INIT_MINER_NAME, item.account, ASSET( "30.000 TESTS" ));
 
          call( i, 50, "${x} accounts got VESTS" );

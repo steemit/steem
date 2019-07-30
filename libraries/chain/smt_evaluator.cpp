@@ -91,9 +91,6 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
          "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
 
-      FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
-         "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
-
       _db.adjust_balance( o.control_account , -o.smt_creation_fee );
       _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
    }
@@ -157,60 +154,15 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    auto token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
       token_ico_obj.symbol = _token->liquid_symbol;
-      token_ico_obj.generation_begin_time = o.generation_begin_time;
-      token_ico_obj.generation_end_time = o.generation_end_time;
-      token_ico_obj.announced_launch_time = o.announced_launch_time;
-      token_ico_obj.launch_expiration_time = o.launch_expiration_time;
+      token_ico_obj.contribution_begin_time = o.contribution_begin_time;
+      token_ico_obj.contribution_end_time = o.contribution_end_time;
+      token_ico_obj.launch_time = o.launch_time;
+      token_ico_obj.steem_units_soft_cap = o.steem_units_soft_cap;
+      token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
    } );
 
    smt_setup_evaluator_visitor visitor( token_ico, _db );
    o.initial_generation_policy.visit( visitor );
-}
-
-void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )
-{
-   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-
-   const smt_token_object& smt = get_controlled_smt( _db, o.control_account, o.symbol );
-   // Check whether it's not too early to reveal a cap.
-   FC_ASSERT( smt.phase >= smt_phase::setup_completed, "SMT setup operation must succeed before cap reveal operaton is allowed" );
-   // Check whether it's not too late to reveal a cap.
-   FC_ASSERT( smt.phase < smt_phase::launch_failed, "Cap reveal operaton is allowed only until SMT ICO is concluded" );
-
-   const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol>( o.symbol );
-   FC_ASSERT( token_ico != nullptr, "SMT ICO object not found" );
-
-   // As there's no information in cap reveal operation about which cap it reveals,
-   // we'll check both, unless they are already revealed.
-   FC_ASSERT( token_ico->steem_units_min_cap < 0 || token_ico->steem_units_hard_cap < 0, "Both min cap and max hard cap have already been revealed" );
-
-   if( token_ico->steem_units_min_cap < 0 )
-      try
-      {
-         o.cap.validate( token_ico->capped_generation_policy.min_steem_units_commitment );
-         _db.modify( *token_ico, [&]( smt_ico_object& ico_object )
-         {
-            ico_object.steem_units_min_cap = o.cap.amount;
-         });
-         return;
-      }
-      catch( const fc::exception& e )
-      {
-         if( token_ico->steem_units_hard_cap >= 0 )
-            throw;
-      }
-
-   o.cap.validate( token_ico->capped_generation_policy.hard_cap_steem_units_commitment );
-   _db.modify( *token_ico, [&]( smt_ico_object& ico_object )
-   {
-      ico_object.steem_units_hard_cap = o.cap.amount;
-   });
-}
-
-void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
-{
-   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   // TODO: Check whether some impostor tries to hijack SMT operation.
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
@@ -348,7 +300,12 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
       FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
 
-      FC_ASSERT( _db.get_balance( o.contributor, o.contribution.symbol ) >= o.contribution, "Account does not have sufficient funds for contribution" );
+      const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
+      FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
+      FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
+      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= token_ico->steem_units_hard_cap,
+         "The proposed contribution would exceed the ICO hard cap, maximum possible contribution: ${c}",
+         ("c", asset( token_ico->steem_units_hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
 
       auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
       auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );
@@ -362,6 +319,11 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
          obj.symbol = o.symbol;
          obj.contribution_id = o.contribution_id;
          obj.contribution = o.contribution;
+      } );
+
+      _db.modify( *token_ico, [&]( smt_ico_object& ico )
+      {
+         ico.contributed += o.contribution;
       } );
    }
    FC_CAPTURE_AND_RETHROW( (o) )

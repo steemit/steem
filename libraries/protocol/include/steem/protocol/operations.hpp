@@ -76,8 +76,6 @@ namespace steem { namespace protocol {
             claim_reward_balance2_operation,
 
             smt_setup_operation,
-            smt_cap_reveal_operation,
-            smt_refund_operation,
             smt_setup_emissions_operation,
             smt_set_setup_parameters_operation,
             smt_set_runtime_parameters_operation,

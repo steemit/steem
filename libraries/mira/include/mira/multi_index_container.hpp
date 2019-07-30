@@ -172,6 +172,7 @@ public:
       {
          insert_( *(const_cast<value_type*>(first.operator->())) );
          ++first;
+         ++entry_count;
       }
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
@@ -184,7 +185,8 @@ public:
       _name( other._name ),
       _stats( other._stats ),
       _wopts( other._wopts ),
-      _ropts( other._ropts )
+      _ropts( other._ropts ),
+      entry_count( other.entry_count )
    {}
 
    multi_index_container( multi_index_container&& other ) :
@@ -193,7 +195,8 @@ public:
       _name( std::move( other._name ) ),
       _stats( std::move( other._stats ) ),
       _wopts( std::move( other._wopts ) ),
-      _ropts( std::move( other._ropts ) )
+      _ropts( std::move( other._ropts ) ),
+      entry_count( other.entry_count )
    {}
 
    multi_index_container& operator=( const multi_index_container& rhs )
@@ -204,6 +207,7 @@ public:
       _stats = rhs._stats;
       _wopts = rhs._wopts;
       _ropts = rhs._ropts;
+      entry_count = rhs.entry_count;
 
       return *this;
    }
@@ -216,6 +220,7 @@ public:
       _stats = std::move( rhs._stats );
       _wopts = std::move( rhs._wopts );
       _ropts = std::move( rhs._ropts );
+      entry_count = rhs.entry_count;
 
       return *this;
    }
@@ -236,12 +241,12 @@ public:
 
       try
       {
-         if ( configuration::gather_statistics( cfg ) )
-            _stats = ::rocksdb::CreateDBStatistics();
-
          detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
 
          opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+
+         if ( configuration::gather_statistics( cfg ) )
+            opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
       }
       catch ( ... )
       {
