@@ -194,15 +194,9 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
             symbol = symbol.get_paired_symbol();
 
          payout_action.payouts.push_back( asset( steem_shares, symbol ) );
-
-         db.modify( ico, [&]( smt_ico_object& obj )
-         {
-            obj.processed += steem_shares;
-         } );
       }
 
       db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
-      db.remove( *itr );
       action_scheduled = true;
    }
 
@@ -286,19 +280,13 @@ void schedule_founder_payout( database& db, const asset_symbol_type& a )
       }
    }
 
-   std::map< account_name_type, smt_founder_payout_action > payout_actions;
+   smt_founder_payout_action payout_action;
+   payout_action.symbol = a;
 
    for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
-      payout_actions[ std::get< 0 >( it->first ) ].payouts.push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+      payout_action.payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
 
-   for ( auto& payout_action : payout_actions )
-   {
-      payout_action.second.founder = payout_action.first;
-      payout_action.second.symbol  = a;
-      db.push_required_action( payout_action.second, db.head_block_time() + STEEM_BLOCK_INTERVAL );
-   }
-
-   db.remove( ico );
+   db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
 }
 
 } // steem::chain::util::smt::ico

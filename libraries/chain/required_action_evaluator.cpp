@@ -24,9 +24,12 @@ void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
       o.phase = smt_phase::contribution_begin_time_completed;
    } );
 
-   smt_ico_evaluation_action eval_action;
-   eval_action.symbol = token.liquid_symbol;
-   _db.push_required_action( eval_action, ico.contribution_end_time );
+   if ( !_db.is_pending_tx() )
+   {
+      smt_ico_evaluation_action eval_action;
+      eval_action.symbol = token.liquid_symbol;
+      _db.push_required_action( eval_action, ico.contribution_end_time );
+   }
 }
 
 void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a )
@@ -41,9 +44,12 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
          o.phase = smt_phase::contribution_end_time_completed;
       } );
 
-      smt_token_launch_action launch_action;
-      launch_action.symbol = token.liquid_symbol;
-      _db.push_required_action( launch_action, ico.launch_time );
+      if ( !_db.is_pending_tx() )
+      {
+         smt_token_launch_action launch_action;
+         launch_action.symbol = token.liquid_symbol;
+         _db.push_required_action( launch_action, ico.launch_time );
+      }
    }
    else
    {
@@ -52,9 +58,8 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
          o.phase = smt_phase::launch_failed;
       } );
 
-      _db.remove( ico );
-
-      util::smt::ico::schedule_next_refund( _db, token.liquid_symbol );
+      if ( !_db.is_pending_tx() )
+         util::smt::ico::schedule_next_refund( _db, token.liquid_symbol );
    }
 }
 
@@ -71,26 +76,23 @@ void smt_token_launch_evaluator::do_apply( const smt_token_launch_action& a )
     * If there are no contributions to schedule payouts for we no longer require
     * the ICO object.
     */
-   if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
-   {
-      _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
-   }
+   if ( !_db.is_pending_tx() )
+      if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
+         _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
 }
 
 void smt_refund_evaluator::do_apply( const smt_refund_action& a )
 {
    using namespace steem::chain::util;
 
-   auto& idx = _db.get_index< smt_contribution_index, by_symbol_contributor >();
-   auto itr = idx.find( boost::make_tuple( a.symbol, a.contributor, a.contribution_id ) );
-   FC_ASSERT( itr != idx.end(), "Unable to find contribution object for the provided action: ${a}", ("a", a) );
-
    _db.adjust_balance( a.contributor, a.refund );
 
-   _db.remove( *itr );
+   auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
+   _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
    if ( !_db.is_pending_tx() )
-      smt::ico::schedule_next_refund( _db, a.symbol );
+      if ( !smt::ico::schedule_next_refund( _db, a.symbol ) )
+         _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_action& a )
@@ -112,7 +114,18 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
          if ( payout.symbol.space() == asset_symbol_type::smt_nai_space )
             _db.adjust_supply( payout );
       }
+
+      if ( payout.symbol == STEEM_SYMBOL )
+      {
+         _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [&]( smt_ico_object& obj )
+         {
+            obj.processed += payout.amount;
+         } );
+      }
    }
+
+   auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
+   _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
    if ( !_db.is_pending_tx() )
       if ( !smt::ico::schedule_next_contributor_payout( _db, a.symbol ) )
@@ -123,22 +136,36 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
 {
    using namespace steem::chain::util;
 
-   const auto& account = _db.get_account( a.founder );
-
    for ( auto& payout : a.payouts )
    {
-      if ( payout.symbol.is_vesting() )
-      {
-         _db.create_vesting( account, asset( payout.amount, payout.symbol.get_paired_symbol() ) );
-      }
-      else
-      {
-         _db.adjust_balance( account, payout );
+      const auto& account = _db.get_account( payout.first );
 
-         if ( payout.symbol.space() == asset_symbol_type::smt_nai_space )
-            _db.adjust_supply( payout );
+      for ( auto& asset_payout : payout.second )
+      {
+         if ( asset_payout.symbol.is_vesting() )
+         {
+            _db.create_vesting( account, asset( asset_payout.amount, asset_payout.symbol.get_paired_symbol() ) );
+         }
+         else
+         {
+            _db.adjust_balance( account, asset_payout );
+
+            if ( asset_payout.symbol.space() == asset_symbol_type::smt_nai_space )
+               _db.adjust_supply( asset_payout );
+         }
+
+         if ( asset_payout.symbol == STEEM_SYMBOL )
+         {
+            _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [&]( smt_ico_object& obj )
+            {
+               obj.processed += asset_payout.amount;
+            } );
+         }
       }
    }
+
+   if ( !_db.is_pending_tx() )
+      _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 #endif

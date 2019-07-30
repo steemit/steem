@@ -78,15 +78,16 @@ bool operator==( const smt_contributor_payout_action& lhs, const smt_contributor
 
 void smt_founder_payout_action::validate() const
 {
-   validate_account_name( founder );
    validate_smt_symbol( symbol );
+
+   for ( auto& payout : payouts )
+      validate_account_name( payout.first );
 }
 
 bool operator==( const smt_founder_payout_action& lhs, const smt_founder_payout_action& rhs )
 {
    return
       lhs.symbol == rhs.symbol &&
-      lhs.founder == rhs.founder &&
       lhs.payouts == rhs.payouts;
 }
 #endif
