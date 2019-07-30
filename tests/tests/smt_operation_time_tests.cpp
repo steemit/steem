@@ -785,7 +785,11 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       BOOST_TEST_MESSAGE( " --- Starting the cascading refunds" );
 
-      generate_blocks( num_contributions );
+      generate_blocks( num_contributions / 2 );
+
+      validate_database();
+
+      generate_blocks( num_contributions / 2 + 1 );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
@@ -925,7 +929,11 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
 
       BOOST_TEST_MESSAGE( " --- Starting the cascading payouts" );
 
-      generate_blocks( num_contributions );
+      generate_blocks( num_contributions / 2 );
+
+      validate_database();
+
+      generate_blocks( num_contributions / 2 + 1 );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
