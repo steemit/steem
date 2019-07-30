@@ -109,6 +109,32 @@ bool is_vesting( const account_name_type& name )
 
 namespace ico {
 
+void payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
+{
+   for ( auto& _asset : assets )
+   {
+      if ( _asset.symbol.is_vesting() )
+      {
+         db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
+      }
+      else
+      {
+         db.adjust_balance( account, _asset );
+
+         if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
+            db.adjust_supply( _asset );
+      }
+
+      if ( _asset.symbol == STEEM_SYMBOL )
+      {
+         db.modify( db.get< smt_ico_object, by_symbol >( symbol ), [&]( smt_ico_object& obj )
+         {
+            obj.processed += _asset.amount;
+         } );
+      }
+   }
+}
+
 bool schedule_next_refund( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
@@ -203,8 +229,9 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
    return action_scheduled;
 }
 
-void schedule_founder_payout( database& db, const asset_symbol_type& a )
+bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
+   bool action_scheduled = false;
    const auto& ico = db.get< smt_ico_object, by_symbol >( a );
 
    using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
@@ -280,13 +307,19 @@ void schedule_founder_payout( database& db, const asset_symbol_type& a )
       }
    }
 
-   smt_founder_payout_action payout_action;
-   payout_action.symbol = a;
+   if ( founder_payout_map.size() > 0 )
+   {
+      smt_founder_payout_action payout_action;
+      payout_action.symbol = a;
 
-   for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
-      payout_action.payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+      for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
+         payout_action.payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
 
-   db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      action_scheduled = true;
+   }
+
+   return action_scheduled;
 }
 
 } // steem::chain::util::smt::ico

@@ -18,7 +18,8 @@ namespace ico {
 
 bool schedule_next_refund( database& db, const asset_symbol_type& a );
 bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
-void schedule_founder_payout( database& db, const asset_symbol_type& a );
+bool schedule_founder_payout( database& db, const asset_symbol_type& a );
+void payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets );
 
 } // steem::chain::util::smt::ico
 

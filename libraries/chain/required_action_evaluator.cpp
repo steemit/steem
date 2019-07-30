@@ -99,37 +99,15 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
 {
    using namespace steem::chain::util;
 
-   const auto& account = _db.get_account( a.contributor );
-
-   for ( auto& payout : a.payouts )
-   {
-      if ( payout.symbol.is_vesting() )
-      {
-         _db.create_vesting( account, asset( payout.amount, payout.symbol.get_paired_symbol() ) );
-      }
-      else
-      {
-         _db.adjust_balance( account, payout );
-
-         if ( payout.symbol.space() == asset_symbol_type::smt_nai_space )
-            _db.adjust_supply( payout );
-      }
-
-      if ( payout.symbol == STEEM_SYMBOL )
-      {
-         _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [&]( smt_ico_object& obj )
-         {
-            obj.processed += payout.amount;
-         } );
-      }
-   }
+   smt::ico::payout( _db, a.symbol, _db.get_account( a.contributor ), a.payouts );
 
    auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
    if ( !_db.is_pending_tx() )
       if ( !smt::ico::schedule_next_contributor_payout( _db, a.symbol ) )
-         smt::ico::schedule_founder_payout( _db, a.symbol );
+         if ( !smt::ico::schedule_founder_payout( _db, a.symbol ) )
+            _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a )
@@ -137,32 +115,7 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    using namespace steem::chain::util;
 
    for ( auto& payout : a.payouts )
-   {
-      const auto& account = _db.get_account( payout.first );
-
-      for ( auto& asset_payout : payout.second )
-      {
-         if ( asset_payout.symbol.is_vesting() )
-         {
-            _db.create_vesting( account, asset( asset_payout.amount, asset_payout.symbol.get_paired_symbol() ) );
-         }
-         else
-         {
-            _db.adjust_balance( account, asset_payout );
-
-            if ( asset_payout.symbol.space() == asset_symbol_type::smt_nai_space )
-               _db.adjust_supply( asset_payout );
-         }
-
-         if ( asset_payout.symbol == STEEM_SYMBOL )
-         {
-            _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [&]( smt_ico_object& obj )
-            {
-               obj.processed += asset_payout.amount;
-            } );
-         }
-      }
-   }
+      smt::ico::payout( _db, a.symbol, _db.get_account( payout.first ), payout.second );
 
    if ( !_db.is_pending_tx() )
       _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
