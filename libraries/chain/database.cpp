@@ -5389,11 +5389,11 @@ void database::validate_invariants()const
       }
 
 #ifdef STEEM_ENABLE_SMT
-      const auto& smt_contribution_idx = get_index< smt_contribution_index, by_id >();
+      const auto& smt_ico_idx = get_index< smt_ico_index, by_id >();
 
-      for ( auto itr = smt_contribution_idx.begin(); itr != smt_contribution_idx.end(); ++itr )
+      for ( auto itr = smt_ico_idx.begin(); itr != smt_ico_idx.end(); ++itr )
       {
-         total_supply += itr->contribution;
+         total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
       }
 #endif
 

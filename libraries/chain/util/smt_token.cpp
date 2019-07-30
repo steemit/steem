@@ -129,7 +129,7 @@ void payout( database& db, const asset_symbol_type& symbol, const account_object
       {
          db.modify( db.get< smt_ico_object, by_symbol >( symbol ), [&]( smt_ico_object& obj )
          {
-            obj.processed += _asset.amount;
+            obj.processed_contributions += _asset.amount;
          } );
       }
    }
@@ -161,7 +161,7 @@ struct payout_vars {
    share_type unit_ratio;
 };
 
-static payout_vars calculate_payout_vars( database& db, const smt_ico_object& ico, const smt_generation_unit& generation_unit, share_type contribution_amount )
+static payout_vars calculate_payout_vars( const smt_ico_object& ico, const smt_generation_unit& generation_unit, share_type contribution_amount )
 {
    payout_vars vars;
 
@@ -196,7 +196,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
       smt_generation_unit effective_generation_unit;
 
-      if ( ico.processed < ico.steem_units_soft_cap )
+      if ( ico.processed_contributions < ico.steem_units_soft_cap )
          effective_generation_unit = ico.capped_generation_policy.pre_soft_cap_unit;
       else
          effective_generation_unit = ico.capped_generation_policy.post_soft_cap_unit;
@@ -204,7 +204,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       const auto& token_unit = effective_generation_unit.token_unit;
       const auto& steem_unit = effective_generation_unit.steem_unit;
 
-      auto vars = calculate_payout_vars( db, ico, effective_generation_unit, itr->contribution.amount );
+      auto vars = calculate_payout_vars( ico, effective_generation_unit, itr->contribution.amount );
 
       for ( auto& e : token_unit )
       {
@@ -272,7 +272,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       const auto& token_unit = effective_generation_unit.token_unit;
       const auto& steem_unit = effective_generation_unit.steem_unit;
 
-      auto vars = calculate_payout_vars( db, ico, effective_generation_unit, contributed_amount );
+      auto vars = calculate_payout_vars( ico, effective_generation_unit, contributed_amount );
 
       for ( auto& e : token_unit )
       {

@@ -132,7 +132,7 @@ public:
    share_type                    steem_units_hard_cap = -1;
    share_type                    steem_units_min      = -1;
    asset                         contributed = asset( 0, STEEM_SYMBOL );
-   share_type                    processed   = 0;
+   share_type                    processed_contributions = 0;
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
@@ -315,7 +315,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (steem_units_hard_cap)
    (steem_units_min)
    (contributed)
-   (processed)
+   (processed_contributions)
 )
 
 FC_REFLECT( steem::chain::smt_token_emissions_object,
