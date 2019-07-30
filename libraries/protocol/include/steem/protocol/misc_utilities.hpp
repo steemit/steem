@@ -12,17 +12,6 @@ enum curve_id
    convergent_square_root
 };
 
-#ifdef STEEM_ENABLE_SMT
-enum class smt_event: uint8_t
-{
-   none,
-   setup_completion,
-   ico_launch,
-   ico_evaluation,
-   token_launch
-};
-#endif
-
 } } // steem::utilities
 
 
@@ -35,13 +24,3 @@ FC_REFLECT_ENUM(
    (convergent_linear)
    (convergent_square_root)
 )
-
-#ifdef STEEM_ENABLE_SMT
-FC_REFLECT_ENUM( steem::protocol::smt_event,
-   (none)
-   (setup_completion)
-   (ico_launch)
-   (ico_evaluation)
-   (token_launch)
-)
-#endif

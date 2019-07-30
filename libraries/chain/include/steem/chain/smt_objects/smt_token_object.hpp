@@ -81,8 +81,6 @@ public:
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
    smt_phase            phase = smt_phase::account_elevated;
-   protocol::smt_event  next_event = protocol::smt_event::setup_completion;
-
    share_type           current_supply = 0;
    share_type           total_vesting_fund_smt = 0;
    share_type           total_vesting_shares = 0;
@@ -287,7 +285,6 @@ FC_REFLECT( steem::chain::smt_token_object,
    (liquid_symbol)
    (control_account)
    (phase)
-   (next_event)
    (current_supply)
    (total_vesting_fund_smt)
    (total_vesting_shares)

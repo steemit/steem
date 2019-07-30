@@ -785,7 +785,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       BOOST_TEST_MESSAGE( " --- Starting the cascading refunds" );
 
-      generate_blocks( num_contributions * ( SMT_REFUND_INTERVAL / STEEM_BLOCK_INTERVAL ) );
+      generate_blocks( num_contributions );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
@@ -847,7 +847,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_soft_cap = 1000;
+      setup_op.steem_units_min      = 0;
+      setup_op.steem_units_soft_cap = 150000000;
       setup_op.steem_units_hard_cap = 150000000;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
       setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
@@ -924,7 +925,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
 
       BOOST_TEST_MESSAGE( " --- Starting the cascading payouts" );
 
-      generate_blocks( num_contributions * ( SMT_CONTRIBUTOR_PAYOUT_INTERVAL / STEEM_BLOCK_INTERVAL ) );
+      generate_blocks( num_contributions );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 

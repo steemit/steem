@@ -170,7 +170,9 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    smt_setup_evaluator_visitor visitor( token_ico, _db );
    o.initial_generation_policy.visit( visitor );
 
-   util::smt::ico::schedule_next_event( _db, _token->liquid_symbol, protocol::smt_event::ico_launch, o.contribution_begin_time );
+   smt_ico_launch_action ico_launch_action;
+   ico_launch_action.symbol = _token->liquid_symbol;
+   _db.push_required_action( ico_launch_action, o.contribution_begin_time );
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )

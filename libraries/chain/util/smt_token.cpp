@@ -71,6 +71,16 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace generation_unit {
 
+bool is_founder( const account_name_type& unit_target )
+{
+   return unit_target != SMT_DESTINATION_FROM && unit_target != SMT_DESTINATION_FROM_VESTING;
+}
+
+bool is_contributor( const account_name_type& unit_target )
+{
+   return !is_founder( unit_target );
+}
+
 account_name_type get_account( const account_name_type& unit_target, const account_name_type& from )
 {
    if ( unit_target == SMT_DESTINATION_FROM )
@@ -99,76 +109,7 @@ bool is_vesting( const account_name_type& name )
 
 namespace ico {
 
-void launch( database& db, const asset_symbol_type& a )
-{
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
-   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
-
-   db.modify( token, []( smt_token_object& o )
-   {
-      o.phase = smt_phase::contribution_begin_time_completed;
-   } );
-
-   schedule_next_event( db, token.liquid_symbol, protocol::smt_event::ico_evaluation, ico.contribution_end_time );
-}
-
-void evaluate( database& db, const asset_symbol_type& a )
-{
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
-   const smt_ico_object& ico = db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
-
-   // ICO Success
-   if ( ico.contributed.amount >= ico.steem_units_min )
-   {
-      db.modify( token, []( smt_token_object& o )
-      {
-         o.phase = smt_phase::contribution_end_time_completed;
-      } );
-
-      schedule_next_event( db, token.liquid_symbol, protocol::smt_event::token_launch, ico.launch_time );
-   }
-   // ICO Failure
-   else
-   {
-      db.modify( token, []( smt_token_object& o )
-      {
-         o.phase = smt_phase::launch_failed;
-         o.next_event = smt_event::none;
-      } );
-
-      db.remove( ico );
-
-      schedule_next_refund( db, token.liquid_symbol );
-   }
-}
-
-void launch_token( database& db, const asset_symbol_type& a )
-{
-   const smt_token_object& token = db.get< smt_token_object, by_symbol >( a );
-
-   db.modify( token, []( smt_token_object& o )
-   {
-      o.phase = smt_phase::launch_success;
-      o.next_event = smt_event::none;
-   } );
-
-   /*
-    * If there are no contributions to schedule payouts for we no longer require
-    * the ICO object.
-    */
-   if ( !schedule_next_payout( db, token.liquid_symbol ) )
-   {
-      db.remove( db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
-   }
-}
-
-using cascading_action_func = std::function< const required_automated_action&( const smt_contribution_object& ) >;
-
-static bool cascading_action(
-   database& db,
-   const asset_symbol_type& a,
-   cascading_action_func f,
-   uint32_t interval )
+bool schedule_next_refund( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
@@ -176,49 +117,188 @@ static bool cascading_action(
 
    if ( itr != idx.end() && itr->symbol == a )
    {
-      db.push_required_action( f( *itr ), db.head_block_time() + interval );
+      smt_refund_action refund_action;
+      refund_action.symbol = itr->symbol;
+      refund_action.contributor = itr->contributor;
+      refund_action.contribution_id = itr->contribution_id;
+      refund_action.refund = itr->contribution;
+
+      db.push_required_action( refund_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
       action_scheduled = true;
    }
 
    return action_scheduled;
 }
 
-void schedule_next_event( database& db, const asset_symbol_type& a, smt_event event, fc::time_point_sec time )
+bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
 {
-   const auto& token = db.get< smt_token_object, by_symbol >( a );
+   bool action_scheduled = false;
+   auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
+   auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
 
-   smt_event_action action;
-   action.symbol = a;
-   action.event = event;
-
-   db.push_required_action( action, time );
-
-   db.modify( token, [&]( smt_token_object& o )
+   if ( itr != idx.end() && itr->symbol == a )
    {
-      o.next_event = event;
-   } );
+      smt_contributor_payout_action payout_action;
+      payout_action.contributor = itr->contributor;
+      payout_action.contribution_id = itr->contribution_id;
+      payout_action.symbol = itr->symbol;
+
+      const auto& ico = db.get< smt_ico_object, by_symbol >( itr->symbol );
+
+      smt_generation_unit effective_generation_unit;
+
+      if ( ico.processed < ico.steem_units_soft_cap )
+         effective_generation_unit = ico.capped_generation_policy.pre_soft_cap_unit;
+      else
+         effective_generation_unit = ico.capped_generation_policy.post_soft_cap_unit;
+
+      const auto& token_unit = effective_generation_unit.token_unit;
+      const auto& steem_unit = effective_generation_unit.steem_unit;
+
+      auto steem_units_sent = itr->contribution.amount / effective_generation_unit.steem_unit_sum();
+      auto contributed_steem_units = ico.contributed.amount / effective_generation_unit.steem_unit_sum();
+      auto steem_units_hard_cap = ico.steem_units_hard_cap / effective_generation_unit.steem_unit_sum();
+
+      auto generated_token_units = std::min(
+         contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
+         steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
+      );
+
+      auto effective_unit_ratio = generated_token_units / contributed_steem_units;
+
+      for ( auto& e : token_unit )
+      {
+         if ( !smt::generation_unit::is_contributor( e.first ) )
+            continue;
+
+         auto token_shares = e.second * steem_units_sent * effective_unit_ratio;
+
+         asset_symbol_type symbol = itr->symbol;
+
+         if ( smt::generation_unit::is_vesting( e.first ) )
+            symbol = symbol.get_paired_symbol();
+
+         payout_action.payouts.push_back( asset( token_shares, symbol ) );
+      }
+
+      for ( auto& e : steem_unit )
+      {
+         if ( !smt::generation_unit::is_contributor( e.first ) )
+            continue;
+
+         auto steem_shares = e.second * steem_units_sent;
+
+         asset_symbol_type symbol = STEEM_SYMBOL;
+
+         if ( smt::generation_unit::is_vesting( e.first ) )
+            symbol = symbol.get_paired_symbol();
+
+         payout_action.payouts.push_back( asset( steem_shares, symbol ) );
+
+         db.modify( ico, [&]( smt_ico_object& obj )
+         {
+            obj.processed += steem_shares;
+         } );
+      }
+
+      db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.remove( *itr );
+      action_scheduled = true;
+   }
+
+   return action_scheduled;
 }
 
-bool schedule_next_refund( database& db, const asset_symbol_type& a )
+void schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
-   return cascading_action( db, a, []( const smt_contribution_object& o) {
-      smt_refund_action refund;
-      refund.symbol = o.symbol;
-      refund.contributor = o.contributor;
-      refund.contribution_id = o.contribution_id;
-      return refund;
-   }, SMT_REFUND_INTERVAL );
-}
+   const auto& ico = db.get< smt_ico_object, by_symbol >( a );
 
-bool schedule_next_payout( database& db, const asset_symbol_type& a )
-{
-   return cascading_action( db, a, []( const smt_contribution_object& o) {
-      smt_contributor_payout_action contributor_payout;
-      contributor_payout.symbol = o.symbol;
-      contributor_payout.contributor = o.contributor;
-      contributor_payout.contribution_id = o.contribution_id;
-      return contributor_payout;
-   }, SMT_CONTRIBUTOR_PAYOUT_INTERVAL );
+   using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
+
+   std::vector< generation_unit_share > generation_unit_shares;
+   if ( ico.contributed.amount > ico.steem_units_soft_cap )
+   {
+      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.steem_units_soft_cap ) );
+      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.post_soft_cap_unit, ico.contributed.amount - ico.steem_units_soft_cap ) );
+   }
+   else
+   {
+      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.contributed.amount ) );
+   }
+
+   using founder_asset_symbol_types = std::tuple< account_name_type, asset_symbol_type >;
+   std::map< founder_asset_symbol_types, share_type > founder_payout_map;
+
+   for ( auto& effective_generation_unit_shares : generation_unit_shares )
+   {
+      const auto& effective_generation_unit = std::get< 0 >( effective_generation_unit_shares );
+      const auto& contributed_amount        = std::get< 1 >( effective_generation_unit_shares );
+
+      const auto& token_unit = effective_generation_unit.token_unit;
+      const auto& steem_unit = effective_generation_unit.steem_unit;
+
+      auto contributed_steem_units = contributed_amount / effective_generation_unit.steem_unit_sum();
+      auto steem_units_hard_cap = ico.steem_units_hard_cap / effective_generation_unit.steem_unit_sum();
+
+      auto generated_token_units = std::min(
+         contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
+         steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
+      );
+
+      auto effective_unit_ratio = generated_token_units / contributed_steem_units;
+
+      for ( auto& e : token_unit )
+      {
+         if ( !smt::generation_unit::is_founder( e.first ) )
+            continue;
+
+         auto token_shares = e.second * contributed_steem_units * effective_unit_ratio;
+
+         asset_symbol_type symbol = a;
+
+         if ( smt::generation_unit::is_vesting( e.first ) )
+            symbol = symbol.get_paired_symbol();
+
+         auto map_key = std::make_tuple( e.first, symbol );
+         if ( founder_payout_map.find ( map_key ) != founder_payout_map.end() )
+            founder_payout_map[ map_key ] += token_shares;
+         else
+            founder_payout_map[ map_key ] = token_shares;
+      }
+
+      for ( auto& e : steem_unit )
+      {
+         if ( !smt::generation_unit::is_founder( e.first ) )
+            continue;
+
+         auto steem_shares = e.second * contributed_steem_units;
+
+         asset_symbol_type symbol = STEEM_SYMBOL;
+
+         if ( smt::generation_unit::is_vesting( e.first ) )
+            symbol = symbol.get_paired_symbol();
+
+         auto map_key = std::make_tuple( e.first, symbol );
+         if ( founder_payout_map.find ( map_key ) != founder_payout_map.end() )
+            founder_payout_map[ map_key ] += steem_shares;
+         else
+            founder_payout_map[ map_key ] = steem_shares;
+      }
+   }
+
+   std::map< account_name_type, smt_founder_payout_action > payout_actions;
+
+   for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
+      payout_actions[ std::get< 0 >( it->first ) ].payouts.push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+
+   for ( auto& payout_action : payout_actions )
+   {
+      payout_action.second.founder = payout_action.first;
+      payout_action.second.symbol  = a;
+      db.push_required_action( payout_action.second, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+   }
+
+   db.remove( ico );
 }
 
 } // steem::chain::util::smt::ico
