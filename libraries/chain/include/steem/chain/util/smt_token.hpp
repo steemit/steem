@@ -27,7 +27,6 @@ namespace generation_unit {
 
 bool is_contributor( const account_name_type& unit_target );
 bool is_founder( const account_name_type& unit_target );
-account_name_type get_account( const account_name_type& unit_target, const account_name_type& from );
 bool is_vesting( const account_name_type& name );
 
 } // steem::chain::util::smt::generation_unit
