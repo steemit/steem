@@ -797,7 +797,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const delegate_to_pool_operation& op )const
    {
-      //ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      ilog( "Regenerating ${acct}", ("acct", op.from_account) );
       regenerate( op.from_account );
    }
 
@@ -1383,8 +1383,8 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 
       // Add each operation evaluator to the registry
       my->_custom_operation_interpreter->register_evaluator< delegate_to_pool_evaluator >( this );
-      //my->_custom_operation_interpreter->register_evaluator< delegate_drc_from_pool_evaluator >( this );
-      //my->_custom_operation_interpreter->register_evaluator< set_slot_delegator_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< delegate_drc_from_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< set_slot_delegator_evaluator >( this );
 
       // Add the registry to the database so the database can delegate custom ops to the plugin
       my->_db.register_custom_operation_interpreter( my->_custom_operation_interpreter );

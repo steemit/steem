@@ -25,7 +25,7 @@ void delegate_to_pool_operation::validate()const
    FC_ASSERT( amount.symbol == VESTS_SYMBOL, "Currently can only delegate VESTS (SMT's not supported #2698)" );
    FC_ASSERT( amount.amount.value >= 0, "Delegation to pool cannot be negative" );
 }
-/*
+
 void delegate_drc_from_pool_operation::validate()const
 {
    validate_account_name( from_pool );
@@ -47,7 +47,6 @@ void set_slot_delegator_operation::validate()const
    FC_ASSERT( to_slot >= 0 );
    FC_ASSERT( to_slot < STEEM_RC_MAX_OUTDEL_SLOTS );
 }
-*/
 
 void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op )
 {
@@ -167,7 +166,7 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
       }
    } );
 }
-/*
+
 void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_operation& op )
 {
    FC_ASSERT( false, "Operation not yet supported" );
@@ -177,7 +176,6 @@ void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation&
 {
    FC_ASSERT( false, "Operation not yet supported" );
 }
-*/
 
 } } } // steem::plugins::rc
 

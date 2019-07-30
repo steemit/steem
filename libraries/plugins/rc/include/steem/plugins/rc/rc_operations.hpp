@@ -50,7 +50,6 @@ struct delegate_to_pool_operation : steem::protocol::base_operation
  * - When increasing delegation, new DRC is always created to fill the new manabar section.
  * - When removing delegation, DRC may be destroyed, but only to the extent necessary for the account not to exceed its newly reduced maximum.
  */
-/*
 struct delegate_drc_from_pool_operation : steem::protocol::base_operation
 {
    account_name_type      from_pool;
@@ -64,7 +63,6 @@ struct delegate_drc_from_pool_operation : steem::protocol::base_operation
    void validate()const;
    void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( from_pool ); }
 };
-*/
 
 /**
  * The purpose of set_slot_delegator_operation is to set the delegator allowed to delegate to a
@@ -75,7 +73,6 @@ struct delegate_drc_from_pool_operation : steem::protocol::base_operation
  * the existing delegator, the account itself, or (in the case of slot 1, STEEM_RC_RECOVERY_SLOT_NUM)
  * the slot may also be set by the account's recovery partner.
  */
-/*
 struct set_slot_delegator_operation : steem::protocol::base_operation
 {
    account_name_type      from_pool;
@@ -88,17 +85,16 @@ struct set_slot_delegator_operation : steem::protocol::base_operation
    void validate()const;
    void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( signer ); }
 };
-*/
 
 typedef fc::static_variant<
-         delegate_to_pool_operation
-         //delegate_drc_from_pool_operation,
-         //set_slot_delegator_operation
+         delegate_to_pool_operation,
+         delegate_drc_from_pool_operation,
+         set_slot_delegator_operation
       > rc_plugin_operation;
 
 STEEM_DEFINE_PLUGIN_EVALUATOR( rc_plugin, rc_plugin_operation, delegate_to_pool );
-//STEEM_DEFINE_PLUGIN_EVALUATOR( rc_plugin, rc_plugin_operation, delegate_drc_from_pool );
-//STEEM_DEFINE_PLUGIN_EVALUATOR( rc_plugin, rc_plugin_operation, set_slot_delegator );
+STEEM_DEFINE_PLUGIN_EVALUATOR( rc_plugin, rc_plugin_operation, delegate_drc_from_pool );
+STEEM_DEFINE_PLUGIN_EVALUATOR( rc_plugin, rc_plugin_operation, set_slot_delegator );
 
 } } } // steem::plugins::rc
 
@@ -108,7 +104,6 @@ FC_REFLECT( steem::plugins::rc::delegate_to_pool_operation,
    (amount)
    (extensions)
    )
-/*
 FC_REFLECT( steem::plugins::rc::delegate_drc_from_pool_operation,
    (from_pool)
    (to_account)
@@ -124,6 +119,6 @@ FC_REFLECT( steem::plugins::rc::set_slot_delegator_operation,
    (signer)
    (extensions)
    )
-*/
+
 STEEM_DECLARE_OPERATION_TYPE( steem::plugins::rc::rc_plugin_operation )
 FC_REFLECT_TYPENAME( steem::plugins::rc::rc_plugin_operation )
