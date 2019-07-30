@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_apply )
 
       // Make sure object is created
       const rc_indel_edge_object* edge = db->find< rc_indel_edge_object, by_edge >(
-         boost::make_tuple( account_name_type( "alice" ), account_name_type( "bob" ), VESTS_SYMBOL ) );
+         boost::make_tuple( account_name_type( "alice" ), VESTS_SYMBOL, account_name_type( "bob" ) ) );
 
       BOOST_CHECK( edge );
       generate_block();
@@ -86,6 +86,21 @@ BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_apply )
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
+      delegate_vesting_shares_operation del_vests;
+      del_vests.delegator = "alice";
+      del_vests.delegatee = "bob";
+      del_vests.vesting_shares = asset( alice_vests - vests_to_dave + 1, VESTS_SYMBOL );
+      tx.clear();
+      tx.operations.push_back( del_vests );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      edge = db->find< rc_indel_edge_object, by_edge >( boost::make_tuple( account_name_type( "alice" ), VESTS_SYMBOL, account_name_type( "bob" ) ) );
+      BOOST_REQUIRE( edge == nullptr );
+
+      edge = db->find< rc_indel_edge_object, by_edge >( boost::make_tuple( account_name_type( "alice" ), VESTS_SYMBOL, account_name_type( "dave" ) ) );
+      BOOST_REQUIRE( edge != nullptr );
+      BOOST_REQUIRE( edge->amount.amount.value == vests_to_dave - 1 );
    }
    FC_LOG_AND_RETHROW()
 }
