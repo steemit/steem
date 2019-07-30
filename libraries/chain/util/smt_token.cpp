@@ -156,6 +156,29 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a )
    return action_scheduled;
 }
 
+struct payout_vars {
+   share_type steem_units_sent;
+   share_type unit_ratio;
+};
+
+static payout_vars calculate_payout_vars( database& db, const smt_ico_object& ico, const smt_generation_unit& generation_unit, share_type contribution_amount )
+{
+   payout_vars vars;
+
+   vars.steem_units_sent = contribution_amount / generation_unit.steem_unit_sum();
+   auto contributed_steem_units = ico.contributed.amount / generation_unit.steem_unit_sum();
+   auto steem_units_hard_cap = ico.steem_units_hard_cap / generation_unit.steem_unit_sum();
+
+   auto generated_token_units = std::min(
+      contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
+      steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
+   );
+
+   vars.unit_ratio = generated_token_units / contributed_steem_units;
+
+   return vars;
+}
+
 bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
@@ -181,23 +204,14 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       const auto& token_unit = effective_generation_unit.token_unit;
       const auto& steem_unit = effective_generation_unit.steem_unit;
 
-      auto steem_units_sent = itr->contribution.amount / effective_generation_unit.steem_unit_sum();
-      auto contributed_steem_units = ico.contributed.amount / effective_generation_unit.steem_unit_sum();
-      auto steem_units_hard_cap = ico.steem_units_hard_cap / effective_generation_unit.steem_unit_sum();
-
-      auto generated_token_units = std::min(
-         contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
-         steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
-      );
-
-      auto effective_unit_ratio = generated_token_units / contributed_steem_units;
+      auto vars = calculate_payout_vars( db, ico, effective_generation_unit, itr->contribution.amount );
 
       for ( auto& e : token_unit )
       {
          if ( !smt::generation_unit::is_contributor( e.first ) )
             continue;
 
-         auto token_shares = e.second * steem_units_sent * effective_unit_ratio;
+         auto token_shares = e.second * vars.steem_units_sent * vars.unit_ratio;
 
          asset_symbol_type symbol = itr->symbol;
 
@@ -212,7 +226,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
          if ( !smt::generation_unit::is_contributor( e.first ) )
             continue;
 
-         auto steem_shares = e.second * steem_units_sent;
+         auto steem_shares = e.second * vars.steem_units_sent;
 
          asset_symbol_type symbol = STEEM_SYMBOL;
 
@@ -258,22 +272,14 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       const auto& token_unit = effective_generation_unit.token_unit;
       const auto& steem_unit = effective_generation_unit.steem_unit;
 
-      auto contributed_steem_units = contributed_amount / effective_generation_unit.steem_unit_sum();
-      auto steem_units_hard_cap = ico.steem_units_hard_cap / effective_generation_unit.steem_unit_sum();
-
-      auto generated_token_units = std::min(
-         contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
-         steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
-      );
-
-      auto effective_unit_ratio = generated_token_units / contributed_steem_units;
+      auto vars = calculate_payout_vars( db, ico, effective_generation_unit, contributed_amount );
 
       for ( auto& e : token_unit )
       {
          if ( !smt::generation_unit::is_founder( e.first ) )
             continue;
 
-         auto token_shares = e.second * contributed_steem_units * effective_unit_ratio;
+         auto token_shares = e.second * vars.steem_units_sent * vars.unit_ratio;
 
          asset_symbol_type symbol = a;
 
@@ -292,7 +298,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
          if ( !smt::generation_unit::is_founder( e.first ) )
             continue;
 
-         auto steem_shares = e.second * contributed_steem_units;
+         auto steem_shares = e.second * vars.steem_units_sent;
 
          asset_symbol_type symbol = STEEM_SYMBOL;
 

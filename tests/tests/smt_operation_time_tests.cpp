@@ -848,7 +848,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
       setup_op.steem_units_min      = 0;
-      setup_op.steem_units_soft_cap = 150000000;
+      setup_op.steem_units_soft_cap = 100000000;
       setup_op.steem_units_hard_cap = 150000000;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
       setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
@@ -857,7 +857,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
          get_generation_unit(
          {
             { "fred", 3 },
-            { "george", 2}
+            { "george", 2 }
          },
          {
             { "$from", 7 },
@@ -867,7 +867,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
          get_generation_unit(
          {
             { "fred", 3 },
-            { "george", 2}
+            { "george", 2 }
          },
          {
             { "$from", 7 },
