@@ -72,10 +72,6 @@ void smt_token_launch_evaluator::do_apply( const smt_token_launch_action& a )
       o.phase = smt_phase::launch_success;
    } );
 
-   /*
-    * If there are no contributions to schedule payouts for we no longer require
-    * the ICO object.
-    */
    if ( !_db.is_pending_tx() )
       if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
          _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
