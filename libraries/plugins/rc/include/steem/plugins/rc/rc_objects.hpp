@@ -89,6 +89,8 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       asset                 max_rc_creation_adjustment = asset( 0, VESTS_SYMBOL );
       asset                 vests_delegated_to_pools = asset( 0, VESTS_SYMBOL );
 
+      uint32_t              out_delegations = 0;
+
       // This is used for bug-catching, to match that the vesting shares in a
       // pre-op are equal to what they were at the last post-op.
       int64_t               last_max_rc = 0;
@@ -265,8 +267,8 @@ typedef multi_index_container<
       ordered_unique< tag< by_edge >,
          composite_key< rc_indel_edge_object,
             member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::from_account >,
-            member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::to_pool >,
-            const_mem_fun< rc_indel_edge_object, asset_symbol_type, &rc_indel_edge_object::get_asset_symbol >
+            const_mem_fun< rc_indel_edge_object, asset_symbol_type, &rc_indel_edge_object::get_asset_symbol >,
+            member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::to_pool >
          >
       >
    >,
@@ -308,6 +310,7 @@ FC_REFLECT( steem::plugins::rc::rc_account_object,
    (rc_manabar)
    (max_rc_creation_adjustment)
    (vests_delegated_to_pools)
+   (out_delegations)
    (last_max_rc)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_account_object, steem::plugins::rc::rc_account_index )

@@ -835,6 +835,84 @@ struct post_apply_operation_visitor
       ) : _mod_accounts(ma), _db(db), _current_time(t), _current_block_number(b), _current_witness(w)
    {}
 
+   void update_outdel_overflow( const account_name_type& account, const asset& amount ) const
+   {
+      if( amount.symbol != VESTS_SYMBOL ) return;
+
+      const auto& rc_acc = _db.get< rc_account_object, by_name >( account );
+
+      int64_t new_max_mana = get_maximum_rc( _db.get< account_object, by_name >( account ), rc_acc );
+      int64_t pool_del_delta = 0;
+      int64_t returned_rcs = 0;
+      vector< const rc_indel_edge_object* > edges_to_remove;
+
+      if( new_max_mana < rc_acc.max_rc_creation_adjustment.amount.value )
+      {
+         int64_t needed_rcs = rc_acc.max_rc_creation_adjustment.amount.value - new_max_mana;
+         pool_del_delta = needed_rcs;
+
+         const auto& rc_del_idx = _db.get_index< rc_indel_edge_index, by_edge >();
+         auto rc_del_itr = rc_del_idx.lower_bound( boost::make_tuple( account, VESTS_SYMBOL ) );
+
+         while( needed_rcs > 0 && rc_del_itr != rc_del_idx.end() && rc_del_itr->from_account == account )
+         {
+            int64_t edge_delta_rc = std::min( needed_rcs, rc_del_itr->amount.amount.value );
+
+            const auto& rc_pool = _db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( rc_del_itr->to_pool, VESTS_SYMBOL ) );
+            auto pool_manabar = rc_pool.rc_pool_manabar;
+
+            if( pool_manabar.last_update_time < _db.head_block_time().sec_since_epoch() )
+            {
+               manabar_params mbparams;
+               mbparams.max_mana = rc_pool.max_rc;
+               mbparams.regen_time = STEEM_RC_REGEN_TIME;
+               pool_manabar.regenerate_mana< true >( mbparams, _db.head_block_time() );
+            }
+
+            if( pool_manabar.current_mana > 0 )
+            {
+               int64_t delta_pool_rc = std::min( pool_manabar.current_mana, edge_delta_rc );
+               pool_manabar.current_mana -= delta_pool_rc;
+               returned_rcs += delta_pool_rc;
+            }
+
+            needed_rcs -= edge_delta_rc;
+
+            _db.modify( rc_pool, [&]( rc_delegation_pool_object& pool )
+            {
+               pool.max_rc -= edge_delta_rc;
+               pool.rc_pool_manabar = pool_manabar;
+            });
+
+            if( rc_del_itr->amount.amount.value > edge_delta_rc )
+            {
+               _db.modify( *rc_del_itr, [&]( rc_indel_edge_object& indel )
+               {
+                  indel.amount.amount.value -= edge_delta_rc;
+               });
+            }
+            else
+            {
+               edges_to_remove.push_back( &(*rc_del_itr) );
+            }
+
+            ++rc_del_itr;
+         }
+
+         for( const rc_indel_edge_object* edge_ptr : edges_to_remove )
+         {
+            _db.remove( *edge_ptr );
+         }
+      }
+
+      _db.modify( rc_acc, [&]( rc_account_object& rca )
+      {
+         rca.rc_manabar.current_mana += returned_rcs;
+         rca.vests_delegated_to_pools.amount.value -= pool_del_delta;
+         rca.out_delegations -= edges_to_remove.size();
+      });
+   }
+
    void operator()( const account_create_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee );
@@ -882,6 +960,9 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.emplace_back( op.delegator );
       _mod_accounts.emplace_back( op.delegatee );
+
+      update_outdel_overflow( op.delegator, op.vesting_shares );
+      update_outdel_overflow( op.delegatee, op.vesting_shares );
    }
 
    void operator()( const author_reward_operation& op )const

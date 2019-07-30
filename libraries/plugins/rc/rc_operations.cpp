@@ -77,7 +77,12 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
    }
    rc_pool_manabar.regenerate_mana( rc_pool_manabar_params, now );
 
-   const rc_indel_edge_object* edge = _db.find< rc_indel_edge_object, by_edge >( boost::make_tuple( op.from_account, op.to_pool, op.amount.symbol ) );
+   const rc_indel_edge_object* edge = _db.find< rc_indel_edge_object, by_edge >( boost::make_tuple( op.from_account, op.amount.symbol, op.to_pool ) );
+
+   if( !edge )
+   {
+      FC_ASSERT( from_rc_account.out_delegations <= STEEM_RC_MAX_OUTDEL, "Account already has ${n} delegations.", ("n", from_rc_account.out_delegations) );
+   }
 
    int64_t old_max_rc = edge ? edge->amount.amount.value : 0;
    int64_t new_max_rc = op.amount.amount.value;
@@ -134,6 +139,10 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
          e.amount = op.amount;
       } );
    }
+   else if( op.amount.amount.value == 0 )
+   {
+      _db.remove( *edge );
+   }
    else
    {
       _db.modify< rc_indel_edge_object >( *edge, [&]( rc_indel_edge_object& e )
@@ -147,6 +156,15 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
       rca.rc_manabar = rc_account_manabar;
       if( op.amount.symbol == VESTS_SYMBOL )
          rca.vests_delegated_to_pools += asset( delta_max_rc, VESTS_SYMBOL );
+
+      if( !edge )
+      {
+         rca.out_delegations++;
+      }
+      else if( op.amount.amount.value == 0 )
+      {
+         rca.out_delegations--;
+      }
    } );
 }
 /*
