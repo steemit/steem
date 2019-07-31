@@ -1,7 +1,7 @@
 ## Branches
 - `stable`: Points to the latest version of code that is production-ready, and has been tested in production. This is the branch we recommend for exchanges.
 - `0.21.x`: This is the current release branch and will always point to the most recent release. Witnesses and seed node operators may want to run this branch. `stable` and `0.21.x` may diverge if there are minor bug fixes or witness only security fixes that does not need exchanges to update for. 
-- `master`: The active development branch. We will strive to keep `develop` in a working state. All PRs must pass automated tests before being merged. While this is not a guarantee that `master` is bug-free, it will guarantee that the branch is buildable in our standard build configuration and passes the current suite of tests. That being said, running a node from `master` has risks.  We recommend that any block producing node build from `stable`. If you want to test new features, develop is the correct branch.
+- `master`: The active development branch. We will strive to keep `master` in a working state. All PRs must pass automated tests before being merged. While this is not a guarantee that `master` is bug-free, it will guarantee that the branch is buildable in our standard build configuration and passes the current suite of tests. That being said, running a node from `master` has risks.  We recommend that any block producing node build from `stable` or `0.21.x`. If you want to test new features, `master` is the correct branch.
 
 ### Releases
 
@@ -22,9 +22,9 @@ Suggested formatting for such branches missing an issue is `YYYYMMDD-shortname`,
 All changes to `0.21.x` and `master` are done through GitHub Pull Requests (PRs). This is done for several reasons:
 
 - It enforces two factor authentication. GitHub will only allow merging of a pull request through their interface, which requires the dev to be logged in.
-- If enforces testing. All pull requests undergo automated testing before they are allowed to be merged.
+- It enforces testing. All pull requests undergo automated testing before they are allowed to be merged.
 - It enforces best practices. Because of the cost of a pull request, developers are encouraged to do more testing themselves and be certain of the correctness of their solutions.
-- If enforces code review. All pull requests must be reviewed by a developer other than the creator of the request. Pull requests made by external developers should be reviewed by two internal developers. When a developer reviews and approves a pull request they should +1 the request or leave a comment mentioning their approval of the request. Otherwise they should describe what the problem is with the request so the developer can make changes and resubmit the request.
+- It enforces code review. All pull requests must be reviewed by a developer other than the creator of the request. Pull requests made by external developers should be reviewed by two internal developers. When a developer reviews and approves a pull request they should +1 the request or leave a comment mentioning their approval of the request. Otherwise they should describe what the problem is with the request so the developer can make changes and resubmit the request.
 
 All pull requests should reference the issue(s) they relate to in order to create a chain of documentation.
 
