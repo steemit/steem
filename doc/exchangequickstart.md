@@ -1,9 +1,9 @@
 Exchange Quickstart
 -------------------
 
-System Requirements: A dedicated server or virtual machine with a minimum of 64GB of RAM, and at least 220GB of fast **local** SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
+System Requirements: A dedicated server or virtual machine with a minimum of 64GB of RAM, and at least 350GB of fast **local** SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
 
-With the right equipment and technical configuration a reindex should take **no longer than 24 hours**.  If recommendations are not followed precisely, the reindex can drag on for days or even weeks with significant slowdowns towards the end.
+With the right equipment and technical configuration a reindex should take **no longer than 72 hours**.  If recommendations are not followed precisely, the reindex can drag on for days or even weeks with significant slowdowns towards the end.
 
 Physically attached SSD will ensure an optimal reindex time.  SSD over a NAS or some kind of network storage backed by SSD will often have much higher latency. As an example, AWS EBS is not performant enough. A good recommended instance in AWS is the i3.2xlarge, it comes with a physically attached nVME drive (it must be formatted and mounted on instance launch).
 
@@ -67,7 +67,17 @@ docker cp steemd-exchange:/usr/local/steemd-default/bin/cli_wallet /local/path/t
 docker stop steemd-exchange
 ```
 
-For your convenience, we have provided a provided an [example\_config](example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
+### Configuration files when not using a Docker image
+
+For your convenience, we have provided a provided an [example\_config](example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`. Be sure to set the account name of your wallet account that you would like to track account history for in the config file. It is defined as `account-history-track-account-range = ["accountname","accountname"]`.
+
+### Custom configuration files when using a Docker image
+
+If you are using our docker image and have a need for using a custom config file, instead use [config-for-docker.ini](https://github.com/steemit/steem/blob/master/contrib/config-for-docker.ini). You can place this outside of your container and map to it by adding this argument to your docker run command: `-v /path/to/config.ini:/etc/steemd/config.ini`. In most cases, a custom configuration file is not necessary.
+
+### Account history and limitations
+
+If you need to track all account history instead of just a single account, this would add quite a bit of overhead and lead to a much longer reindex. If you absolutely need this, we recommend instead using the `account_history_rocksdb` plugin instead, however, there is one caveat: the rocksdb plugin does not allow the ability to query by transaction ID. For either `account_history` or `account_history_rocksdb` you would also add the `account_history_api` plugin in order to be able to query data. To use these, you would add them to a custom config file.
 
 ### Create directories to store blockchain and wallet data outside of Docker
 
@@ -90,7 +100,7 @@ You can see that the container is running with the `docker ps` command.
 
 To follow along with the logs, use `docker logs -f`.
 
-Initial syncing will take between 6 and 48 hours depending on your equipment, faster storage devices will take less time and be more efficient. Subsequent restarts will not take as long.
+Initial syncing will take between 6 and 72 hours depending on your equipment, faster storage devices will take less time and be more efficient. Subsequent restarts will not take as long.
 
 ### Running the cli_wallet
 
@@ -98,4 +108,29 @@ The command below will run the cli_wallet from inside the running container whil
 
 ```
 docker exec -it steemd-exchange /usr/local/steemd-default/bin/cli_wallet -w /var/steemwallet/wallet.json
+```
+
+### Upgrading for major releases that require a full reindex
+
+For upgrades that require a full replay, we highly recommend *performing the upgrade on a separate server* in order to minimize downtime of your wallet. When the replay is complete, switch to the server running the newer version of Steem. If for some reason it is absolutely not possible to perform the upgrade on a separate server, you would use the following instructions instead:
+
+Stop the docker container, remove the existing container, clear out your blockchain data directory completely, pull in the latest docker image (or build the image from scratch), and then start a new container using the same command that you previously launched with.
+
+```
+docker stop steemd-exchange
+docker rm steemd-exchange
+rm -rf blockchain/*
+docker pull steemit/steem
+docker run -d --name steemd-exchange --env TRACK_ACCOUNT=nameofaccount --env USE_PUBLIC_BLOCKLOG=1 -p 2001:2001 -p 8090:8090 -v /path/to/steemwallet:/var/steemwallet -v /path/to/blockchain:/var/lib/steemd/blockchain --restart always steemit/steem
+```
+
+### Upgrading for releases that do not require a reindex
+
+For upgrades that do not require a full replay, you would use the following instructions: stop the docker container, remove the existing container, pull in the latest docker image (or build the image from scratch), and then start a new container using the same command that you previously launched with:
+
+```
+docker stop steemd-exchange
+docker rm steemd-exchange
+docker pull steemit/steem
+docker run -d --name steemd-exchange --env TRACK_ACCOUNT=nameofaccount --env USE_PUBLIC_BLOCKLOG=1 -p 2001:2001 -p 8090:8090 -v /path/to/steemwallet:/var/steemwallet -v /path/to/blockchain:/var/lib/steemd/blockchain --restart always steemit/steem
 ```
