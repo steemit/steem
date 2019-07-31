@@ -11,7 +11,7 @@ endif()
 
 if( STEEM_STATIC_BUILD )
    target_link_libraries( steemd PRIVATE
-      "-static-libstdc++ -static-libgcc"
+      "-static-libstdc++ -static-libgcc -static"
       appbase
       steem_utilities
       steem_plugins
