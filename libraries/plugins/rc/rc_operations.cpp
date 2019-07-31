@@ -32,7 +32,7 @@ void delegate_drc_from_pool_operation::validate()const
    validate_account_name( to_account );
 
    FC_ASSERT( to_slot >= 0 );
-   FC_ASSERT( to_slot < STEEM_RC_MAX_OUTDEL_SLOTS );
+   FC_ASSERT( to_slot < STEEM_RC_MAX_SLOTS );
    FC_ASSERT( asset_symbol.is_vesting(), "Must use vesting symbol" );
    FC_ASSERT( asset_symbol == VESTS_SYMBOL, "Currently can only delegate VESTS (SMT's not supported #2698)" );
    FC_ASSERT( drc_max_mana >= 0 );
@@ -45,7 +45,7 @@ void set_slot_delegator_operation::validate()const
    validate_account_name( signer );
 
    FC_ASSERT( to_slot >= 0 );
-   FC_ASSERT( to_slot < STEEM_RC_MAX_OUTDEL_SLOTS );
+   FC_ASSERT( to_slot < STEEM_RC_MAX_SLOTS );
 }
 
 void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op )
@@ -80,7 +80,7 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
 
    if( !edge )
    {
-      FC_ASSERT( from_rc_account.out_delegations <= STEEM_RC_MAX_OUTDEL, "Account already has ${n} delegations.", ("n", from_rc_account.out_delegations) );
+      FC_ASSERT( from_rc_account.out_delegations <= STEEM_RC_MAX_INDEL, "Account already has ${n} delegations.", ("n", from_rc_account.out_delegations) );
    }
 
    int64_t old_max_rc = edge ? edge->amount.amount.value : 0;
@@ -174,7 +174,60 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
 
 void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation& op )
 {
-   FC_ASSERT( false, "Operation not yet supported" );
+   const auto& to_account = _db.get_account( op.to_account );
+   const auto& from_account = _db.get_account( op.from_pool );
+   const auto& signer = _db.get_account( op.signer );
+   const auto& to_rca = _db.get< rc_account_object, by_name >( op.to_account );
+
+   // These are used to prove existence of the accounts
+   FC_UNUSED( signer );
+   FC_UNUSED( from_account );
+
+   switch( op.to_slot )
+   {
+      case STEEM_RC_CREATOR_SLOT_NUM:
+      {
+         FC_ASSERT( to_rca.creator == op.signer,
+            "Only the account creator ${c} can change RC creator slot ${n}",
+            ("c", to_rca.creator)("n", STEEM_RC_CREATOR_SLOT_NUM) );
+         break;
+      }
+      case STEEM_RC_RECOVERY_SLOT_NUM:
+      {
+         if( to_account.recovery_account != account_name_type() )
+         {
+            FC_ASSERT( to_account.recovery_account == op.signer,
+               "Only recovery partner ${r} can change RC recovery slot ${n}.",
+               ("r", to_account.recovery_account)("n", STEEM_RC_RECOVERY_SLOT_NUM) );
+         }
+         else
+         {
+            const auto& top_witness_owner = _db.get_index< witness_index, by_vote_name >().begin()->owner;
+            FC_ASSERT( top_witness_owner == op.signer,
+               "Only top witness ${w} can change RC recovery slot ${n}.",
+               ("r", top_witness_owner)("n", STEEM_RC_RECOVERY_SLOT_NUM) );
+         }
+         break;
+      }
+      default:
+      {
+         FC_ASSERT( op.to_slot >= STEEM_RC_USER_SLOT_NUM && op.to_slot < STEEM_RC_MAX_SLOTS,
+            "User controlled slots must be between ${l} and ${u}",
+            ("l", STEEM_RC_USER_SLOT_NUM)("u", STEEM_RC_MAX_SLOTS) );
+         FC_ASSERT( op.signer == op.to_account, "The user must change user controlled RC slots." );
+
+         break;
+      }
+   }
+
+   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] != op.to_account, "The slot must change." );
+
+   _db.modify( to_rca, [&]( rc_account_object& rca )
+   {
+      rca.indel_slots[ op.to_slot ] = op.to_account;
+   });
+
+   // TODO: Remove outdel edges if the previous slot has an existing delegation
 }
 
 } } } // steem::plugins::rc

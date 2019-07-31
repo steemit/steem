@@ -85,9 +85,12 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       id_type               id;
 
       account_name_type     account;
+      account_name_type     creator;
       steem::chain::util::manabar   rc_manabar;
       asset                 max_rc_creation_adjustment = asset( 0, VESTS_SYMBOL );
       asset                 vests_delegated_to_pools = asset( 0, VESTS_SYMBOL );
+      fc::array< account_name_type, STEEM_RC_MAX_SLOTS >
+                            indel_slots;
 
       uint32_t              out_delegations = 0;
 
@@ -307,10 +310,12 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_pool_object, steem::plugins::rc
 FC_REFLECT( steem::plugins::rc::rc_account_object,
    (id)
    (account)
+   (creator)
    (rc_manabar)
    (max_rc_creation_adjustment)
    (vests_delegated_to_pools)
    (out_delegations)
+   (indel_slots)
    (last_max_rc)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_account_object, steem::plugins::rc::rc_account_index )
