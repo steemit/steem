@@ -21,7 +21,7 @@ void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
 
    _db.modify( token, []( smt_token_object& o )
    {
-      o.phase = smt_phase::contribution_begin_time_completed;
+      o.phase = smt_phase::ico;
    } );
 
    if ( !_db.is_pending_tx() )
@@ -41,7 +41,7 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
    {
       _db.modify( token, []( smt_token_object& o )
       {
-         o.phase = smt_phase::contribution_end_time_completed;
+         o.phase = smt_phase::ico_completed;
       } );
 
       if ( !_db.is_pending_tx() )

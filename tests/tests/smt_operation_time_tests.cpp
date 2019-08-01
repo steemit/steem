@@ -718,7 +718,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
 
       generate_block();
 
-      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+      BOOST_REQUIRE( token.phase == smt_phase::ico );
 
       BOOST_TEST_MESSAGE( " --- SMT contributions" );
       uint32_t num_contributions = 0;
@@ -769,7 +769,7 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
          validate_database();
       }
 
-      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+      BOOST_REQUIRE( token.phase == smt_phase::ico );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
@@ -898,7 +898,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
 
       generate_block();
 
-      BOOST_REQUIRE( token.phase == smt_phase::contribution_begin_time_completed );
+      BOOST_REQUIRE( token.phase == smt_phase::ico );
 
       BOOST_TEST_MESSAGE( " --- SMT contributions" );
 

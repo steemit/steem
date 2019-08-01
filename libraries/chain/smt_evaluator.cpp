@@ -101,7 +101,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    {
       FC_ASSERT( token_ptr != nullptr, "Cannot reset a non-existent SMT. Did you forget to specify the creation fee?" );
       FC_ASSERT( token_ptr->control_account == o.control_account, "You do not control this SMT. Control Account: ${a}", ("a", token_ptr->control_account) );
-      FC_ASSERT( token_ptr->phase == smt_phase::account_elevated, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
+      FC_ASSERT( token_ptr->phase == smt_phase::setup, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
       FC_ASSERT( !util::smt::last_emission_time( _db, token_ptr->liquid_symbol ), "Cannot reset an SMT that has existing token emissions." );
 
       _db.remove( *token_ptr );
@@ -312,8 +312,8 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
 
       const smt_token_object* token = util::smt::find_token( _db, o.symbol );
       FC_ASSERT( token != nullptr, "Cannot contribute to an unknown SMT" );
-      FC_ASSERT( token->phase >= smt_phase::contribution_begin_time_completed, "SMT has yet to enter the contribution phase" );
-      FC_ASSERT( token->phase < smt_phase::contribution_end_time_completed, "SMT is no longer in the contribution phase" );
+      FC_ASSERT( token->phase >= smt_phase::ico, "SMT has not begun accepting contributions" );
+      FC_ASSERT( token->phase < smt_phase::ico_completed, "SMT is no longer accepting contributions" );
 
       const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
       FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );

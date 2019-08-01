@@ -12,10 +12,10 @@ using protocol::curve_id;
 
 enum class smt_phase : uint8_t
 {
-   account_elevated,
+   setup,
    setup_completed,
-   contribution_begin_time_completed,
-   contribution_end_time_completed,
+   ico,
+   ico_completed,
    launch_failed,
    launch_success
 };
@@ -80,7 +80,7 @@ public:
     */
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
-   smt_phase            phase = smt_phase::account_elevated;
+   smt_phase            phase = smt_phase::setup;
    share_type           current_supply = 0;
    share_type           total_vesting_fund_smt = 0;
    share_type           total_vesting_shares = 0;
@@ -266,10 +266,10 @@ typedef multi_index_container <
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_phase,
-                  (account_elevated)
+                  (setup)
                   (setup_completed)
-                  (contribution_begin_time_completed)
-                  (contribution_end_time_completed)
+                  (ico)
+                  (ico_completed)
                   (launch_failed)
                   (launch_success)
 )
