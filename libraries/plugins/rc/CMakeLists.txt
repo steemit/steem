@@ -6,6 +6,7 @@ add_library( rc_plugin
              resource_count.cpp
              resource_user.cpp
              rc_curve.cpp
+             rc_operations.cpp
              ${HEADERS}
            )
 

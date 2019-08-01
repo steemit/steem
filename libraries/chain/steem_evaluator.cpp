@@ -2224,7 +2224,9 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
+   {
       return;
+   }
 
    try
    {
@@ -2233,7 +2235,9 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    catch( const fc::exception& e )
    {
       if( d.is_producing() )
+      {
          throw e;
+      }
    }
    catch(...)
    {
