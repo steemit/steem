@@ -1027,7 +1027,7 @@ void database::push_required_action( const required_automated_action& a, time_po
 
 void database::push_required_action( const required_automated_action& a )
 {
-   push_required_action( a, head_block_time() );
+   push_required_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
 }
 
 void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
@@ -1050,7 +1050,7 @@ void database::push_optional_action( const optional_automated_action& a, time_po
 
 void database::push_optional_action( const optional_automated_action& a )
 {
-   push_optional_action( a, head_block_time() );
+   push_optional_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
 }
 
 void database::notify_pre_apply_required_action( const required_action_notification& note )

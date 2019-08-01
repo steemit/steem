@@ -135,7 +135,7 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a )
       refund_action.contribution_id = itr->contribution_id;
       refund_action.refund = itr->contribution;
 
-      db.push_required_action( refund_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.push_required_action( refund_action );
       action_scheduled = true;
    }
 
@@ -222,7 +222,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
          payout_action.payouts.push_back( asset( steem_shares, symbol ) );
       }
 
-      db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.push_required_action( payout_action );
       action_scheduled = true;
    }
 
@@ -307,7 +307,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
          payout_action.payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
 
-      db.push_required_action( payout_action, db.head_block_time() + STEEM_BLOCK_INTERVAL );
+      db.push_required_action( payout_action );
       action_scheduled = true;
    }
 
