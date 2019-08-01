@@ -525,6 +525,7 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
    db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
    db_open_args.sps_remove_threshold = my->sps_remove_threshold;
+   db_open_args.chainbase_flags = my->chainbase_flags;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
