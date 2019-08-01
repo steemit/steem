@@ -24,12 +24,9 @@ void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
       o.phase = smt_phase::ico;
    } );
 
-   if ( !_db.is_pending_tx() )
-   {
-      smt_ico_evaluation_action eval_action;
-      eval_action.symbol = token.liquid_symbol;
-      _db.push_required_action( eval_action, ico.contribution_end_time );
-   }
+   smt_ico_evaluation_action eval_action;
+   eval_action.symbol = token.liquid_symbol;
+   _db.push_required_action( eval_action, ico.contribution_end_time );
 }
 
 void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a )
@@ -44,12 +41,9 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
          o.phase = smt_phase::ico_completed;
       } );
 
-      if ( !_db.is_pending_tx() )
-      {
-         smt_token_launch_action launch_action;
-         launch_action.symbol = token.liquid_symbol;
-         _db.push_required_action( launch_action, ico.launch_time );
-      }
+      smt_token_launch_action launch_action;
+      launch_action.symbol = token.liquid_symbol;
+      _db.push_required_action( launch_action, ico.launch_time );
    }
    else
    {
@@ -58,8 +52,7 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
          o.phase = smt_phase::launch_failed;
       } );
 
-      if ( !_db.is_pending_tx() )
-         util::smt::ico::schedule_next_refund( _db, token.liquid_symbol );
+      util::smt::ico::schedule_next_refund( _db, token.liquid_symbol );
    }
 }
 
@@ -72,9 +65,8 @@ void smt_token_launch_evaluator::do_apply( const smt_token_launch_action& a )
       o.phase = smt_phase::launch_success;
    } );
 
-   if ( !_db.is_pending_tx() )
-      if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
-         _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
+   if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
+      _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
 }
 
 void smt_refund_evaluator::do_apply( const smt_refund_action& a )
@@ -91,9 +83,8 @@ void smt_refund_evaluator::do_apply( const smt_refund_action& a )
    auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
-   if ( !_db.is_pending_tx() )
-      if ( !smt::ico::schedule_next_refund( _db, a.symbol ) )
-         _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+   if ( !smt::ico::schedule_next_refund( _db, a.symbol ) )
+      _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_action& a )
@@ -105,10 +96,9 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
    auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
-   if ( !_db.is_pending_tx() )
-      if ( !smt::ico::schedule_next_contributor_payout( _db, a.symbol ) )
-         if ( !smt::ico::schedule_founder_payout( _db, a.symbol ) )
-            _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+   if ( !smt::ico::schedule_next_contributor_payout( _db, a.symbol ) )
+      if ( !smt::ico::schedule_founder_payout( _db, a.symbol ) )
+         _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a )
@@ -118,8 +108,7 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    for ( auto& payout : a.payouts )
       smt::ico::payout( _db, a.symbol, _db.get_account( payout.first ), payout.second );
 
-   if ( !_db.is_pending_tx() )
-      _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+   _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
 #endif

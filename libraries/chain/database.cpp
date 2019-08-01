@@ -1015,11 +1015,14 @@ void database::push_required_action( const required_automated_action& a, time_po
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
-   create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+   if ( !is_pending_tx() )
    {
-      pending_action.action = a;
-      pending_action.execution_time = execution_time;
-   });
+      create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+      {
+         pending_action.action = a;
+         pending_action.execution_time = execution_time;
+      } );
+   }
 }
 
 void database::push_required_action( const required_automated_action& a )
@@ -1035,11 +1038,14 @@ void database::push_optional_action( const optional_automated_action& a, time_po
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
-   create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+   if ( !is_pending_tx() )
    {
-      pending_action.action = a;
-      pending_action.execution_time = execution_time;
-   });
+      create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+      {
+         pending_action.action = a;
+         pending_action.execution_time = execution_time;
+      } );
+   }
 }
 
 void database::push_optional_action( const optional_automated_action& a )
