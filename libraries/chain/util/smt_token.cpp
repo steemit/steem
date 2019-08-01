@@ -125,7 +125,7 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
-   auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
+   auto itr = idx.lower_bound( a );
 
    if ( itr != idx.end() && itr->symbol == a )
    {
@@ -169,7 +169,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 {
    bool action_scheduled = false;
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
-   auto itr = idx.lower_bound( boost::make_tuple( a, 0 ) );
+   auto itr = idx.lower_bound( a );
 
    if ( itr != idx.end() && itr->symbol == a )
    {
