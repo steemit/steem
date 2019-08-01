@@ -22,7 +22,7 @@ void smt_create_operation::validate()const
       ("prec1",symbol.decimals())("prec2",precision) );
 }
 
-bool is_valid_unit_target( const account_name_type& name )
+bool is_valid_unit_target( const unit_target_type& name )
 {
    if( is_valid_account_name(name) )
       return true;
@@ -30,10 +30,12 @@ bool is_valid_unit_target( const account_name_type& name )
       return true;
    if( name == SMT_DESTINATION_FROM_VESTING )
       return true;
+   if ( name == SMT_DESTINATION_MARKET_MAKER )
+      return true;
    return false;
 }
 
-bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
+bool is_valid_smt_emissions_unit_destination( const unit_target_type& name )
 {
    if ( is_valid_account_name( name ) )
       return true;
@@ -49,7 +51,7 @@ bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
 uint32_t smt_generation_unit::steem_unit_sum()const
 {
    uint32_t result = 0;
-   for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : steem_unit )
       result += e.second;
    return result;
 }
@@ -57,7 +59,7 @@ uint32_t smt_generation_unit::steem_unit_sum()const
 uint32_t smt_generation_unit::token_unit_sum()const
 {
    uint32_t result = 0;
-   for(const std::pair< account_name_type, uint16_t >& e : token_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : token_unit )
       result += e.second;
    return result;
 }
@@ -65,13 +67,13 @@ uint32_t smt_generation_unit::token_unit_sum()const
 void smt_generation_unit::validate()const
 {
    FC_ASSERT( steem_unit.size() <= SMT_MAX_UNIT_ROUTES );
-   for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : steem_unit )
    {
       FC_ASSERT( is_valid_unit_target( e.first ) );
       FC_ASSERT( e.second > 0 );
    }
    FC_ASSERT( token_unit.size() <= SMT_MAX_UNIT_ROUTES );
-   for(const std::pair< account_name_type, uint16_t >& e : token_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : token_unit )
    {
       FC_ASSERT( is_valid_unit_target( e.first ) );
       FC_ASSERT( e.second > 0 );

@@ -71,17 +71,17 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace generation_unit {
 
-bool is_founder( const account_name_type& unit_target )
+bool is_founder( const unit_target_type& unit_target )
 {
    return unit_target != SMT_DESTINATION_FROM && unit_target != SMT_DESTINATION_FROM_VESTING;
 }
 
-bool is_contributor( const account_name_type& unit_target )
+bool is_contributor( const unit_target_type& unit_target )
 {
    return !is_founder( unit_target );
 }
 
-bool is_vesting( const account_name_type& name )
+bool is_vesting( const unit_target_type& name )
 {
    if ( name == SMT_DESTINATION_FROM_VESTING )
       return true;
@@ -89,6 +89,12 @@ bool is_vesting( const account_name_type& name )
       return true;
 
    return false;
+}
+
+account_name_type get_account( const unit_target_type& unit_target )
+{
+   FC_ASSERT( is_valid_account_name( unit_target ) );
+   return account_name_type( unit_target );
 }
 
 } // steem::chain::util::smt::generation_unit
@@ -247,7 +253,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.contributed.amount ) );
    }
 
-   using founder_asset_symbol_types = std::tuple< account_name_type, asset_symbol_type >;
+   using founder_asset_symbol_types = std::tuple< unit_target_type, asset_symbol_type >;
    std::map< founder_asset_symbol_types, share_type > founder_payout_map;
 
    for ( auto& effective_generation_unit_shares : generation_unit_shares )

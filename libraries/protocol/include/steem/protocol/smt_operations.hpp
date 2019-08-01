@@ -13,11 +13,11 @@
 #define SMT_MIN_SATURATION_STEEM_UNITS 1000
 #define SMT_MIN_SOFT_CAP_STEEM_UNITS   1000
 
-#define SMT_DESTINATION_FROM          account_name_type( "$from" )
-#define SMT_DESTINATION_FROM_VESTING  account_name_type( "$from.vesting" )
-#define SMT_DESTINATION_MARKET_MAKER  account_name_type( "$market_maker" )
-#define SMT_DESTINATION_REWARDS       account_name_type( "$rewards" )
-#define SMT_DESTINATION_VESTING       account_name_type( "$vesting" )
+#define SMT_DESTINATION_FROM          unit_target_type( "$from" )
+#define SMT_DESTINATION_FROM_VESTING  unit_target_type( "$from.vesting" )
+#define SMT_DESTINATION_MARKET_MAKER  unit_target_type( "$market_maker" )
+#define SMT_DESTINATION_REWARDS       unit_target_type( "$rewards" )
+#define SMT_DESTINATION_VESTING       unit_target_type( "$vesting" )
 
 namespace steem { namespace protocol {
 
@@ -46,8 +46,8 @@ struct smt_create_operation : public base_operation
 
 struct smt_generation_unit
 {
-   flat_map< account_name_type, uint16_t >        steem_unit;
-   flat_map< account_name_type, uint16_t >        token_unit;
+   flat_map< unit_target_type, uint16_t > steem_unit;
+   flat_map< unit_target_type, uint16_t > token_unit;
 
    uint32_t steem_unit_sum()const;
    uint32_t token_unit_sum()const;
@@ -99,7 +99,7 @@ struct smt_setup_operation : public base_operation
 
 struct smt_emissions_unit
 {
-   flat_map< account_name_type, uint16_t >        token_unit;
+   flat_map< unit_target_type, uint16_t > token_unit;
 };
 
 struct smt_setup_emissions_operation : public base_operation

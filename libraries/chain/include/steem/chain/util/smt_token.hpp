@@ -25,9 +25,10 @@ void payout( database& db, const asset_symbol_type& symbol, const account_object
 
 namespace generation_unit {
 
-bool is_contributor( const account_name_type& unit_target );
-bool is_founder( const account_name_type& unit_target );
-bool is_vesting( const account_name_type& name );
+account_name_type get_account( const unit_target_type& unit_target );
+bool is_contributor( const unit_target_type& unit_target );
+bool is_founder( const unit_target_type& unit_target );
+bool is_vesting( const unit_target_type& name );
 
 } // steem::chain::util::smt::generation_unit
 

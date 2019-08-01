@@ -293,7 +293,7 @@ struct live_database_fixture : public database_fixture
 template< typename T >
 struct t_smt_database_fixture : public T
 {
-   using units = flat_map< account_name_type, uint16_t >;
+   using units = flat_map< unit_target_type, uint16_t >;
 
    using database_fixture::set_price_feed;
    using database_fixture::fund;

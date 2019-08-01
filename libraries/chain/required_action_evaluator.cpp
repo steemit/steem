@@ -106,7 +106,10 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    using namespace steem::chain::util;
 
    for ( auto& payout : a.payouts )
-      smt::ico::payout( _db, a.symbol, _db.get_account( payout.first ), payout.second );
+   {
+      account_name_type account_name = smt::generation_unit::get_account( payout.first );
+      smt::ico::payout( _db, a.symbol, _db.get_account( account_name ), payout.second );
+   }
 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }

@@ -46,7 +46,7 @@ namespace steem { namespace protocol {
    struct smt_founder_payout_action : public base_operation
    {
       asset_symbol_type                                   symbol;
-      std::map< account_name_type, std::vector< asset > > payouts;
+      std::map< unit_target_type, std::vector< asset > >  payouts;
 
       void validate()const;
 
