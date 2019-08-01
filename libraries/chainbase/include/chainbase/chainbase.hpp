@@ -89,6 +89,12 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
+   enum open_flags
+   {
+      skip_nothing               = 0,
+      skip_env_check             = 1 << 0 // Skip environment check on db open
+   };
+
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
