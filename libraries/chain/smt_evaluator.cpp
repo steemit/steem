@@ -153,7 +153,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token.max_supply = o.max_supply;
    } );
 
-   auto token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
+   const auto& token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
       token_ico_obj.symbol = _token->liquid_symbol;
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
