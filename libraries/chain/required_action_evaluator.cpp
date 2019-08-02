@@ -25,6 +25,7 @@ void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
    } );
 
    smt_ico_evaluation_action eval_action;
+   eval_action.control_account = token.control_account;
    eval_action.symbol = token.liquid_symbol;
    _db.push_required_action( eval_action, ico.contribution_end_time );
 }
@@ -42,6 +43,7 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
       } );
 
       smt_token_launch_action launch_action;
+      launch_action.control_account = token.control_account;
       launch_action.symbol = token.liquid_symbol;
       _db.push_required_action( launch_action, ico.launch_time );
    }
@@ -106,10 +108,7 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    using namespace steem::chain::util;
 
    for ( auto& payout : a.payouts )
-   {
-      account_name_type account_name = smt::generation_unit::get_account( payout.first );
-      smt::ico::payout( _db, a.symbol, _db.get_account( account_name ), payout.second );
-   }
+      smt::ico::payout( _db, a.symbol, _db.get_account( payout.first ), payout.second );
 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }

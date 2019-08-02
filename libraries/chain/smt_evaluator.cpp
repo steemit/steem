@@ -168,6 +168,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    o.initial_generation_policy.visit( visitor );
 
    smt_ico_launch_action ico_launch_action;
+   ico_launch_action.control_account = _token->control_account;
    ico_launch_action.symbol = _token->liquid_symbol;
    _db.push_required_action( ico_launch_action, o.contribution_begin_time );
 }

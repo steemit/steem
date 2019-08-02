@@ -18,32 +18,41 @@ bool operator==( const example_required_action& lhs, const example_required_acti
 #ifdef STEEM_ENABLE_SMT
 void smt_ico_launch_action::validate() const
 {
+   validate_account_name( control_account );
    validate_smt_symbol( symbol );
 }
 
 bool operator==( const smt_ico_launch_action& lhs, const smt_ico_launch_action& rhs )
 {
-   return lhs.symbol == rhs.symbol;
+   return
+      lhs.control_account == rhs.control_account &&
+      lhs.symbol == rhs.symbol;
 }
 
 void smt_ico_evaluation_action::validate() const
 {
+   validate_account_name( control_account );
    validate_smt_symbol( symbol );
 }
 
 bool operator==( const smt_ico_evaluation_action& lhs, const smt_ico_evaluation_action& rhs )
 {
-   return lhs.symbol == rhs.symbol;
+   return
+      lhs.control_account == rhs.control_account &&
+      lhs.symbol == rhs.symbol;
 }
 
 void smt_token_launch_action::validate() const
 {
+   validate_account_name( control_account );
    validate_smt_symbol( symbol );
 }
 
 bool operator==( const smt_token_launch_action& lhs, const smt_token_launch_action& rhs )
 {
-   return lhs.symbol == rhs.symbol;
+   return
+      lhs.control_account == rhs.control_account &&
+      lhs.symbol == rhs.symbol;
 }
 
 void smt_refund_action::validate() const

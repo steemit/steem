@@ -311,7 +311,10 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       payout_action.symbol = a;
 
       for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
-         payout_action.payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+      {
+         auto account_name = smt::generation_unit::get_account( std::get< 0 >( it->first ) );
+         payout_action.payouts[ account_name ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+      }
 
       db.push_required_action( payout_action );
       action_scheduled = true;
