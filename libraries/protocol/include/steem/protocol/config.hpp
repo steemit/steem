@@ -117,7 +117,7 @@
 #define STEEM_MAX_VOTE_CHANGES                5
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6 (60*30) /// 30 minutes
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 (60*15) /// 15 minutes
-#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21 (60)
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21 (60*5) /// 5 minutes
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
 #define STEEM_DOWNVOTE_POOL_PERCENT_HF21      (25*STEEM_1_PERCENT)
@@ -228,7 +228,6 @@
 #define STEEM_SBD_STOP_PERCENT_HF20           (10*STEEM_1_PERCENT ) // Stop printing SBD at 10% Market Cap
 #define STEEM_SBD_START_PERCENT_HF14          (2*STEEM_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
 #define STEEM_SBD_START_PERCENT_HF20          (9*STEEM_1_PERCENT) // Start reducing printing of SBD at 9% Market Cap
-#define STEEM_SBD_STOP_ADJUST                  5 // Make a small adjustment to the stop percent to stop at the debt limit (see issue 3184)
 
 #define STEEM_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEM_MAX_ACCOUNT_NAME_LENGTH         16

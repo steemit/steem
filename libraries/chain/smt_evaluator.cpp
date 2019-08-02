@@ -91,9 +91,6 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       FC_ASSERT( creation_fee == dgpo.smt_creation_fee,
          "Fee of ${ef} does not match the creation fee of ${sf}", ("ef", creation_fee)("sf", dgpo.smt_creation_fee) );
 
-      FC_ASSERT( _db.get_balance( o.control_account, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
-         "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
-
       _db.adjust_balance( o.control_account , -o.smt_creation_fee );
       _db.adjust_balance( STEEM_NULL_ACCOUNT,  o.smt_creation_fee );
    }
@@ -304,8 +301,6 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
    try
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-
-      FC_ASSERT( _db.get_balance( o.contributor, o.contribution.symbol ) >= o.contribution, "Account does not have sufficient funds for contribution" );
 
       const smt_token_object* token = util::smt::find_token( _db, o.symbol );
       FC_ASSERT( token != nullptr, "Cannot contribute to an unknown SMT" );

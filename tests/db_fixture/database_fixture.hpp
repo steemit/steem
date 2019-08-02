@@ -22,7 +22,7 @@
 #define INITIAL_TEST_SUPPLY (10000000000ll)
 #define SBD_INITIAL_TEST_SUPPLY (300000000ll)
 
-extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
+extern uint32_t STEEM_TESTING_GENESIS_TIMESTAMP;
 
 #define PUSH_TX \
    steem::chain::test::_push_transaction

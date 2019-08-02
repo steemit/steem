@@ -272,6 +272,7 @@ add_boost_test( plugin_test
     json_rpc/semantics_validation
     market_history/mh_test
     transaction_status/transaction_status_test
+    rc_delegation/rc_delegate_to_pool_apply
 )
 
 target_link_libraries( plugin_test db_fixture steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin transaction_status_plugin transaction_status_api_plugin fc ${PLATFORM_SPECIFIC_LIBS} )

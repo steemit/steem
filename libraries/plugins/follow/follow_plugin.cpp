@@ -323,7 +323,7 @@ void follow_plugin_impl::post_operation( const operation_notification& note )
    {
       note.op.visit( post_operation_visitor( *this ) );
    }
-   catch( fc::assert_exception )
+   catch( const fc::assert_exception& )
    {
       if( _db.is_producing() ) throw;
    }
