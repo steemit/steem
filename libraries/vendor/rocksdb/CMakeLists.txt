@@ -751,7 +751,7 @@ else()
 endif()
 
 add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
-target_link_libraries(${ROCKSDB_STATIC_LIB}
+target_link_libraries(${ROCKSDB_STATIC_LIB} "-static"
   ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
 if(WIN32)
