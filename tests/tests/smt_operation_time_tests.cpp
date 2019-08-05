@@ -1039,7 +1039,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
          get_generation_unit(
          {
             { "$market_maker", 3 },
-            { "george", 2 }
+            { "$george.vesting", 2 }
          },
          {
             { "$from", 7 },
@@ -1111,8 +1111,10 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( db->get_balance( "dan", STEEM_SYMBOL ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "elaine", STEEM_SYMBOL ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "fred", STEEM_SYMBOL ).amount == 0 );
-      BOOST_REQUIRE( db->get_balance( "george", STEEM_SYMBOL ).amount == 50000000 );
+      BOOST_REQUIRE( db->get_balance( "george", STEEM_SYMBOL ).amount == 40000000 );
       BOOST_REQUIRE( db->get_balance( "henry", STEEM_SYMBOL ).amount == 0 );
+
+      BOOST_REQUIRE( db->get_account( "george" ).vesting_shares.amount == 5076086140430482 );
 
       BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 420000000 );
       BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 2100000000 );
@@ -1128,7 +1130,6 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( token.market_maker.steem_balance == asset( 75000000, STEEM_SYMBOL ) );
       BOOST_REQUIRE( token.market_maker.token_balance == asset( 1500000000, symbol ) );
       BOOST_REQUIRE( token.rewards_fund == asset( 3000000000, symbol ) );
-
 
       validate_database();
 

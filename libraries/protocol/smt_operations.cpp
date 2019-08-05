@@ -1,6 +1,7 @@
 
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/validation.hpp>
+#include <steem/protocol/smt_util.hpp>
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace protocol {
@@ -22,17 +23,18 @@ void smt_create_operation::validate()const
       ("prec1",symbol.decimals())("prec2",precision) );
 }
 
-bool is_valid_unit_target( const unit_target_type& name )
+bool is_valid_unit_target( const unit_target_type& unit_target )
 {
-   if ( is_valid_account_name(name) )
+   using namespace utilities;
+   if ( is_valid_account_name( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_FROM )
+   if ( smt::generation_unit::is_contributor( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_FROM_VESTING )
+   if ( smt::generation_unit::is_market_maker( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_MARKET_MAKER )
+   if ( smt::generation_unit::is_rewards( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_REWARDS )
+   if ( smt::generation_unit::is_founder_vesting( unit_target ) )
       return true;
    return false;
 }

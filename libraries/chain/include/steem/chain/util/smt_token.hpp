@@ -23,17 +23,6 @@ void payout( database& db, const asset_symbol_type& symbol, const account_object
 
 } // steem::chain::util::smt::ico
 
-namespace generation_unit {
-
-account_name_type get_unit_target_account( const unit_target_type& unit_target );
-bool is_contributor( const unit_target_type& unit_target );
-bool is_market_maker( const unit_target_type& unit_target );
-bool is_rewards( const unit_target_type& unit_target );
-bool is_vesting( const unit_target_type& unit_target );
-bool is_founder_vesting( const unit_target_type& unit_target );
-
-} // steem::chain::util::smt::generation_unit
-
 } } } } // steem::chain::util::smt
 
 #endif
