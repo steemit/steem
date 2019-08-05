@@ -138,10 +138,18 @@ void database::open( const open_args& args )
 #ifndef ENABLE_MIRA
          undo_all();
 #endif
-         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
-            ("rev", revision())("head_block", head_block_num()) );
-         if (args.do_validate_invariants)
-            validate_invariants();
+
+         if( args.chainbase_flags & chainbase::skip_env_check )
+         {
+            set_revision( head_block_num() );
+         }
+         else
+         {
+            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num.",
+               ("rev", revision())("head_block", head_block_num()) );
+            if (args.do_validate_invariants)
+               validate_invariants();
+         }
       });
 
       if( head_block_num() )

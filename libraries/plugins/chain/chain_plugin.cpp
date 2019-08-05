@@ -74,6 +74,7 @@ class chain_plugin_impl
       uint16_t                         shared_file_full_threshold = 0;
       uint16_t                         shared_file_scale_rate = 0;
       int16_t                          sps_remove_threshold = -1;
+      uint32_t                         chainbase_flags = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;
@@ -337,6 +338,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
+         ("force-open", bpo::bool_switch()->default_value(false), "force open the database, skipping the environment check" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("advanced-benchmark", "Make profiling for every plugin.")
@@ -375,6 +377,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
 
    my->sps_remove_threshold = options.at( "sps-remove-threshold" ).as< uint16_t >();
+
+   my->chainbase_flags |= options.at( "force-open" ).as< bool >() ? chainbase::skip_env_check : chainbase::skip_nothing;
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
@@ -521,6 +525,7 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
    db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
    db_open_args.sps_remove_threshold = my->sps_remove_threshold;
+   db_open_args.chainbase_flags = my->chainbase_flags;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
@@ -600,7 +605,10 @@ void chain_plugin::plugin_startup()
       }
       catch( const fc::exception& e )
       {
-         wlog("Error opening database. If the binary or configuration has changed, replay the blockchain explicitly. Error: ${e}", ("e", e));
+         wlog( "Error opening database. If the binary or configuration has changed, replay the blockchain explicitly using `--replay-blockchain`." );
+         wlog( "If you know what you are doing you can skip this check and force open the database using `--force-open`." );
+         wlog( "WARNING: THIS MAY CORRUPT YOUR DATABASE. FORCE OPEN AT YOUR OWN RISK." );
+         wlog( " Error: ${e}", ("e", e) );
          exit(EXIT_FAILURE);
       }
    }
