@@ -2,6 +2,7 @@
 #include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/util/manabar.hpp>
 
+#include <steem/plugins/rc/rc_config.hpp>
 #include <steem/plugins/rc/rc_utility.hpp>
 #include <steem/plugins/rc/resource_count.hpp>
 
@@ -55,6 +56,8 @@ class rc_resource_param_object : public object< rc_resource_param_object_type, r
                             resource_param_array;
 };
 
+OBJECT_ID_TYPE( rc_resource_param );
+
 class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
 {
    public:
@@ -70,6 +73,8 @@ class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
       fc::int_array< int64_t, STEEM_NUM_RESOURCE_TYPES >
                             pool_array;
 };
+
+OBJECT_ID_TYPE( rc_pool );
 
 class rc_account_object : public object< rc_account_object_type, rc_account_object >
 {
@@ -99,6 +104,8 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       int64_t               last_max_rc = 0;
 };
 
+OBJECT_ID_TYPE( rc_account );
+
 /**
  * Represents a delegation pool.
  */
@@ -120,6 +127,8 @@ class rc_delegation_pool_object : public object< rc_delegation_pool_object_type,
       steem::chain::util::manabar   rc_pool_manabar;
       int64_t                       max_rc = 0;
 };
+
+OBJECT_ID_TYPE( rc_delegation_pool );
 
 /**
  * Represents the total amount of an asset delegated by a user.
@@ -146,6 +155,8 @@ class rc_delegation_from_account_object : public object< rc_delegation_from_acco
       {  return amount.symbol;                             }
 };
 
+OBJECT_ID_TYPE( rc_delegation_from_account );
+
 /**
  * Represents a delegation from a user to a pool.
  */
@@ -168,6 +179,8 @@ class rc_indel_edge_object : public object< rc_indel_edge_object_type, rc_indel_
       account_name_type             to_pool;
       asset                         amount;
 };
+
+OBJECT_ID_TYPE( rc_indel_edge );
 
 /**
  * Represents a delegation from a pool to a user based on delegated resource credits (DRC).
@@ -204,11 +217,14 @@ class rc_outdel_drc_edge_object : public object< rc_outdel_drc_edge_object_type,
       int8_t                        to_slot_num = 0;
 };
 
+OBJECT_ID_TYPE( rc_outdel_drc_edge );
+
 int64_t get_maximum_rc( const steem::chain::account_object& account, const rc_account_object& rc_account );
 
 struct by_edge;
 struct by_account_symbol;
 struct by_account_slot;
+struct by_pool;
 
 typedef multi_index_container<
    rc_resource_param_object,
@@ -281,12 +297,19 @@ typedef multi_index_container<
 typedef multi_index_container<
    rc_outdel_drc_edge_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< rc_dr_drc_edge_object, rc_outdel_drc_edge_object::id_type, &rc_outdel_drc_edge_object::id > >,
+      ordered_unique< tag< by_id >, member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_object::id_type, &rc_outdel_drc_edge_object::id > >,
       ordered_unique< tag< by_edge >,
          composite_key< rc_outdel_drc_edge_object,
             member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::from_pool >,
             member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::to_account >,
             member< rc_outdel_drc_edge_object, asset_symbol_type, &rc_outdel_drc_edge_object::asset_symbol >
+         >
+      >,
+      ordered_unique< tag< by_pool >,
+         composite_key< rc_outdel_drc_edge_object,
+            member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::from_pool >,
+            member< rc_outdel_drc_edge_object, asset_symbol_type, &rc_outdel_drc_edge_object::asset_symbol >,
+            member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_id_type, &rc_outdel_drc_edge_object::id >
          >
       >,
       ordered_unique< tag< by_account_slot >,

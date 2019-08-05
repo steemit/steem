@@ -48,6 +48,19 @@ void set_slot_delegator_operation::validate()const
    FC_ASSERT( to_slot < STEEM_RC_MAX_SLOTS );
 }
 
+void maybe_cleanup_rc_pool( const rc_delegation_pool_object& pool, database& db )
+{
+   if( pool.max_rc ) return;
+
+   const auto& outdel_idx = db.get_index< rc_outdel_drc_edge_index, by_pool >();
+   auto edge = outdel_idx.lower_bound( pool.account );
+
+   if( edge != outdel_idx.end() && edge->from_pool != pool.account && edge->asset_symbol != pool.asset_symbol )
+   {
+      db.remove( pool );
+   }
+}
+
 void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op )
 {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
@@ -141,6 +154,8 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
    else if( op.amount.amount.value == 0 )
    {
       _db.remove( *edge );
+
+      maybe_cleanup_rc_pool( _db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( op.to_pool, op.amount.symbol ) ), _db );
    }
    else
    {
@@ -171,10 +186,10 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
 {
    const auto& to_rca = _db.get< rc_account_object, by_name >( op.to_account );
 
-   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] == from_pool, "Pool cannot delegate RC to slot ${n}. Expected: ${e} Was: ${w}",
+   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] == op.from_pool, "Pool cannot delegate RC to slot ${n}. Expected: ${e} Was: ${w}",
       ("n", op.to_slot)("e", to_rca.indel_slots[ op.to_slot ])("w", op.from_pool) );
 
-   const auto* edge = _db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( op.from_pool, op.to_pool, op.asset_symbol ) );
+   const auto* edge = _db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( op.from_pool, op.to_account, op.asset_symbol ) );
    steem::chain::util::manabar edge_manabar;
 
    const auto now = _db.head_block_time();
@@ -182,7 +197,7 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
    if( !edge )
    {
       edge_manabar.current_mana = op.drc_max_mana;
-      edge_manabar.last_update_time = now;
+      edge_manabar.last_update_time = now.sec_since_epoch();
 
       _db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& outdel )
       {
@@ -197,12 +212,12 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
    {
       steem::chain::util::manabar_params edge_manabar_params;
       edge_manabar_params.regen_time = STEEM_RC_REGEN_TIME;
-      edge_manabar.current_mana = edge->drc_manabar;
       edge_manabar_params.max_mana = edge->drc_max_mana;
+      edge_manabar = edge->drc_manabar;
       edge_manabar.regenerate_mana( edge_manabar_params, now );
 
       // If there is a deficit in mana, only add to current mana the amount of added new mana
-      edge_manabar.current_mana += std::max( 0, op.drc_max_mana - edge->drc_max_mana );
+      edge_manabar.current_mana += std::max( 0ll, op.drc_max_mana - edge->drc_max_mana );
       // Cap current mana to the new max mana (Only happens if max mana is decreasing)
       edge_manabar.current_mana = std::min( edge_manabar.current_mana, op.drc_max_mana );
 
@@ -227,15 +242,15 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
       _db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& pool )
       {
          pool.account = op.from_pool;
-         poo.asset_symbol = op.asset_symbol;
+         pool.asset_symbol = op.asset_symbol;
          pool.rc_pool_manabar.current_mana = 0;
-         pool.rc_pool_manabar.last_update_time = now;
+         pool.rc_pool_manabar.last_update_time = now.sec_since_epoch();
          pool.max_rc = 0;
       });
    }
    else
    {
-      maybe_cleanup_rc_pool( *edge );
+      maybe_cleanup_rc_pool( *from_pool, _db );
    }
 }
 
@@ -289,12 +304,17 @@ void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation&
 
    FC_ASSERT( to_rca.indel_slots[ op.to_slot ] != op.to_account, "The slot must change." );
 
+   const auto* edge = _db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( op.from_pool, op.to_account, VESTS_SYMBOL ) );
+
+   if( edge )
+   {
+      maybe_cleanup_rc_pool( _db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( op.from_pool, VESTS_SYMBOL ) ), _db );
+   }
+
    _db.modify( to_rca, [&]( rc_account_object& rca )
    {
       rca.indel_slots[ op.to_slot ] = op.to_account;
    });
-
-   // TODO: Remove outdel edges if the previous slot has an existing delegation
 }
 
 } } } // steem::plugins::rc
