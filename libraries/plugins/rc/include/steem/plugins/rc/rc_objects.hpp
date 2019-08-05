@@ -281,7 +281,7 @@ typedef multi_index_container<
 typedef multi_index_container<
    rc_outdel_drc_edge_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_object::id_type, &rc_outdel_drc_edge_object::id > >,
+      ordered_unique< tag< by_id >, member< rc_dr_drc_edge_object, rc_outdel_drc_edge_object::id_type, &rc_outdel_drc_edge_object::id > >,
       ordered_unique< tag< by_edge >,
          composite_key< rc_outdel_drc_edge_object,
             member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::from_pool >,

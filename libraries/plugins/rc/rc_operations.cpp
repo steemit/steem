@@ -169,7 +169,74 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
 
 void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_operation& op )
 {
-   FC_ASSERT( false, "Operation not yet supported" );
+   const auto& to_rca = _db.get< rc_account_object, by_name >( op.to_account );
+
+   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] == from_pool, "Pool cannot delegate RC to slot ${n}. Expected: ${e} Was: ${w}",
+      ("n", op.to_slot)("e", to_rca.indel_slots[ op.to_slot ])("w", op.from_pool) );
+
+   const auto* edge = _db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( op.from_pool, op.to_pool, op.asset_symbol ) );
+   steem::chain::util::manabar edge_manabar;
+
+   const auto now = _db.head_block_time();
+
+   if( !edge )
+   {
+      edge_manabar.current_mana = op.drc_max_mana;
+      edge_manabar.last_update_time = now;
+
+      _db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& outdel )
+      {
+         outdel.from_pool = op.from_pool;
+         outdel.to_account = op.to_account;
+         outdel.asset_symbol = op.asset_symbol;
+         outdel.drc_manabar = edge_manabar;
+         outdel.drc_max_mana = op.drc_max_mana;
+      });
+   }
+   else
+   {
+      steem::chain::util::manabar_params edge_manabar_params;
+      edge_manabar_params.regen_time = STEEM_RC_REGEN_TIME;
+      edge_manabar.current_mana = edge->drc_manabar;
+      edge_manabar_params.max_mana = edge->drc_max_mana;
+      edge_manabar.regenerate_mana( edge_manabar_params, now );
+
+      // If there is a deficit in mana, only add to current mana the amount of added new mana
+      edge_manabar.current_mana += std::max( 0, op.drc_max_mana - edge->drc_max_mana );
+      // Cap current mana to the new max mana (Only happens if max mana is decreasing)
+      edge_manabar.current_mana = std::min( edge_manabar.current_mana, op.drc_max_mana );
+
+      if( op.drc_max_mana > 0 )
+      {
+         _db.modify( *edge, [&]( rc_outdel_drc_edge_object& outdel )
+         {
+            outdel.drc_manabar = edge_manabar;
+            outdel.drc_max_mana = op.drc_max_mana;
+         });
+      }
+      else
+      {
+         _db.remove( *edge );
+      }
+   }
+
+   const auto* from_pool = _db.find< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( op.from_pool, op.asset_symbol ) );
+
+   if( !from_pool && op.drc_max_mana > 0 )
+   {
+      _db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& pool )
+      {
+         pool.account = op.from_pool;
+         poo.asset_symbol = op.asset_symbol;
+         pool.rc_pool_manabar.current_mana = 0;
+         pool.rc_pool_manabar.last_update_time = now;
+         pool.max_rc = 0;
+      });
+   }
+   else
+   {
+      maybe_cleanup_rc_pool( *edge );
+   }
 }
 
 void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation& op )
