@@ -86,6 +86,7 @@ public:
    share_type           total_vesting_shares = 0;
    share_type           pending_rewarded_vesting_shares = 0;
    share_type           pending_rewarded_vesting_smt = 0;
+   asset                rewards_fund;
 
    smt_market_maker_state  market_maker;
 
@@ -290,6 +291,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (total_vesting_shares)
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
+   (rewards_fund)
    (allow_downvotes)
    (market_maker)
    (allow_voting)

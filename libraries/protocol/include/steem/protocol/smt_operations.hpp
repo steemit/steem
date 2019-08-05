@@ -13,11 +13,13 @@
 #define SMT_MIN_SATURATION_STEEM_UNITS 1000
 #define SMT_MIN_SOFT_CAP_STEEM_UNITS   1000
 
-#define SMT_DESTINATION_FROM          unit_target_type( "$from" )
-#define SMT_DESTINATION_FROM_VESTING  unit_target_type( "$from.vesting" )
-#define SMT_DESTINATION_MARKET_MAKER  unit_target_type( "$market_maker" )
-#define SMT_DESTINATION_REWARDS       unit_target_type( "$rewards" )
-#define SMT_DESTINATION_VESTING       unit_target_type( "$vesting" )
+#define SMT_DESTINATION_PREFIX         "$"
+#define SMT_DESTINATION_VESTING_SUFFIX ".vesting"
+#define SMT_DESTINATION_FROM           unit_target_type( SMT_DESTINATION_PREFIX "from" )
+#define SMT_DESTINATION_FROM_VESTING   unit_target_type( SMT_DESTINATION_PREFIX "from" SMT_DESTINATION_VESTING_SUFFIX )
+#define SMT_DESTINATION_MARKET_MAKER   unit_target_type( SMT_DESTINATION_PREFIX "market_maker" )
+#define SMT_DESTINATION_REWARDS        unit_target_type( SMT_DESTINATION_PREFIX "rewards" )
+#define SMT_DESTINATION_VESTING        unit_target_type( SMT_DESTINATION_PREFIX "vesting" )
 
 namespace steem { namespace protocol {
 

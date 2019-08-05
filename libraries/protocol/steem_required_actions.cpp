@@ -89,7 +89,7 @@ void smt_founder_payout_action::validate() const
 {
    validate_smt_symbol( symbol );
 
-   for ( auto& payout : payouts )
+   for ( auto& payout : account_payouts )
       validate_account_name( payout.first );
 }
 
@@ -97,7 +97,10 @@ bool operator==( const smt_founder_payout_action& lhs, const smt_founder_payout_
 {
    return
       lhs.symbol == rhs.symbol &&
-      lhs.payouts == rhs.payouts;
+      lhs.account_payouts == rhs.account_payouts &&
+      lhs.market_maker_steem == rhs.market_maker_steem &&
+      lhs.market_maker_tokens == rhs.market_maker_tokens &&
+      lhs.rewards_fund == rhs.rewards_fund;
 }
 #endif
 

@@ -24,13 +24,15 @@ void smt_create_operation::validate()const
 
 bool is_valid_unit_target( const unit_target_type& name )
 {
-   if( is_valid_account_name(name) )
+   if ( is_valid_account_name(name) )
       return true;
-   if( name == SMT_DESTINATION_FROM )
+   if ( name == SMT_DESTINATION_FROM )
       return true;
-   if( name == SMT_DESTINATION_FROM_VESTING )
+   if ( name == SMT_DESTINATION_FROM_VESTING )
       return true;
    if ( name == SMT_DESTINATION_MARKET_MAKER )
+      return true;
+   if ( name == SMT_DESTINATION_REWARDS )
       return true;
    return false;
 }

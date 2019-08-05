@@ -48,12 +48,15 @@ namespace steem { namespace protocol {
    struct smt_founder_payout_action : public base_operation
    {
       asset_symbol_type                                   symbol;
-      std::map< account_name_type, std::vector< asset > > payouts;
+      std::map< account_name_type, std::vector< asset > > account_payouts;
+      share_type                                          market_maker_steem  = 0;
+      share_type                                          market_maker_tokens = 0;
+      share_type                                          rewards_fund        = 0;
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const
       {
-         for ( auto& entry : payouts )
+         for ( auto& entry : account_payouts )
             a.insert( entry.first );
       }
 
@@ -102,7 +105,7 @@ FC_REFLECT( steem::protocol::example_required_action, (account) )
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::smt_refund_action, (contributor)(symbol)(contribution_id)(refund) )
 FC_REFLECT( steem::protocol::smt_contributor_payout_action, (contributor)(symbol)(contribution_id)(payouts) )
-FC_REFLECT( steem::protocol::smt_founder_payout_action, (symbol)(payouts) )
+FC_REFLECT( steem::protocol::smt_founder_payout_action, (symbol)(account_payouts)(market_maker_steem)(market_maker_tokens)(rewards_fund) )
 FC_REFLECT( steem::protocol::smt_ico_launch_action, (control_account)(symbol) )
 FC_REFLECT( steem::protocol::smt_ico_evaluation_action, (control_account)(symbol) )
 FC_REFLECT( steem::protocol::smt_token_launch_action, (control_account)(symbol) )

@@ -71,30 +71,80 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace generation_unit {
 
-bool is_founder( const unit_target_type& unit_target )
-{
-   return unit_target != SMT_DESTINATION_FROM && unit_target != SMT_DESTINATION_FROM_VESTING;
-}
-
 bool is_contributor( const unit_target_type& unit_target )
 {
-   return !is_founder( unit_target );
+   return unit_target == SMT_DESTINATION_FROM || unit_target == SMT_DESTINATION_FROM_VESTING;
 }
 
-bool is_vesting( const unit_target_type& name )
+bool is_market_maker( const unit_target_type& unit_target )
 {
-   if ( name == SMT_DESTINATION_FROM_VESTING )
+   return unit_target == SMT_DESTINATION_MARKET_MAKER;
+}
+
+bool is_rewards( const unit_target_type& unit_target )
+{
+   return unit_target == SMT_DESTINATION_REWARDS;
+}
+
+bool is_vesting( const unit_target_type& unit_target )
+{
+   if ( unit_target == SMT_DESTINATION_FROM_VESTING )
       return true;
-   if ( name == SMT_DESTINATION_VESTING )
+   if ( unit_target == SMT_DESTINATION_VESTING )
+      return true;
+   if ( is_founder_vesting( unit_target ) )
       return true;
 
    return false;
 }
 
-account_name_type get_account( const unit_target_type& unit_target )
+bool is_founder_vesting( const unit_target_type& unit_target )
 {
-   FC_ASSERT( is_valid_account_name( unit_target ) );
-   return account_name_type( unit_target );
+   std::string unit_target_str = unit_target;
+   if ( unit_target_str.size() > std::strlen( SMT_DESTINATION_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ) )
+   {
+      auto pos = unit_target_str.find( SMT_DESTINATION_PREFIX );
+      if ( pos != std::string::npos && pos == 0 )
+      {
+         std::size_t suffix_len = std::strlen( SMT_DESTINATION_VESTING_SUFFIX );
+         if ( !unit_target_str.compare( unit_target_str.size() - suffix_len, suffix_len, SMT_DESTINATION_VESTING_SUFFIX ) )
+         {
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+account_name_type get_unit_target_account( const unit_target_type& unit_target )
+{
+   FC_ASSERT( !is_contributor( unit_target ),  "Cannot derive an account name from a contributor special destination" );
+   FC_ASSERT( !is_market_maker( unit_target ), "The market maker unit target is not a valid account." );
+   FC_ASSERT( !is_rewards( unit_target ),      "The rewards unit target is not a valid account." );
+
+   if ( is_valid_account_name( unit_target ) )
+      return account_name_type( unit_target );
+
+   // This is a special unit target destination in the form of $alice.vesting
+   FC_ASSERT( unit_target.size() > std::strlen( SMT_DESTINATION_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ),
+      "Unit target '${target}' is malformed", ("target", unit_target) );
+
+   std::string str_name = unit_target;
+   auto pos = str_name.find( SMT_DESTINATION_PREFIX );
+   FC_ASSERT( pos != std::string::npos && pos == 0, "Expected SMT destination prefix '${prefix}' for unit target '${target}'.",
+      ("prefix", SMT_DESTINATION_PREFIX)("target", unit_target) );
+
+   std::size_t suffix_len = std::strlen( SMT_DESTINATION_VESTING_SUFFIX );
+   FC_ASSERT( !str_name.compare( str_name.size() - suffix_len, suffix_len, SMT_DESTINATION_VESTING_SUFFIX ),
+      "Expected SMT destination vesting suffix '${suffix}' for unit target '${target}'.",
+         ("suffix", SMT_DESTINATION_VESTING_SUFFIX)("target", unit_target) );
+
+   account_name_type unit_target_account = str_name.substr( 1, str_name.size() - suffix_len );
+   FC_ASSERT( is_valid_account_name( unit_target_account ), "The derived unit target account name '${name}' is invalid.",
+      ("name", unit_target_account) );
+
+   return unit_target_account;
 }
 
 } // steem::chain::util::smt::generation_unit
@@ -253,8 +303,11 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.contributed.amount ) );
    }
 
-   using founder_asset_symbol_types = std::tuple< unit_target_type, asset_symbol_type >;
-   std::map< founder_asset_symbol_types, share_type > founder_payout_map;
+   using account_asset_symbol_type = std::tuple< account_name_type, asset_symbol_type >;
+   std::map< account_asset_symbol_type, share_type > account_payout_map;
+   share_type                                        market_maker_tokens = 0;
+   share_type                                        market_maker_steem  = 0;
+   share_type                                        rewards             = 0;
 
    for ( auto& effective_generation_unit_shares : generation_unit_shares )
    {
@@ -268,53 +321,74 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
       for ( auto& e : token_unit )
       {
-         if ( !smt::generation_unit::is_founder( e.first ) )
+         if ( smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto token_shares = e.second * vars.steem_units_sent * vars.unit_ratio;
 
          asset_symbol_type symbol = a;
 
-         if ( smt::generation_unit::is_vesting( e.first ) )
-            symbol = symbol.get_paired_symbol();
-
-         auto map_key = std::make_tuple( e.first, symbol );
-         if ( founder_payout_map.find ( map_key ) != founder_payout_map.end() )
-            founder_payout_map[ map_key ] += token_shares;
+         if ( smt::generation_unit::is_market_maker( e.first ) )
+         {
+            market_maker_tokens += token_shares;
+         }
+         else if ( smt::generation_unit::is_rewards( e.first ) )
+         {
+            rewards += token_shares;
+         }
          else
-            founder_payout_map[ map_key ] = token_shares;
+         {
+            if ( smt::generation_unit::is_vesting( e.first ) )
+               symbol = symbol.get_paired_symbol();
+
+            account_name_type account_name = smt::generation_unit::get_unit_target_account( e.first );
+            auto map_key = std::make_tuple( account_name, symbol );
+            if ( account_payout_map.find( map_key ) != account_payout_map.end() )
+               account_payout_map[ map_key ] += token_shares;
+            else
+               account_payout_map[ map_key ] = token_shares;
+         }
       }
 
       for ( auto& e : steem_unit )
       {
-         if ( !smt::generation_unit::is_founder( e.first ) )
+         if ( smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto steem_shares = e.second * vars.steem_units_sent;
 
          asset_symbol_type symbol = STEEM_SYMBOL;
 
-         if ( smt::generation_unit::is_vesting( e.first ) )
-            symbol = symbol.get_paired_symbol();
-
-         auto map_key = std::make_tuple( e.first, symbol );
-         if ( founder_payout_map.find ( map_key ) != founder_payout_map.end() )
-            founder_payout_map[ map_key ] += steem_shares;
+         if ( smt::generation_unit::is_market_maker( e.first ) )
+         {
+            market_maker_steem += steem_shares;
+         }
          else
-            founder_payout_map[ map_key ] = steem_shares;
+         {
+            if ( smt::generation_unit::is_vesting( e.first ) )
+               symbol = symbol.get_paired_symbol();
+
+            account_name_type account_name = smt::generation_unit::get_unit_target_account( e.first );
+            auto map_key = std::make_tuple( account_name, symbol );
+            if ( account_payout_map.count( map_key ) )
+               account_payout_map[ map_key ] += steem_shares;
+            else
+               account_payout_map[ map_key ] = steem_shares;
+         }
       }
    }
 
-   if ( founder_payout_map.size() > 0 )
+   if ( account_payout_map.size() > 0 || market_maker_steem > 0 || market_maker_tokens > 0 || rewards > 0 )
    {
       smt_founder_payout_action payout_action;
       payout_action.symbol = a;
 
-      for ( auto it = founder_payout_map.begin(); it != founder_payout_map.end(); ++it )
-      {
-         auto account_name = smt::generation_unit::get_account( std::get< 0 >( it->first ) );
-         payout_action.payouts[ account_name ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
-      }
+      for ( auto it = account_payout_map.begin(); it != account_payout_map.end(); ++it )
+         payout_action.account_payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+
+      payout_action.market_maker_tokens = market_maker_tokens;
+      payout_action.market_maker_steem  = market_maker_steem;
+      payout_action.rewards_fund = rewards;
 
       db.push_required_action( payout_action );
       action_scheduled = true;

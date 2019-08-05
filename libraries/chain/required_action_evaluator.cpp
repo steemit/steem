@@ -106,9 +106,20 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
 void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a )
 {
    using namespace steem::chain::util;
+   const auto& token = _db.get< smt_token_object, by_symbol >( a.symbol );
 
-   for ( auto& payout : a.payouts )
-      smt::ico::payout( _db, a.symbol, _db.get_account( payout.first ), payout.second );
+   for ( auto& account_payout : a.account_payouts )
+      smt::ico::payout( _db, a.symbol, _db.get_account( account_payout.first ), account_payout.second );
+
+
+   _db.modify( token, [&]( smt_token_object& o )
+   {
+      o.market_maker.token_balance = asset( a.market_maker_tokens, a.symbol );
+      o.market_maker.steem_balance = asset( a.market_maker_steem, STEEM_SYMBOL );
+      o.rewards_fund = asset( a.rewards_fund, a.symbol );
+   } );
+
+   _db.adjust_supply( asset( a.market_maker_tokens + a.rewards_fund, a.symbol ) );
 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }

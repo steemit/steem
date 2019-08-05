@@ -5470,6 +5470,13 @@ void database::validate_invariants()const
       {
          total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
       }
+
+      const auto& smt_token_idx = get_index< smt_token_index, by_id >();
+
+      for ( auto itr = smt_token_idx.begin(); itr != smt_token_idx.end(); ++itr )
+      {
+         total_supply += itr->market_maker.steem_balance;
+      }
 #endif
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
@@ -5573,8 +5580,16 @@ void database::validate_smt_invariants()const
          }
       }
 
-      // - Reward funds
-#pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
+      // - Reward funds & market maker
+      const auto& token_idx = get_index< smt_token_index, by_id >();
+      for ( auto itr = token_idx.begin(); itr != token_idx.end(); ++itr )
+      {
+         if ( itr->market_maker.token_balance.amount > 0 )
+            theMap[ itr->liquid_symbol ].liquid += itr->market_maker.token_balance;
+
+         if ( itr->rewards_fund.amount > 0 )
+            theMap[ itr->liquid_symbol ].liquid += itr->rewards_fund;
+      }
 
       // - Escrow & savings - no support of SMT is expected.
 
