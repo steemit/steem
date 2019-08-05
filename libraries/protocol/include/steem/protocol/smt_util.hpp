@@ -2,6 +2,8 @@
 #include <string>
 #include <steem/protocol/types.hpp>
 
+#ifdef STEEM_ENABLE_SMT
+
 #define SMT_DESTINATION_PREFIX         "$"
 #define SMT_DESTINATION_VESTING_SUFFIX ".vesting"
 #define SMT_DESTINATION_FROM           unit_target_type( SMT_DESTINATION_PREFIX "from" )
@@ -24,3 +26,5 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
 } // steem::protocol::utilities::smt::generation_unit
 
 } } } } // steem::protocol::utilities::smt
+
+#endif

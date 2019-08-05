@@ -1,6 +1,8 @@
 #include <steem/protocol/smt_util.hpp>
 #include <steem/protocol/authority.hpp>
 
+#ifdef STEEM_ENABLE_SMT
+
 namespace steem { namespace protocol { namespace utilities { namespace smt {
 
 namespace generation_unit {
@@ -85,3 +87,4 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
 
 } } } } // steem::protocol::utilities::smt
 
+#endif
