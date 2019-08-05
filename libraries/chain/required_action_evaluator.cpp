@@ -119,7 +119,9 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
       o.rewards_fund = asset( a.rewards_fund, a.symbol );
    } );
 
-   _db.adjust_supply( asset( a.market_maker_tokens + a.rewards_fund, a.symbol ) );
+   auto additional_token_supply = a.market_maker_tokens + a.rewards_fund;
+   if ( additional_token_supply > 0 )
+      _db.adjust_supply( asset( additional_token_supply, a.symbol ) );
 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
