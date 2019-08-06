@@ -217,7 +217,7 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
       edge_manabar.regenerate_mana( edge_manabar_params, now );
 
       // If there is a deficit in mana, only add to current mana the amount of added new mana
-      edge_manabar.current_mana += std::max( 0ll, op.drc_max_mana - edge->drc_max_mana );
+      edge_manabar.current_mana += std::max( int64_t(0), op.drc_max_mana - edge->drc_max_mana );
       // Cap current mana to the new max mana (Only happens if max mana is decreasing)
       edge_manabar.current_mana = std::min( edge_manabar.current_mana, op.drc_max_mana );
 
