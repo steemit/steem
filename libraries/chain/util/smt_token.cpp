@@ -72,10 +72,15 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace ico {
 
-void payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
+payout_results payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
 {
+   payout_results results;
+
    for ( auto& _asset : assets )
    {
+      if ( _asset.symbol == STEEM_SYMBOL || _asset.symbol == VESTS_SYMBOL )
+         results.processed_steem += _asset.amount;
+
       if ( _asset.symbol.is_vesting() )
       {
          db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
@@ -85,17 +90,10 @@ void payout( database& db, const asset_symbol_type& symbol, const account_object
          db.adjust_balance( account, _asset );
 
          if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
-            db.adjust_supply( _asset );
-      }
-
-      if ( _asset.symbol == STEEM_SYMBOL )
-      {
-         db.modify( db.get< smt_ico_object, by_symbol >( symbol ), [&]( smt_ico_object& obj )
-         {
-            obj.processed_contributions += _asset.amount;
-         } );
+            results.additional_token_supply += _asset.amount;
       }
    }
+   return results;
 }
 
 bool schedule_next_refund( database& db, const asset_symbol_type& a )
@@ -144,8 +142,6 @@ static payout_vars calculate_payout_vars( const smt_ico_object& ico, const smt_g
 
 bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a )
 {
-   using namespace steem::protocol::utilities;
-
    bool action_scheduled = false;
    auto& idx = db.get_index< smt_contribution_index, by_symbol_id >();
    auto itr = idx.lower_bound( a );
@@ -173,14 +169,14 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
       for ( auto& e : token_unit )
       {
-         if ( !protocol::utilities::smt::generation_unit::is_contributor( e.first ) )
+         if ( !utilities::smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto token_shares = e.second * vars.steem_units_sent * vars.unit_ratio;
 
          asset_symbol_type symbol = itr->symbol;
 
-         if ( protocol::utilities::smt::generation_unit::is_vesting( e.first ) )
+         if ( utilities::smt::generation_unit::is_vesting( e.first ) )
             symbol = symbol.get_paired_symbol();
 
          payout_action.payouts.push_back( asset( token_shares, symbol ) );
@@ -188,14 +184,14 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
       for ( auto& e : steem_unit )
       {
-         if ( !protocol::utilities::smt::generation_unit::is_contributor( e.first ) )
+         if ( !utilities::smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto steem_shares = e.second * vars.steem_units_sent;
 
          asset_symbol_type symbol = STEEM_SYMBOL;
 
-         if ( protocol::utilities::smt::generation_unit::is_vesting( e.first ) )
+         if ( utilities::smt::generation_unit::is_vesting( e.first ) )
             symbol = symbol.get_paired_symbol();
 
          payout_action.payouts.push_back( asset( steem_shares, symbol ) );
@@ -210,8 +206,6 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
 bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
-   using namespace steem::protocol::utilities;
-
    bool action_scheduled = false;
    const auto& ico = db.get< smt_ico_object, by_symbol >( a );
 
@@ -246,27 +240,27 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
       for ( auto& e : token_unit )
       {
-         if ( protocol::utilities::smt::generation_unit::is_contributor( e.first ) )
+         if ( utilities::smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto token_shares = e.second * vars.steem_units_sent * vars.unit_ratio;
 
-         asset_symbol_type symbol = a;
-
-         if ( protocol::utilities::smt::generation_unit::is_market_maker( e.first ) )
+         if ( utilities::smt::generation_unit::is_market_maker( e.first ) )
          {
             market_maker_tokens += token_shares;
          }
-         else if ( protocol::utilities::smt::generation_unit::is_rewards( e.first ) )
+         else if ( utilities::smt::generation_unit::is_rewards( e.first ) )
          {
             rewards += token_shares;
          }
          else
          {
-            if ( protocol::utilities::smt::generation_unit::is_vesting( e.first ) )
+            asset_symbol_type symbol = a;
+
+            if ( utilities::smt::generation_unit::is_vesting( e.first ) )
                symbol = symbol.get_paired_symbol();
 
-            account_name_type account_name = protocol::utilities::smt::generation_unit::get_unit_target_account( e.first );
+            account_name_type account_name = utilities::smt::generation_unit::get_unit_target_account( e.first );
             auto map_key = std::make_tuple( account_name, symbol );
             if ( account_payout_map.find( map_key ) != account_payout_map.end() )
                account_payout_map[ map_key ] += token_shares;
@@ -277,23 +271,23 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
       for ( auto& e : steem_unit )
       {
-         if ( protocol::utilities::smt::generation_unit::is_contributor( e.first ) )
+         if ( utilities::smt::generation_unit::is_contributor( e.first ) )
             continue;
 
          auto steem_shares = e.second * vars.steem_units_sent;
 
-         asset_symbol_type symbol = STEEM_SYMBOL;
-
-         if ( protocol::utilities::smt::generation_unit::is_market_maker( e.first ) )
+         if ( utilities::smt::generation_unit::is_market_maker( e.first ) )
          {
             market_maker_steem += steem_shares;
          }
          else
          {
-            if ( protocol::utilities::smt::generation_unit::is_vesting( e.first ) )
+            asset_symbol_type symbol = STEEM_SYMBOL;
+
+            if ( utilities::smt::generation_unit::is_vesting( e.first ) )
                symbol = symbol.get_paired_symbol();
 
-            account_name_type account_name = protocol::utilities::smt::generation_unit::get_unit_target_account( e.first );
+            account_name_type account_name = utilities::smt::generation_unit::get_unit_target_account( e.first );
             auto map_key = std::make_tuple( account_name, symbol );
             if ( account_payout_map.count( map_key ) )
                account_payout_map[ map_key ] += steem_shares;
