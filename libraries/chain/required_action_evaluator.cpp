@@ -78,11 +78,6 @@ void smt_refund_evaluator::do_apply( const smt_refund_action& a )
 
    _db.adjust_balance( a.contributor, a.refund );
 
-   _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [&]( smt_ico_object& o )
-   {
-      o.processed_contributions += a.refund.amount;
-   } );
-
    auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 

@@ -1042,7 +1042,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
             { "$george.vesting", 2 }
          },
          {
-            { "$from", 7 },
+            { "$from", 5 },
             { "$market_maker", 1 },
             { "$rewards", 2 }
          } ), /* post_soft_cap_unit */
@@ -1120,7 +1120,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 2100000000 );
       BOOST_REQUIRE( db->get_balance( "charlie", symbol ).amount == 840000000 );
       BOOST_REQUIRE( db->get_balance( "dan", symbol ).amount == 2100000000 );
-      BOOST_REQUIRE( db->get_balance( "elaine", symbol ).amount == 5040000000 );
+      BOOST_REQUIRE( db->get_balance( "elaine", symbol ).amount == 4440000000 );
       BOOST_REQUIRE( db->get_balance( "fred", symbol ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 0 );
