@@ -294,8 +294,7 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
          get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit()/*post_soft_cap_unit*/,
-         STEEM_100_PERCENT/*soft_cap_percent*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/
       );
@@ -388,38 +387,35 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = 0;
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = STEEM_100_PERCENT + 1;
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = STEEM_100_PERCENT;
       gp.post_soft_cap_unit.steem_unit = { { "bob", 2 } };
       gp.post_soft_cap_unit.token_unit = {};
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = STEEM_100_PERCENT;
       gp.post_soft_cap_unit.steem_unit = {};
       gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = STEEM_100_PERCENT / 2;
       gp.post_soft_cap_unit.steem_unit = {};
       gp.post_soft_cap_unit.token_unit = {};
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      gp.soft_cap_percent = STEEM_100_PERCENT;
       gp.post_soft_cap_unit.steem_unit = {};
       gp.post_soft_cap_unit.token_unit = {};
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
+      gp.post_soft_cap_unit.steem_unit = { { "alice", 3 } };
+      gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
+      op.initial_generation_policy = gp;
       op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
       op.validate();
@@ -434,7 +430,6 @@ BOOST_AUTO_TEST_CASE( setup_validate )
 
       smt_capped_generation_policy gp_valid = gp;
 
-      gp.soft_cap_percent = 1;
       gp.post_soft_cap_unit.steem_unit = { { "bob", 2 } };
       op.initial_generation_policy = gp;
       op.validate();
@@ -446,7 +441,6 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       uint16_t max_val_16 = std::numeric_limits<uint16_t>::max();
       uint32_t max_val_32 = std::numeric_limits<uint32_t>::max();
 
-      gp.soft_cap_percent = STEEM_100_PERCENT - 1;
       gp.min_unit_ratio = max_val_32;
       gp.post_soft_cap_unit.steem_unit = { { "abc", 1 } };
       gp.post_soft_cap_unit.token_unit = { { "abc1", max_val_16 } };
@@ -509,8 +503,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
          get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit()/*post_soft_cap_unit*/,
-         STEEM_100_PERCENT/*soft_cap_percent*/,
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
          1/*min_unit_ratio*/,
          2/*max_unit_ratio*/
       );

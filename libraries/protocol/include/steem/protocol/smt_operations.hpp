@@ -15,7 +15,6 @@
 
 namespace steem { namespace protocol {
 
-
 /**
  * This operation introduces new SMT into blockchain as identified by
  * Numerical Asset Identifier (NAI). Also the SMT precision (decimal points)
@@ -41,8 +40,8 @@ struct smt_create_operation : public base_operation
 
 struct smt_generation_unit
 {
-   flat_map< account_name_type, uint16_t >        steem_unit;
-   flat_map< account_name_type, uint16_t >        token_unit;
+   flat_map< unit_target_type, uint16_t > steem_unit;
+   flat_map< unit_target_type, uint16_t > token_unit;
 
    uint32_t steem_unit_sum()const;
    uint32_t token_unit_sum()const;
@@ -54,8 +53,6 @@ struct smt_capped_generation_policy
 {
    smt_generation_unit pre_soft_cap_unit;
    smt_generation_unit post_soft_cap_unit;
-
-   uint16_t            soft_cap_percent = 0;
 
    uint32_t            min_unit_ratio = 0;
    uint32_t            max_unit_ratio = 0;
@@ -82,6 +79,7 @@ struct smt_setup_operation : public base_operation
    time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
+   share_type              steem_units_min;
    share_type              steem_units_soft_cap;
    share_type              steem_units_hard_cap;
 
@@ -95,7 +93,7 @@ struct smt_setup_operation : public base_operation
 
 struct smt_emissions_unit
 {
-   flat_map< account_name_type, uint16_t >        token_unit;
+   flat_map< unit_target_type, uint16_t > token_unit;
 };
 
 struct smt_setup_emissions_operation : public base_operation
@@ -243,7 +241,6 @@ FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
-   (soft_cap_percent)
    (min_unit_ratio)
    (max_unit_ratio)
    (extensions)

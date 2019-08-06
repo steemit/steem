@@ -94,7 +94,7 @@ enum object_type
    nai_pool_object_type,
    smt_token_emissions_object_type,
    smt_contribution_object_type,
-   smt_ico_object_type,
+   smt_ico_object_type
 #endif
 };
 
