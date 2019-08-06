@@ -72,15 +72,12 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace ico {
 
-payout_results payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
+share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
 {
-   payout_results results;
+   share_type additional_token_supply = 0;
 
    for ( auto& _asset : assets )
    {
-      if ( _asset.symbol == STEEM_SYMBOL || _asset.symbol == VESTS_SYMBOL )
-         results.processed_steem += _asset.amount;
-
       if ( _asset.symbol.is_vesting() )
       {
          db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
@@ -90,10 +87,11 @@ payout_results payout( database& db, const asset_symbol_type& symbol, const acco
          db.adjust_balance( account, _asset );
 
          if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
-            results.additional_token_supply += _asset.amount;
+            additional_token_supply += _asset.amount;
       }
    }
-   return results;
+
+   return additional_token_supply;
 }
 
 bool schedule_next_refund( database& db, const asset_symbol_type& a )
@@ -117,7 +115,8 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a )
    return action_scheduled;
 }
 
-struct payout_vars {
+struct payout_vars
+{
    share_type steem_units_sent;
    share_type unit_ratio;
 };
@@ -196,6 +195,11 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
          payout_action.payouts.push_back( asset( steem_shares, symbol ) );
       }
+
+      db.modify( ico, [&]( smt_ico_object& ico )
+      {
+         ico.processed_contributions += itr->contribution.amount;
+      } );
 
       db.push_required_action( payout_action );
       action_scheduled = true;

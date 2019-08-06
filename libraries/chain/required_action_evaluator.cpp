@@ -94,23 +94,10 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
 {
    using namespace steem::chain::util;
 
-   share_type additional_token_supply = 0;
-   share_type processed_steem         = 0;
-
-   auto results = smt::ico::payout( _db, a.symbol, _db.get_account( a.contributor ), a.payouts );
-   additional_token_supply += results.additional_token_supply;
-   processed_steem += results.processed_steem;
+   share_type additional_token_supply = smt::ico::payout( _db, a.symbol, _db.get_account( a.contributor ), a.payouts );
 
    if ( additional_token_supply > 0 )
       _db.adjust_supply( asset( additional_token_supply, a.symbol ) );
-
-   if ( processed_steem > 0 )
-   {
-      _db.modify( _db.get< smt_ico_object, by_symbol >( a.symbol ), [processed_steem]( smt_ico_object& obj )
-      {
-         obj.processed_contributions += processed_steem;
-      } );
-   }
 
    auto key = boost::make_tuple( a.symbol, a.contributor, a.contribution_id );
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
@@ -126,14 +113,9 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    const auto& token = _db.get< smt_token_object, by_symbol >( a.symbol );
 
    share_type additional_token_supply = 0;
-   share_type processed_steem         = 0;
 
    for ( auto& account_payout : a.account_payouts )
-   {
-      auto results = smt::ico::payout( _db, token.liquid_symbol, _db.get_account( account_payout.first ), account_payout.second );
-      additional_token_supply += results.additional_token_supply;
-      processed_steem += results.processed_steem;
-   }
+      additional_token_supply += smt::ico::payout( _db, token.liquid_symbol, _db.get_account( account_payout.first ), account_payout.second );
 
    _db.modify( token, [&]( smt_token_object& o )
    {
@@ -145,18 +127,8 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    additional_token_supply += a.market_maker_tokens;
    additional_token_supply += a.rewards_fund;
 
-   processed_steem += a.market_maker_steem;
-
    if ( additional_token_supply > 0 )
       _db.adjust_supply( asset( additional_token_supply, a.symbol ) );
-
-   if ( processed_steem > 0 )
-   {
-      _db.modify( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ), [processed_steem]( smt_ico_object& obj )
-      {
-         obj.processed_contributions += processed_steem;
-      } );
-   }
 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
