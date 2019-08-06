@@ -89,6 +89,12 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
+   enum open_flags
+   {
+      skip_nothing               = 0,
+      skip_env_check             = 1 << 0 // Skip environment check on db open
+   };
+
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -733,13 +739,7 @@ namespace chainbase {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
          }
 
-         virtual void     set_revision( int64_t revision ) override
-         {
-#ifdef ENABLE_MIRA
-            _base.set_revision( revision );
-#endif
-         }
-
+         virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
          virtual int64_t  revision()const  override { return _base.revision(); }
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
