@@ -129,7 +129,10 @@ struct smt_setup_evaluator_visitor
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      capped_generation_policy.validate();
+      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.steem_unit );
+      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.token_unit );
+      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.steem_unit );
+      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.token_unit );
 
       _db.modify( _ico, [&]( smt_ico_object& ico )
       {
@@ -141,21 +144,18 @@ struct smt_setup_evaluator_visitor
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-#pragma message ("TODO: Adjust assertion below and add/modify negative tests appropriately.")
-   const auto* _token = _db.find< smt_token_object, by_symbol >( o.symbol );
-   FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
 
-   _db.modify(  *_token, [&]( smt_token_object& token )
+   const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
+
+   _db.modify( _token, [&]( smt_token_object& token )
    {
-#pragma message ("TODO: Add/modify test to check the token phase correctly set.")
       token.phase = smt_phase::setup_completed;
-      token.control_account = o.control_account;
       token.max_supply = o.max_supply;
    } );
 
    const auto& token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
-      token_ico_obj.symbol = _token->liquid_symbol;
+      token_ico_obj.symbol = _token.liquid_symbol;
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
@@ -168,8 +168,8 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    o.initial_generation_policy.visit( visitor );
 
    smt_ico_launch_action ico_launch_action;
-   ico_launch_action.control_account = _token->control_account;
-   ico_launch_action.symbol = _token->liquid_symbol;
+   ico_launch_action.control_account = _token.control_account;
+   ico_launch_action.symbol = _token.liquid_symbol;
    _db.push_required_action( ico_launch_action, o.contribution_begin_time );
 }
 

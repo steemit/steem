@@ -8,6 +8,7 @@
 
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
@@ -1728,7 +1729,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       smt_setup_emissions_operation op1;
       op1.control_account = "alice";
       op1.symbol = alice_symbol;
-      op1.emissions_unit.token_unit[ "alice" ] = 10;
+      op1.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op1.schedule_time = db->head_block_time() + fc::days(30);
       op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op1.interval_count = 1;
@@ -1740,7 +1741,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op2.schedule_time = op1.schedule_time + fc::days( 365 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 10;
@@ -1942,7 +1943,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
 
@@ -1995,10 +1996,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.emissions_unit.token_unit[ "@@@@" ] = 10;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.emissions_unit.token_unit.clear();
-      op.emissions_unit.token_unit[ "alice" ] = 1;
-      op.emissions_unit.token_unit[ "$rewards" ] = 1;
-      op.emissions_unit.token_unit[ "$market_maker" ] = 1;
-      op.emissions_unit.token_unit[ "$vesting" ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] = 1;
 
       BOOST_TEST_MESSAGE( " -- Invalid schedule time" );
       op.schedule_time = STEEM_GENESIS_TIME;
@@ -2089,7 +2089,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
@@ -2121,7 +2121,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 5;
@@ -2140,7 +2140,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op3;
       op3.control_account = "alice";
       op3.symbol = alice_symbol;
-      op3.emissions_unit.token_unit[ "alice" ] = 10;
+      op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op3.interval_count = SMT_EMIT_INDEFINITELY;
@@ -2161,7 +2161,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op4;
       op4.control_account = "alice";
       op4.symbol = alice_symbol;
-      op4.emissions_unit.token_unit[ "alice" ] = 10;
+      op4.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op4.schedule_time = op3.schedule_time + fc::days( 365 );
       op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op4.interval_count = 10;

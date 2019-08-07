@@ -415,6 +415,8 @@ BOOST_AUTO_TEST_CASE( setup_validate )
 
       gp.post_soft_cap_unit.steem_unit = { { "alice", 3 } };
       gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
+      gp.pre_soft_cap_unit.steem_unit = { { "alice", 3 } };
+      gp.pre_soft_cap_unit.token_unit = { { "alice", 3 } };
       op.initial_generation_policy = gp;
       op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
@@ -486,7 +488,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
 {
    try
    {
-      ACTORS( (alice)(bob) )
+      ACTORS( (alice)(bob)(xyz)(xyz2) )
 
       generate_block();
 

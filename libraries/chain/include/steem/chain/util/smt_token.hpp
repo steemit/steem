@@ -14,6 +14,12 @@ const smt_token_object* find_token( const database& db, asset_symbol_type symbol
 const smt_token_emissions_object* last_emission( const database& db, const asset_symbol_type& symbol );
 fc::optional< time_point_sec > last_emission_time( const database& db, const asset_symbol_type& symbol );
 
+namespace unit_target {
+
+void verify_accounts( database& db, const flat_map< unit_target_type, uint16_t >& units );
+
+} // steem::chain::util::smt::unit_target
+
 namespace ico {
 
 bool schedule_next_refund( database& db, const asset_symbol_type& a );

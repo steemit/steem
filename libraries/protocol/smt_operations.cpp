@@ -28,26 +28,55 @@ bool is_valid_unit_target( const unit_target_type& unit_target )
    using namespace utilities;
    if ( is_valid_account_name( unit_target ) )
       return true;
-   if ( smt::generation_unit::is_contributor( unit_target ) )
+   if ( smt::unit_target::is_contributor( unit_target ) )
       return true;
-   if ( smt::generation_unit::is_market_maker( unit_target ) )
+   if ( smt::unit_target::is_market_maker( unit_target ) )
       return true;
-   if ( smt::generation_unit::is_rewards( unit_target ) )
+   if ( smt::unit_target::is_rewards( unit_target ) )
       return true;
-   if ( smt::generation_unit::is_founder_vesting( unit_target ) )
+   if ( smt::unit_target::is_vesting( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_founder_vesting( unit_target ) )
       return true;
    return false;
 }
 
-bool is_valid_smt_emissions_unit_destination( const unit_target_type& name )
+bool is_valid_smt_ico_steem_destination( const unit_target_type& unit_target )
 {
-   if ( is_valid_account_name( name ) )
+   using namespace utilities;
+   if ( is_valid_account_name( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_REWARDS )
+   if ( smt::unit_target::is_market_maker( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_VESTING )
+   if ( smt::unit_target::is_founder_vesting( unit_target ) )
       return true;
-   if ( name == SMT_DESTINATION_MARKET_MAKER )
+   return false;
+}
+
+bool is_valid_smt_ico_token_destination( const unit_target_type& unit_target )
+{
+   using namespace utilities;
+   if ( is_valid_account_name( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_contributor( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_rewards( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_market_maker( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_founder_vesting( unit_target ) )
+      return true;
+   return false;
+}
+
+bool is_valid_smt_emissions_unit_destination( const unit_target_type& unit_target )
+{
+   using namespace utilities;
+   if ( smt::unit_target::is_market_maker( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_rewards( unit_target ) )
+      return true;
+   if ( smt::unit_target::is_vesting( unit_target ) )
       return true;
    return false;
 }
@@ -94,9 +123,25 @@ void smt_capped_generation_policy::validate()const
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 
+   for ( auto& unit : pre_soft_cap_unit.steem_unit )
+      FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
+         "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
+
+   for ( auto& unit : pre_soft_cap_unit.token_unit )
+      FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
+         "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
+
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
+
+   for ( auto& unit : post_soft_cap_unit.steem_unit )
+      FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
+         "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
+
+   for ( auto& unit : post_soft_cap_unit.token_unit )
+      FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
+         "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
 }
 
 struct validate_visitor
