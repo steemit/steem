@@ -977,6 +977,8 @@ struct post_apply_operation_visitor
    void operator()( const withdraw_vesting_operation& op )const
    {
       _mod_accounts.emplace_back( op.account, false );
+
+      update_outdel_overflow( op.account, op.vesting_shares );
    }
 
    void operator()( const delegate_vesting_shares_operation& op )const
@@ -1008,6 +1010,8 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.emplace_back( op.from_account );
       _mod_accounts.emplace_back( op.to_account );
+
+      update_outdel_overflow( op.from_account, op.withdrawn );
    }
 
    void operator()( const claim_reward_balance_operation& op )const
