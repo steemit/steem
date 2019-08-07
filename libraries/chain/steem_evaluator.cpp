@@ -2211,7 +2211,7 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
    database& d = db();
 
-   ilog( "custom_json_evaluator   is_producing = ${p}    operation = ${o}", ("p", d.is_producing())("o", o) );
+   // ilog( "custom_json_evaluator   is_producing = ${p}    operation = ${o}", ("p", d.is_producing())("o", o) );
 
    if( d.is_producing() )
       FC_ASSERT( o.json.length() <= STEEM_CUSTOM_OP_DATA_MAX_LENGTH,
@@ -2227,7 +2227,7 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
    {
-      ilog( "Accepting, no evaluator registered" );
+      // ilog( "Accepting, no evaluator registered" );
       return;
    }
 
@@ -2239,14 +2239,14 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    {
       if( d.is_producing() )
       {
-         ilog( "Re-throwing exception ${e}", ("e", e) );
+         // ilog( "Re-throwing exception ${e}", ("e", e) );
          throw e;
       }
-      ilog( "Suppressing exception ${e}", ("e", e) );
+      // ilog( "Suppressing exception ${e}", ("e", e) );
    }
    catch(...)
    {
-      elog( "Unexpected exception applying custom json evaluator." );
+      // elog( "Unexpected exception applying custom json evaluator." );
    }
 }
 

@@ -187,6 +187,8 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
 
 void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_operation& op )
 {
+   if( !_db.has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    const auto& to_rca = _db.get< rc_account_object, by_name >( op.to_account );
 
    FC_ASSERT( to_rca.indel_slots[ op.to_slot ] == op.from_pool, "Pool cannot delegate RC to slot ${n}. Expected: ${e} Was: ${w}",
@@ -259,6 +261,8 @@ void delegate_drc_from_pool_evaluator::do_apply( const delegate_drc_from_pool_op
 
 void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation& op )
 {
+   if( !_db.has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    const auto& to_account = _db.get_account( op.to_account );
    const auto& from_account = _db.get_account( op.from_pool );
    const auto& signer = _db.get_account( op.signer );
