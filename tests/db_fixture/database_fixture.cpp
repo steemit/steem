@@ -822,7 +822,6 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
 )
@@ -831,8 +830,6 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
 
    ret.pre_soft_cap_unit = pre_soft_cap_unit;
    ret.post_soft_cap_unit = post_soft_cap_unit;
-
-   ret.soft_cap_percent = soft_cap_percent;
 
    ret.min_unit_ratio = min_unit_ratio;
    ret.max_unit_ratio = max_unit_ratio;
@@ -853,7 +850,6 @@ template smt_capped_generation_policy t_smt_database_fixture< clean_database_fix
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
 );

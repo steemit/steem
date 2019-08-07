@@ -2377,6 +2377,82 @@ BOOST_AUTO_TEST_CASE( custom_json_authorities )
    BOOST_REQUIRE( auths == expected );
 }
 
+BOOST_AUTO_TEST_CASE( custom_json_rate_limit )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: custom_json_rate_limit" );
+
+      ACTORS( (alice)(bob)(sam) )
+
+      BOOST_TEST_MESSAGE( "--- Testing 5 custom json ops as separate transactions" );
+
+      custom_json_operation op;
+      signed_transaction tx;
+      op.required_posting_auths.insert( "alice" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+
+      for( int i = 0; i < 5; i++ )
+      {
+         op.json = fc::to_string( i );
+         tx.clear();
+         tx.operations.push_back( op );
+         sign( tx, alice_private_key );
+         db->push_transaction( tx, 0 );
+      }
+
+
+      BOOST_TEST_MESSAGE( "--- Testing failure pushing 6th custom json op tx" );
+
+      op.json = "toomany";
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), plugin_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing 5 custom json ops in one transaction" );
+      tx.clear();
+      op.json = "foobar";
+      op.required_posting_auths.clear();
+      op.required_posting_auths.insert( "bob" );
+
+      for( int i = 0; i < 5; i++ )
+      {
+         tx.operations.push_back( op );
+      }
+
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing failure pushing 6th custom json op tx" );
+
+      op.json = "toomany";
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), plugin_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing failure of 6 custom json ops in one transaction" );
+      tx.clear();
+      op.required_posting_auths.clear();
+      op.required_posting_auths.insert( "sam" );
+
+      for( int i = 0; i < 6; i++ )
+      {
+         tx.operations.push_back( op );
+      }
+
+      sign( tx, sam_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), plugin_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( custom_binary_authorities )
 {
    ACTORS( (alice) )

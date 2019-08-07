@@ -62,6 +62,8 @@ class rc_plugin_impl
       void on_post_apply_transaction( const transaction_notification& note );
       void on_pre_apply_operation( const operation_notification& note );
       void on_post_apply_operation( const operation_notification& note );
+      void on_pre_apply_required_action( const required_action_notification& note );
+      void on_post_apply_required_action( const required_action_notification& note );
       void on_pre_apply_optional_action( const optional_action_notification& note );
       void on_post_apply_optional_action( const optional_action_notification& note );
       void on_pre_apply_custom_operation( const custom_operation_notification& note );
@@ -101,6 +103,8 @@ class rc_plugin_impl
       boost::signals2::connection   _post_apply_transaction_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
+      boost::signals2::connection   _pre_apply_required_action_conn;
+      boost::signals2::connection   _post_apply_required_action_conn;
       boost::signals2::connection   _pre_apply_optional_action_conn;
       boost::signals2::connection   _post_apply_optional_action_conn;
       boost::signals2::connection   _pre_apply_custom_operation_conn;
@@ -741,6 +745,17 @@ struct pre_apply_operation_visitor
    {
       regenerate( op.account );
    }
+
+   void operator()( const smt_contributor_payout_action& op )const
+   {
+      regenerate( op.contributor );
+   }
+
+   void operator()( const smt_founder_payout_action& op )const
+   {
+      for ( auto& e : op.account_payouts )
+         regenerate( e.first );
+   }
 #endif
 
    void operator()( const hardfork_operation& op )const
@@ -1005,6 +1020,17 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.emplace_back( op.account );
    }
+
+   void operator()( const smt_contributor_payout_action& op )const
+   {
+      _mod_accounts.emplace_back( op.contributor );
+   }
+
+   void operator()( const smt_founder_payout_action& op )const
+   {
+      for ( auto& e : op.account_payouts )
+         _mod_accounts.emplace_back( e.first );
+   }
 #endif
 
    void operator()( const hardfork_operation& op )const
@@ -1084,7 +1110,24 @@ struct post_apply_operation_visitor
 
 typedef post_apply_operation_visitor post_apply_optional_action_visitor;
 
+void rc_plugin_impl::on_pre_apply_required_action( const required_action_notification& note )
+{
+   if( before_first_block() )
+      return;
 
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   pre_apply_operation_visitor vtor( _db );
+
+   // TODO: Add issue number to HF constant
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+      vtor._vesting_share_price = gpo.get_vesting_share_price();
+
+   vtor._current_witness = gpo.current_witness;
+   vtor._skip = _skip;
+
+   // ilog( "Calling pre-vtor on ${op}", ("op", note.op) );
+   note.action.visit( vtor );
+}
 
 void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
@@ -1148,6 +1191,23 @@ void update_modified_accounts( database& db, const std::vector< account_regen_in
          rca.rc_manabar.current_mana += std::max( drc, int64_t( 0 ) );
       } );
    }
+}
+
+void rc_plugin_impl::on_post_apply_required_action( const required_action_notification& note )
+{
+   if( before_first_block() )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   const uint32_t now = gpo.time.sec_since_epoch();
+
+   vector< account_regen_info > modified_accounts;
+
+   // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   note.action.visit( vtor );
+
+   update_modified_accounts( _db, modified_accounts );
 }
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
@@ -1276,7 +1336,6 @@ void rc_plugin_impl::validate_database()
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
       int64_t max_rc = get_maximum_rc( account, rc_account );
 
-      assert( max_rc == rc_account.last_max_rc );
       FC_ASSERT( max_rc == rc_account.last_max_rc,
          "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
          ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
@@ -1336,6 +1395,10 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
          { try { my->on_pre_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note )
          { try { my->on_post_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_pre_apply_required_action_conn = db.add_pre_apply_required_action_handler( [&]( const required_action_notification& note )
+         { try { my->on_pre_apply_required_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_post_apply_required_action_conn = db.add_post_apply_required_action_handler( [&]( const required_action_notification& note )
+         { try { my->on_post_apply_required_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_pre_apply_optional_action_conn = db.add_pre_apply_optional_action_handler( [&]( const optional_action_notification& note )
          { try { my->on_pre_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )

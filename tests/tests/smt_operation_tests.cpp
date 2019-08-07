@@ -2113,7 +2113,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
       db->modify( *smt_token, [&] ( smt_token_object& obj )
       {
-         obj.phase = smt_phase::account_elevated;
+         obj.phase = smt_phase::setup;
       } );
       PUSH_OP( op, alice_private_key );
 
@@ -2847,7 +2847,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          const smt_token_object *token = util::smt::find_token( db, alice_symbol );
          db.modify( *token, [&]( smt_token_object& o )
          {
-            o.phase = smt_phase::contribution_begin_time_completed;
+            o.phase = smt_phase::ico;
          } );
       } );
 
@@ -2934,7 +2934,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          const smt_token_object *token = util::smt::find_token( db, alice_symbol );
          db.modify( *token, [&]( smt_token_object& o )
          {
-            o.phase = smt_phase::contribution_end_time_completed;
+            o.phase = smt_phase::ico_completed;
          } );
       } );
 

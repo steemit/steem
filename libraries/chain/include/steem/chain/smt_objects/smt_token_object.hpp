@@ -12,12 +12,12 @@ using protocol::curve_id;
 
 enum class smt_phase : uint8_t
 {
-   account_elevated,
+   setup,
    setup_completed,
-   contribution_begin_time_completed,
-   contribution_end_time_completed,
-   launch_failed,                      /// launch window closed with either not enough contributions or some cap not revealed
-   launch_success                      /// enough contributions were declared and caps revealed before launch windows closed
+   ico,
+   ico_completed,
+   launch_failed,
+   launch_success
 };
 
 /**Note that the object represents both liquid and vesting variant of SMT.
@@ -80,13 +80,13 @@ public:
     */
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
-   smt_phase            phase = smt_phase::account_elevated;
-
+   smt_phase            phase = smt_phase::setup;
    share_type           current_supply = 0;
    share_type           total_vesting_fund_smt = 0;
    share_type           total_vesting_shares = 0;
    share_type           pending_rewarded_vesting_shares = 0;
    share_type           pending_rewarded_vesting_smt = 0;
+   asset                rewards_fund;
 
    smt_market_maker_state  market_maker;
 
@@ -131,7 +131,9 @@ public:
    time_point_sec                launch_time;
    share_type                    steem_units_soft_cap = -1;
    share_type                    steem_units_hard_cap = -1;
+   share_type                    steem_units_min      = -1;
    asset                         contributed = asset( 0, STEEM_SYMBOL );
+   share_type                    processed_contributions = 0;
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
@@ -265,10 +267,10 @@ typedef multi_index_container <
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_phase,
-                  (account_elevated)
+                  (setup)
                   (setup_completed)
-                  (contribution_begin_time_completed)
-                  (contribution_end_time_completed)
+                  (ico)
+                  (ico_completed)
                   (launch_failed)
                   (launch_success)
 )
@@ -289,6 +291,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (total_vesting_shares)
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
+   (rewards_fund)
    (allow_downvotes)
    (market_maker)
    (allow_voting)
@@ -312,7 +315,9 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (launch_time)
    (steem_units_soft_cap)
    (steem_units_hard_cap)
+   (steem_units_min)
    (contributed)
+   (processed_contributions)
 )
 
 FC_REFLECT( steem::chain::smt_token_emissions_object,

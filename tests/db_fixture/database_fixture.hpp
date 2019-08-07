@@ -293,7 +293,7 @@ struct live_database_fixture : public database_fixture
 template< typename T >
 struct t_smt_database_fixture : public T
 {
-   using units = flat_map< account_name_type, uint16_t >;
+   using units = flat_map< unit_target_type, uint16_t >;
 
    using database_fixture::set_price_feed;
    using database_fixture::fund;
@@ -320,7 +320,6 @@ struct t_smt_database_fixture : public T
    (
       const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
       const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
-      uint16_t soft_cap_percent = 0,
       uint32_t min_unit_ratio = 0,
       uint32_t max_unit_ratio = 0
    );

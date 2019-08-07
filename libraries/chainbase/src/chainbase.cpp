@@ -24,6 +24,16 @@ namespace chainbase {
             ==  std::make_tuple( b.compiler_version, b.debug, b.apple, b.windows );
       }
 
+      environment_check& operator = ( const environment_check& other )
+      {
+         compiler_version = other.compiler_version;
+         debug = other.debug;
+         apple = other.apple;
+         windows = other.windows;
+
+         return *this;
+      }
+
       boost::array<char,256>  compiler_version;
       bool                    debug = false;
       bool                    apple = false;
@@ -58,8 +68,23 @@ namespace chainbase {
                                                        ) );
 
          auto env = _segment->find< environment_check >( "environment" );
-         if( !env.first || !( *env.first == environment_check()) ) {
-            BOOST_THROW_EXCEPTION( std::runtime_error( "database created by a different compiler, build, or operating system" ) );
+
+         if( flags & skip_env_check )
+         {
+            if( !env.first )
+            {
+               _segment->construct< environment_check >( "environment" )();
+            }
+            else
+            {
+               *env.first = environment_check();
+            }
+         }
+         else
+         {
+            if( !env.first || !( *env.first == environment_check()) ) {
+               BOOST_THROW_EXCEPTION( std::runtime_error( "database created by a different compiler, build, or operating system" ) );
+            }
          }
       } else {
          _file_size = shared_file_size;

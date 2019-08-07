@@ -1,28 +1,16 @@
 
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/validation.hpp>
+#include <steem/protocol/smt_util.hpp>
 #ifdef STEEM_ENABLE_SMT
 
-#define SMT_DESTINATION_FROM          account_name_type( "$from" )
-#define SMT_DESTINATION_FROM_VESTING  account_name_type( "$from.vesting" )
-#define SMT_DESTINATION_MARKET_MAKER  account_name_type( "$market_maker" )
-#define SMT_DESTINATION_REWARDS       account_name_type( "$rewards" )
-#define SMT_DESTINATION_VESTING       account_name_type( "$vesting" )
-
 namespace steem { namespace protocol {
-
-void common_symbol_validation( const asset_symbol_type& symbol )
-{
-   symbol.validate();
-   FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
-   FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
-}
 
 template < class Operation >
 void smt_admin_operation_validate( const Operation& o )
 {
    validate_account_name( o.control_account );
-   common_symbol_validation( o.symbol );
+   validate_smt_symbol( o.symbol );
 }
 
 void smt_create_operation::validate()const
@@ -35,18 +23,23 @@ void smt_create_operation::validate()const
       ("prec1",symbol.decimals())("prec2",precision) );
 }
 
-bool is_valid_unit_target( const account_name_type& name )
+bool is_valid_unit_target( const unit_target_type& unit_target )
 {
-   if( is_valid_account_name(name) )
+   using namespace utilities;
+   if ( is_valid_account_name( unit_target ) )
       return true;
-   if( name == account_name_type("$from") )
+   if ( smt::generation_unit::is_contributor( unit_target ) )
       return true;
-   if( name == account_name_type("$from.vesting") )
+   if ( smt::generation_unit::is_market_maker( unit_target ) )
+      return true;
+   if ( smt::generation_unit::is_rewards( unit_target ) )
+      return true;
+   if ( smt::generation_unit::is_founder_vesting( unit_target ) )
       return true;
    return false;
 }
 
-bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
+bool is_valid_smt_emissions_unit_destination( const unit_target_type& name )
 {
    if ( is_valid_account_name( name ) )
       return true;
@@ -62,7 +55,7 @@ bool is_valid_smt_emissions_unit_destination( const account_name_type& name )
 uint32_t smt_generation_unit::steem_unit_sum()const
 {
    uint32_t result = 0;
-   for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : steem_unit )
       result += e.second;
    return result;
 }
@@ -70,7 +63,7 @@ uint32_t smt_generation_unit::steem_unit_sum()const
 uint32_t smt_generation_unit::token_unit_sum()const
 {
    uint32_t result = 0;
-   for(const std::pair< account_name_type, uint16_t >& e : token_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : token_unit )
       result += e.second;
    return result;
 }
@@ -78,13 +71,13 @@ uint32_t smt_generation_unit::token_unit_sum()const
 void smt_generation_unit::validate()const
 {
    FC_ASSERT( steem_unit.size() <= SMT_MAX_UNIT_ROUTES );
-   for(const std::pair< account_name_type, uint16_t >& e : steem_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : steem_unit )
    {
       FC_ASSERT( is_valid_unit_target( e.first ) );
       FC_ASSERT( e.second > 0 );
    }
    FC_ASSERT( token_unit.size() <= SMT_MAX_UNIT_ROUTES );
-   for(const std::pair< account_name_type, uint16_t >& e : token_unit )
+   for(const std::pair< unit_target_type, uint16_t >& e : token_unit )
    {
       FC_ASSERT( is_valid_unit_target( e.first ) );
       FC_ASSERT( e.second > 0 );
@@ -96,28 +89,14 @@ void smt_capped_generation_policy::validate()const
    pre_soft_cap_unit.validate();
    post_soft_cap_unit.validate();
 
-   FC_ASSERT( soft_cap_percent > 0 );
-   FC_ASSERT( soft_cap_percent <= STEEM_100_PERCENT );
-
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() > 0 );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() > 0 );
-
    FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
+
+   FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
    FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-
-   // TODO : Check account name
-
-   if( soft_cap_percent == STEEM_100_PERCENT )
-   {
-      FC_ASSERT( post_soft_cap_unit.steem_unit.size() == 0 );
-      FC_ASSERT( post_soft_cap_unit.token_unit.size() == 0 );
-   }
-   else
-   {
-      FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
-   }
 }
 
 struct validate_visitor
@@ -193,6 +172,8 @@ void smt_setup_operation::validate()const
    FC_ASSERT( steem_units_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS, "Steem units soft cap must be greater than or equal to ${n}", ("n", SMT_MIN_SOFT_CAP_STEEM_UNITS) );
    FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS, "Steem units hard cap must be greater than or equal to ${n}", ("n", SMT_MIN_HARD_CAP_STEEM_UNITS) );
    FC_ASSERT( steem_units_hard_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units hard cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
+   FC_ASSERT( steem_units_min >= 0, "Steem units min must be greater than or equal to 0" );
+   FC_ASSERT( steem_units_min <= steem_units_soft_cap, "Steem units min must be less than or equal to the steem units soft cap" );
 
    validate_visitor vtor;
    initial_generation_policy.visit( vtor );
@@ -297,7 +278,7 @@ void smt_set_setup_parameters_operation::validate() const
 void smt_contribute_operation::validate() const
 {
    validate_account_name( contributor );
-   common_symbol_validation( symbol );
+   validate_smt_symbol( symbol );
    FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contributions must be made in STEEM" );
    FC_ASSERT( contribution.amount > 0, "Contribution amount must be greater than 0" );
 }

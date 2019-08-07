@@ -64,6 +64,8 @@ void maybe_cleanup_rc_pool( const rc_delegation_pool_object& pool, database& db 
 
 void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op )
 {
+   if( !_db.has_hardfork( STEEM_SMT_HARDFORK ) ) return;
+
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    uint32_t now = gpo.time.sec_since_epoch();
    const rc_account_object& from_rc_account = _db.get< rc_account_object, by_name >( op.from_account );

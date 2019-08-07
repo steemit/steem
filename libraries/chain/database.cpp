@@ -30,6 +30,7 @@
 #include <steem/chain/util/rd_setup.hpp>
 #include <steem/chain/util/nai_generator.hpp>
 #include <steem/chain/util/sps_processor.hpp>
+#include <steem/chain/util/smt_token.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -138,10 +139,18 @@ void database::open( const open_args& args )
 #ifndef ENABLE_MIRA
          undo_all();
 #endif
-         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
-            ("rev", revision())("head_block", head_block_num()) );
-         if (args.do_validate_invariants)
-            validate_invariants();
+
+         if( args.chainbase_flags & chainbase::skip_env_check )
+         {
+            set_revision( head_block_num() );
+         }
+         else
+         {
+            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num.",
+               ("rev", revision())("head_block", head_block_num()) );
+            if (args.do_validate_invariants)
+               validate_invariants();
+         }
       });
 
       if( head_block_num() )
@@ -1014,16 +1023,19 @@ void database::push_required_action( const required_automated_action& a, time_po
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
-   create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+   if ( !is_pending_tx() )
    {
-      pending_action.action = a;
-      pending_action.execution_time = execution_time;
-   });
+      create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
+      {
+         pending_action.action = a;
+         pending_action.execution_time = execution_time;
+      } );
+   }
 }
 
 void database::push_required_action( const required_automated_action& a )
 {
-   push_required_action( a, head_block_time() );
+   push_required_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
 }
 
 void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
@@ -1034,16 +1046,19 @@ void database::push_optional_action( const optional_automated_action& a, time_po
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
 
-   create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+   if ( !is_pending_tx() )
    {
-      pending_action.action = a;
-      pending_action.execution_time = execution_time;
-   });
+      create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
+      {
+         pending_action.action = a;
+         pending_action.execution_time = execution_time;
+      } );
+   }
 }
 
 void database::push_optional_action( const optional_automated_action& a )
 {
-   push_optional_action( a, head_block_time() );
+   push_optional_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
 }
 
 void database::notify_pre_apply_required_action( const required_action_notification& note )
@@ -2682,6 +2697,15 @@ void database::initialize_evaluators()
    _my->_req_action_evaluator_registry.register_evaluator< example_required_evaluator    >();
 
    _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
+#endif
+
+#ifdef STEEM_ENABLE_SMT
+   _my->_req_action_evaluator_registry.register_evaluator< smt_ico_launch_evaluator         >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_ico_evaluation_evaluator     >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_token_launch_evaluator       >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator             >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_contributor_payout_evaluator >();
+   _my->_req_action_evaluator_registry.register_evaluator< smt_founder_payout_evaluator     >();
 #endif
 }
 
@@ -5448,11 +5472,18 @@ void database::validate_invariants()const
       }
 
 #ifdef STEEM_ENABLE_SMT
-      const auto& smt_contribution_idx = get_index< smt_contribution_index, by_id >();
+      const auto& smt_ico_idx = get_index< smt_ico_index, by_id >();
 
-      for ( auto itr = smt_contribution_idx.begin(); itr != smt_contribution_idx.end(); ++itr )
+      for ( auto itr = smt_ico_idx.begin(); itr != smt_ico_idx.end(); ++itr )
       {
-         total_supply += itr->contribution;
+         total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
+      }
+
+      const auto& smt_token_idx = get_index< smt_token_index, by_id >();
+
+      for ( auto itr = smt_token_idx.begin(); itr != smt_token_idx.end(); ++itr )
+      {
+         total_supply += itr->market_maker.steem_balance;
       }
 #endif
 
@@ -5557,8 +5588,16 @@ void database::validate_smt_invariants()const
          }
       }
 
-      // - Reward funds
-#pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
+      // - Reward funds & market maker
+      const auto& token_idx = get_index< smt_token_index, by_id >();
+      for ( auto itr = token_idx.begin(); itr != token_idx.end(); ++itr )
+      {
+         if ( itr->market_maker.token_balance.amount > 0 )
+            theMap[ itr->liquid_symbol ].liquid += itr->market_maker.token_balance;
+
+         if ( itr->rewards_fund.amount > 0 )
+            theMap[ itr->liquid_symbol ].liquid += itr->rewards_fund;
+      }
 
       // - Escrow & savings - no support of SMT is expected.
 
