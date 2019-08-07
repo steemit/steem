@@ -50,12 +50,13 @@ void set_slot_delegator_operation::validate()const
 
 void maybe_cleanup_rc_pool( const rc_delegation_pool_object& pool, database& db )
 {
+   idump( (pool.max_rc) );
    if( pool.max_rc ) return;
 
    const auto& outdel_idx = db.get_index< rc_outdel_drc_edge_index, by_pool >();
    auto edge = outdel_idx.lower_bound( pool.account );
 
-   if( edge != outdel_idx.end() && edge->from_pool != pool.account && edge->asset_symbol != pool.asset_symbol )
+   if( edge == outdel_idx.end() || ( edge->from_pool != pool.account && edge->asset_symbol != pool.asset_symbol ) )
    {
       db.remove( pool );
    }
@@ -302,18 +303,19 @@ void set_slot_delegator_evaluator::do_apply( const set_slot_delegator_operation&
       }
    }
 
-   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] != op.to_account, "The slot must change." );
+   FC_ASSERT( to_rca.indel_slots[ op.to_slot ] != op.from_pool, "The slot must change." );
 
    const auto* edge = _db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( op.from_pool, op.to_account, VESTS_SYMBOL ) );
 
    if( edge )
    {
+      _db.remove( *edge );
       maybe_cleanup_rc_pool( _db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( op.from_pool, VESTS_SYMBOL ) ), _db );
    }
 
    _db.modify( to_rca, [&]( rc_account_object& rca )
    {
-      rca.indel_slots[ op.to_slot ] = op.to_account;
+      rca.indel_slots[ op.to_slot ] = op.from_pool;
    });
 }
 

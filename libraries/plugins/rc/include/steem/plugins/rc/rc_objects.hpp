@@ -214,7 +214,6 @@ class rc_outdel_drc_edge_object : public object< rc_outdel_drc_edge_object_type,
       asset_symbol_type             asset_symbol;
       steem::chain::util::manabar   drc_manabar;
       int64_t                       drc_max_mana = 0;
-      int8_t                        to_slot_num = 0;
 };
 
 OBJECT_ID_TYPE( rc_outdel_drc_edge );
@@ -223,7 +222,6 @@ int64_t get_maximum_rc( const steem::chain::account_object& account, const rc_ac
 
 struct by_edge;
 struct by_account_symbol;
-struct by_account_slot;
 struct by_pool;
 
 typedef multi_index_container<
@@ -311,12 +309,6 @@ typedef multi_index_container<
             member< rc_outdel_drc_edge_object, asset_symbol_type, &rc_outdel_drc_edge_object::asset_symbol >,
             member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_id_type, &rc_outdel_drc_edge_object::id >
          >
-      >,
-      ordered_unique< tag< by_account_slot >,
-         composite_key< rc_outdel_drc_edge_object,
-            member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::to_account >,
-            member< rc_outdel_drc_edge_object, int8_t, &rc_outdel_drc_edge_object::to_slot_num >
-         >
       >
    >,
    allocator< rc_outdel_drc_edge_object >
@@ -374,6 +366,5 @@ FC_REFLECT( steem::plugins::rc::rc_outdel_drc_edge_object,
    (asset_symbol)
    (drc_manabar)
    (drc_max_mana)
-   (to_slot_num)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::rc::rc_outdel_drc_edge_object, steem::plugins::rc::rc_outdel_drc_edge_index )
