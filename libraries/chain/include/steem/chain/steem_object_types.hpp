@@ -21,7 +21,7 @@
       object_type () {}
 #endif
 
-#define OBJECT_ID_TYPE( object ) typedef oid< object ## _object > object ## _id_type;
+#define STEEM_OBJECT_ID_TYPE( object ) typedef oid< object ## _object > object ## _id_type;
 
 namespace steem {
 

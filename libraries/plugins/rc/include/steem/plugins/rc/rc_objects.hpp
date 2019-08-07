@@ -56,7 +56,7 @@ class rc_resource_param_object : public object< rc_resource_param_object_type, r
                             resource_param_array;
 };
 
-OBJECT_ID_TYPE( rc_resource_param );
+STEEM_OBJECT_ID_TYPE( rc_resource_param );
 
 class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
 {
@@ -74,7 +74,7 @@ class rc_pool_object : public object< rc_pool_object_type, rc_pool_object >
                             pool_array;
 };
 
-OBJECT_ID_TYPE( rc_pool );
+STEEM_OBJECT_ID_TYPE( rc_pool );
 
 class rc_account_object : public object< rc_account_object_type, rc_account_object >
 {
@@ -104,7 +104,7 @@ class rc_account_object : public object< rc_account_object_type, rc_account_obje
       int64_t               last_max_rc = 0;
 };
 
-OBJECT_ID_TYPE( rc_account );
+STEEM_OBJECT_ID_TYPE( rc_account );
 
 /**
  * Represents a delegation pool.
@@ -128,7 +128,7 @@ class rc_delegation_pool_object : public object< rc_delegation_pool_object_type,
       int64_t                       max_rc = 0;
 };
 
-OBJECT_ID_TYPE( rc_delegation_pool );
+STEEM_OBJECT_ID_TYPE( rc_delegation_pool );
 
 /**
  * Represents the total amount of an asset delegated by a user.
@@ -155,7 +155,7 @@ class rc_delegation_from_account_object : public object< rc_delegation_from_acco
       {  return amount.symbol;                             }
 };
 
-OBJECT_ID_TYPE( rc_delegation_from_account );
+STEEM_OBJECT_ID_TYPE( rc_delegation_from_account );
 
 /**
  * Represents a delegation from a user to a pool.
@@ -180,7 +180,7 @@ class rc_indel_edge_object : public object< rc_indel_edge_object_type, rc_indel_
       asset                         amount;
 };
 
-OBJECT_ID_TYPE( rc_indel_edge );
+STEEM_OBJECT_ID_TYPE( rc_indel_edge );
 
 /**
  * Represents a delegation from a pool to a user based on delegated resource credits (DRC).
@@ -216,7 +216,7 @@ class rc_outdel_drc_edge_object : public object< rc_outdel_drc_edge_object_type,
       int64_t                       drc_max_mana = 0;
 };
 
-OBJECT_ID_TYPE( rc_outdel_drc_edge );
+STEEM_OBJECT_ID_TYPE( rc_outdel_drc_edge );
 
 int64_t get_maximum_rc( const steem::chain::account_object& account, const rc_account_object& rc_account );
 
