@@ -820,7 +820,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const delegate_to_pool_operation& op )const
    {
-      ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      // ilog( "Regenerating ${acct}", ("acct", op.from_account) );
       regenerate( op.from_account );
    }
 

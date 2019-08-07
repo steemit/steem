@@ -50,7 +50,6 @@ void set_slot_delegator_operation::validate()const
 
 void maybe_cleanup_rc_pool( const rc_delegation_pool_object& pool, database& db )
 {
-   idump( (pool.max_rc) );
    if( pool.max_rc ) return;
 
    const auto& outdel_idx = db.get_index< rc_outdel_drc_edge_index, by_pool >();
