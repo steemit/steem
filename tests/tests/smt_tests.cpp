@@ -10,6 +10,7 @@ FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
@@ -229,6 +230,44 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
       FC_ASSERT( liquid_object_by_symbol == vesting_object_by_symbol );
    }
    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_founder_vesting )
+{
+   using namespace steem::protocol::utilities;
+   BOOST_TEST_MESSAGE( "Testing: is_founder_vesting and get_unit_target_account" );
+
+   BOOST_TEST_MESSAGE( " -- Valid founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$alice.vesting" ) );
+
+   BOOST_TEST_MESSAGE( " -- Account name parsing" );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "$alice.vesting" ) == account_name_type( "alice" ) );
+
+   BOOST_TEST_MESSAGE( " -- No possible room for an account name" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$.vesting" ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Meant to be founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$@.vesting" ) );
+
+   BOOST_TEST_MESSAGE( " -- Invalid account name upon retrieval" );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$@.vesting" ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- SMT special destinations" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM_VESTING ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_REWARDS ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_MARKET_MAKER ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM_VESTING ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_VESTING ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Partial founder vesting special name" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$bob" ) == false );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$bob" ), fc::assert_exception );
+
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "bob.vesting" ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Valid account name that appears to be founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "bob.vesting" ) == account_name_type( "bob.vesting" ) );
 }
 
 /*
