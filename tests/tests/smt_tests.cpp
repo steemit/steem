@@ -231,6 +231,14 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
    FC_LOG_AND_RETHROW()
 }
 
+/*
+ * SMT legacy tests
+ *
+ * The logic tests in legacy tests *should* be entirely duplicated in smt_operation_tests.cpp
+ * We are keeping these tests around to provide an additional layer re-assurance for the time being
+ */
+FC_TODO( "Remove SMT legacy tests and ensure code coverage is not reduced" );
+
 BOOST_AUTO_TEST_CASE( setup_validate )
 {
    try
@@ -543,14 +551,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
    }
    FC_LOG_AND_RETHROW()
 }
-
-/*
- * SMT legacy tests
- *
- * The logic tests in legacy tests *should* be entirely duplicated in smt_operation_tests.cpp
- * We are keeping these tests around to provide an additional layer re-assurance for the time being
- */
-FC_TODO( "Remove SMT legacy tests and ensure code coverage is not reduced" );
 
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
