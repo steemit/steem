@@ -121,7 +121,7 @@ inline int64_t get_next_vesting_withdrawal( const account_object& account )
 }
 
 template< bool account_may_exist = false >
-void create_rc_account( database& db, uint32_t now, const account_object& account, asset max_rc_creation_adjustment )
+void create_rc_account( database& db, uint32_t now, const account_object& account, asset max_rc_creation_adjustment, const account_name_type& creator )
 {
    // ilog( "create_rc_account( ${a} )", ("a", account.name) );
    if( account_may_exist )
@@ -150,19 +150,27 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
    db.create< rc_account_object >( [&]( rc_account_object& rca )
    {
       rca.account = account.name;
+      rca.creator = creator;
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
       int64_t max_rc = get_maximum_rc( account, rca );
       rca.rc_manabar.current_mana = max_rc;
       rca.last_max_rc = max_rc;
+
+      rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = creator;
+      rca.indel_slots[ STEEM_RC_RECOVERY_SLOT_NUM ] = account.recovery_account;
+      for( int i = STEEM_RC_USER_SLOT_NUM; i < STEEM_RC_MAX_SLOTS; i++ )
+      {
+         rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
+      }
    } );
 }
 
 template< bool account_may_exist = false >
-void create_rc_account( database& db, uint32_t now, const account_name_type& account_name, asset max_rc_creation_adjustment )
+void create_rc_account( database& db, uint32_t now, const account_name_type& account_name, asset max_rc_creation_adjustment, const account_name_type& creator )
 {
    const account_object& account = db.get< account_object, by_name >( account_name );
-   create_rc_account< account_may_exist >( db, now, account, max_rc_creation_adjustment );
+   create_rc_account< account_may_exist >( db, now, account, max_rc_creation_adjustment, creator );
 }
 
 std::vector< std::pair< int64_t, account_name_type > > dump_all_accounts( const database& db )
@@ -573,7 +581,7 @@ void rc_plugin_impl::on_first_block()
    const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
    for( auto it=idx.begin(); it!=idx.end(); ++it )
    {
-      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ) );
+      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ), it->name );
    }
 
    return;
@@ -812,7 +820,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const delegate_to_pool_operation& op )const
    {
-      //ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      // ilog( "Regenerating ${acct}", ("acct", op.from_account) );
       regenerate( op.from_account );
    }
 
@@ -930,24 +938,24 @@ struct post_apply_operation_visitor
 
    void operator()( const account_create_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, op.fee );
+      create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
    }
 
    void operator()( const account_create_with_delegation_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, op.fee );
+      create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
       _mod_accounts.emplace_back( op.creator );
    }
 
    void operator()( const create_claimed_account_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, _db.get_witness_schedule_object().median_props.account_creation_fee );
+      create_rc_account( _db, _current_time, op.new_account_name, _db.get_witness_schedule_object().median_props.account_creation_fee, op.creator );
    }
 
    void operator()( const pow_operation& op )const
    {
       // ilog( "handling post-apply pow_operation" );
-      create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ) );
+      create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ), op.worker_account );
       _mod_accounts.emplace_back( op.worker_account );
       _mod_accounts.emplace_back( _current_witness );
    }
@@ -955,7 +963,7 @@ struct post_apply_operation_visitor
    void operator()( const pow2_operation& op )const
    {
       auto worker_name = get_worker_name( op.work );
-      create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ) );
+      create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ), worker_name );
       _mod_accounts.emplace_back( worker_name );
       _mod_accounts.emplace_back( _current_witness );
    }
@@ -1446,6 +1454,8 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 
       // Add each operation evaluator to the registry
       my->_custom_operation_interpreter->register_evaluator< delegate_to_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< delegate_drc_from_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< set_slot_delegator_evaluator >( this );
 
       // Add the registry to the database so the database can delegate custom ops to the plugin
       my->_db.register_custom_operation_interpreter( my->_custom_operation_interpreter );
