@@ -3787,8 +3787,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy2;
-   invalid_generation_policy2.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$alice.vesting", 2 },
@@ -3803,7 +3802,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy2.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$alice.vesting", 1 },
@@ -3818,9 +3817,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy2.max_unit_ratio = 100;
-   invalid_generation_policy2.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy2;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on pre soft cap token unit" );
    tx.operations.push_back( setup_op );
@@ -3830,8 +3829,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy3;
-   invalid_generation_policy3.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$alice.vesting", 2 },
@@ -3846,7 +3844,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy3.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "elaine", 1 },
          { "$alice.vesting", 1 },
@@ -3861,9 +3859,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy3.max_unit_ratio = 100;
-   invalid_generation_policy3.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy3;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on post soft cap steem unit" );
    tx.operations.push_back( setup_op );
@@ -3873,8 +3871,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy4;
-   invalid_generation_policy4.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "elaine", 2 },
          { "$alice.vesting", 2 },
@@ -3889,7 +3886,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy4.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$alice.vesting", 1 },
@@ -3904,9 +3901,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy4.max_unit_ratio = 100;
-   invalid_generation_policy4.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy4;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on post soft cap token unit" );
    tx.operations.push_back( setup_op );
@@ -3916,8 +3913,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy5;
-   invalid_generation_policy5.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$elaine.vesting", 2 },
@@ -3932,7 +3928,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy5.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$alice.vesting", 1 },
@@ -3947,9 +3943,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy5.max_unit_ratio = 100;
-   invalid_generation_policy5.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy5;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on pre soft cap steem unit" );
    tx.operations.push_back( setup_op );
@@ -3959,8 +3955,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy6;
-   invalid_generation_policy6.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$alice.vesting", 2 },
@@ -3975,7 +3970,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy6.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$alice.vesting", 1 },
@@ -3990,9 +3985,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy6.max_unit_ratio = 100;
-   invalid_generation_policy6.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy6;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on pre soft cap token unit" );
    tx.operations.push_back( setup_op );
@@ -4002,8 +3997,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy7;
-   invalid_generation_policy7.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$alice.vesting", 2 },
@@ -4018,7 +4012,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy7.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$elaine.vesting", 1 },
@@ -4033,9 +4027,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy7.max_unit_ratio = 100;
-   invalid_generation_policy7.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy7;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on post soft cap steem unit" );
    tx.operations.push_back( setup_op );
@@ -4045,8 +4039,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   smt_capped_generation_policy invalid_generation_policy8;
-   invalid_generation_policy8.pre_soft_cap_unit = {
+   invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
          { "$alice.vesting", 2 },
@@ -4061,7 +4054,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 2 }
       }
    };
-   invalid_generation_policy8.post_soft_cap_unit = {
+   invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
          { "$alice.vesting", 1 },
@@ -4076,9 +4069,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
          { SMT_DESTINATION_FROM_VESTING, 1 }
       }
    };
-   invalid_generation_policy8.max_unit_ratio = 100;
-   invalid_generation_policy8.min_unit_ratio = 50;
-   setup_op.initial_generation_policy = invalid_generation_policy8;
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
 
    BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on post soft cap token unit" );
    tx.operations.push_back( setup_op );
