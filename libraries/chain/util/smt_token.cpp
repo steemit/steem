@@ -70,23 +70,6 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    return {};
 }
 
-namespace unit_target {
-
-void verify_accounts( database& db, const flat_map< unit_target_type, uint16_t >& units )
-{
-   for ( auto& unit : units )
-   {
-      if ( !protocol::smt::unit_target::is_account_name_type( unit.first ) )
-         continue;
-
-      auto account_name = protocol::smt::unit_target::get_unit_target_account( unit.first );
-      const auto* account = db.find_account( account_name );
-      FC_ASSERT( account != nullptr, "The provided account unit target ${target} does not exist.", ("target", unit.first) );
-   }
-}
-
-} // steem::chain::util::smt::unit_target
-
 namespace ico {
 
 share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )

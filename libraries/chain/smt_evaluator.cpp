@@ -8,6 +8,7 @@
 #include <steem/chain/util/smt_token.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 namespace steem { namespace chain {
@@ -118,6 +119,19 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       replenish_nai_pool( _db );
 }
 
+static void verify_accounts( database& db, const flat_map< unit_target_type, uint16_t >& units )
+{
+   for ( auto& unit : units )
+   {
+      if ( !protocol::smt::unit_target::is_account_name_type( unit.first ) )
+         continue;
+
+      auto account_name = protocol::smt::unit_target::get_unit_target_account( unit.first );
+      const auto* account = db.find_account( account_name );
+      FC_ASSERT( account != nullptr, "The provided account unit target ${target} does not exist.", ("target", unit.first) );
+   }
+}
+
 struct smt_setup_evaluator_visitor
 {
    const smt_ico_object& _ico;
@@ -129,10 +143,10 @@ struct smt_setup_evaluator_visitor
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.steem_unit );
-      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.token_unit );
-      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.steem_unit );
-      util::smt::unit_target::verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.token_unit );
+      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.steem_unit );
+      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.token_unit );
+      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.steem_unit );
+      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.token_unit );
 
       _db.modify( _ico, [&]( smt_ico_object& ico )
       {
