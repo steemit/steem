@@ -295,7 +295,7 @@ void use_account_rcs(
 
    for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
    {
-      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( account_name, rc_account.indel_slots[i], VESTS_SYMBOL ) );
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
 
       if( drc_edge == nullptr ) continue;
 
@@ -369,7 +369,7 @@ void use_account_rcs(
 
    for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
    {
-      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( account_name, rc_account.indel_slots[i], VESTS_SYMBOL ) );
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
 
       if( drc_edge == nullptr ) continue;
 
