@@ -7,6 +7,7 @@
 
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #include <steem/chain/block_summary_object.hpp>
 #include <steem/chain/database.hpp>
@@ -869,7 +870,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
             { "george", 2 }
          },
          {
-            { "$from", 7 },
+            { SMT_DESTINATION_FROM, 7 },
             { "george", 1 },
             { "henry", 2 }
          } ), /* pre_soft_cap_unit */
@@ -879,7 +880,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
             { "george", 2 }
          },
          {
-            { "$from", 7 },
+            { SMT_DESTINATION_FROM, 7 },
             { "george", 1 },
             { "henry", 2 }
          } ), /* post_soft_cap_unit */
@@ -1028,23 +1029,23 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       (
          get_generation_unit(
          {
-            { "$market_maker", 3 },
+            { SMT_DESTINATION_MARKET_MAKER, 3 },
             { "george", 2 }
          },
          {
-            { "$from", 7 },
-            { "$market_maker", 1 },
-            { "$rewards", 2 }
+            { SMT_DESTINATION_FROM, 7 },
+            { SMT_DESTINATION_MARKET_MAKER, 1 },
+            { SMT_DESTINATION_REWARDS, 2 }
          } ), /* pre_soft_cap_unit */
          get_generation_unit(
          {
-            { "$market_maker", 3 },
+            { SMT_DESTINATION_MARKET_MAKER, 3 },
             { "$george.vesting", 2 }
          },
          {
-            { "$from", 5 },
-            { "$market_maker", 1 },
-            { "$rewards", 2 }
+            { SMT_DESTINATION_FROM, 5 },
+            { SMT_DESTINATION_MARKET_MAKER, 1 },
+            { SMT_DESTINATION_REWARDS, 2 }
          } ), /* post_soft_cap_unit */
          50,                                                            /* min_unit_ratio */
          100                                                            /* max_unit_ratio */

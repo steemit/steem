@@ -3180,6 +3180,11 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    op.validate();
 
+   BOOST_TEST_MESSAGE( " -- Failure on invalid control acount name" );
+   op.control_account = "@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.control_account = "alice";
+
    BOOST_TEST_MESSAGE( " -- Failure on contribution_end_time > contribution_begin_time" );
    op.contribution_end_time = op.contribution_begin_time - fc::seconds( 1 );
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
