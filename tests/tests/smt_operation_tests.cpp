@@ -3416,6 +3416,150 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
    op.initial_generation_policy = valid_generation_policy;
 
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { "$market_malformed", 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in pre soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { "$market_malformed", 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in pre soft cap token unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { "$market_maker1", 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in post soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { "$rewardsx", 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in post soft cap token unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
    smt_capped_generation_policy valid_generation_policy2;
    valid_generation_policy2.pre_soft_cap_unit = {
       {
