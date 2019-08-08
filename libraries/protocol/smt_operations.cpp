@@ -25,7 +25,6 @@ void smt_create_operation::validate()const
 
 bool is_valid_unit_target( const unit_target_type& unit_target )
 {
-   using namespace utilities;
    if ( is_valid_account_name( unit_target ) )
       return true;
    if ( smt::unit_target::is_contributor( unit_target ) )
@@ -43,7 +42,6 @@ bool is_valid_unit_target( const unit_target_type& unit_target )
 
 bool is_valid_smt_ico_steem_destination( const unit_target_type& unit_target )
 {
-   using namespace utilities;
    if ( is_valid_account_name( unit_target ) )
       return true;
    if ( smt::unit_target::is_market_maker( unit_target ) )
@@ -55,7 +53,6 @@ bool is_valid_smt_ico_steem_destination( const unit_target_type& unit_target )
 
 bool is_valid_smt_ico_token_destination( const unit_target_type& unit_target )
 {
-   using namespace utilities;
    if ( is_valid_account_name( unit_target ) )
       return true;
    if ( smt::unit_target::is_contributor( unit_target ) )
@@ -71,7 +68,6 @@ bool is_valid_smt_ico_token_destination( const unit_target_type& unit_target )
 
 bool is_valid_smt_emissions_unit_destination( const unit_target_type& unit_target )
 {
-   using namespace utilities;
    if ( smt::unit_target::is_market_maker( unit_target ) )
       return true;
    if ( smt::unit_target::is_rewards( unit_target ) )

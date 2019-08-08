@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
 
 BOOST_AUTO_TEST_CASE( smt_founder_vesting )
 {
-   using namespace steem::protocol::utilities;
+   using namespace steem::protocol;
    BOOST_TEST_MESSAGE( "Testing: is_founder_vesting and get_unit_target_account" );
 
    BOOST_TEST_MESSAGE( " -- Valid founder vesting" );

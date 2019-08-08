@@ -12,7 +12,7 @@
 #define SMT_DESTINATION_REWARDS        unit_target_type( SMT_DESTINATION_PREFIX "rewards" )
 #define SMT_DESTINATION_VESTING        unit_target_type( SMT_DESTINATION_PREFIX "vesting" )
 
-namespace steem { namespace protocol { namespace utilities { namespace smt {
+namespace steem { namespace protocol { namespace smt {
 
 namespace unit_target {
 
@@ -27,8 +27,8 @@ bool is_vesting_type( const unit_target_type& unit_target );
 
 account_name_type get_unit_target_account( const unit_target_type& unit_target );
 
-} // steem::protocol::utilities::smt::unit_target
+} // steem::protocol::smt::unit_target
 
-} } } } // steem::protocol::utilities::smt
+} } } // steem::protocol::smt
 
 #endif

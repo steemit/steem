@@ -3,7 +3,7 @@
 
 #ifdef STEEM_ENABLE_SMT
 
-namespace steem { namespace protocol { namespace utilities { namespace smt {
+namespace steem { namespace protocol { namespace smt {
 
 namespace unit_target {
 
@@ -104,8 +104,8 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
    return unit_target_account;
 }
 
-} // steem::protocol::utilities::smt::unit_target
+} // steem::protocol::smt::unit_target
 
-} } } } // steem::protocol::utilities::smt
+} } } // steem::protocol::smt
 
 #endif
