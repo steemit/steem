@@ -2649,7 +2649,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
    else
    {
       FC_ASSERT( o.fee == wso.median_props.account_creation_fee,
-         "Cannot pay more than account creation fee. paid: ${p} fee: ${f}",
+         "Must pay the exact account creation fee. paid: ${p} fee: ${f}",
          ("p", o.fee.amount.value)
          ("f", wso.median_props.account_creation_fee) );
    }
