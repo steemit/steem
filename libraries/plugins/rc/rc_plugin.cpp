@@ -41,6 +41,7 @@ namespace detail {
 
 using chain::plugin_exception;
 using steem::chain::util::manabar_params;
+using steem::chain::util::manabar;
 
 class rc_plugin_impl
 {
@@ -285,15 +286,48 @@ void use_account_rcs(
    const account_object& account = db.get< account_object, by_name >( account_name );
    const rc_account_object& rc_account = db.get< rc_account_object, by_name >( account_name );
 
+   int64_t total_mana_available = 0;
+   std::array< manabar, STEEM_RC_MAX_SLOTS > drc_manabars;
+   std::array< manabar, STEEM_RC_MAX_SLOTS > pool_manabars;
    manabar_params mbparams;
-   mbparams.max_mana = get_maximum_rc( account, rc_account );
    mbparams.regen_time = STEEM_RC_REGEN_TIME;
+   auto now = gpo.time.sec_since_epoch();
+
+   for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
+   {
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
+
+      if( drc_edge == nullptr ) continue;
+
+      mbparams.max_mana = drc_edge->drc_max_mana;
+      drc_manabars[i] = drc_edge->drc_manabar;
+      drc_manabars[i].regenerate_mana< true >( mbparams, now );
+
+      const auto& pool = db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( rc_account.indel_slots[i], VESTS_SYMBOL ) );
+      mbparams.max_mana = pool.max_rc;
+      pool_manabars[i] = pool.rc_pool_manabar;
+      pool_manabars[i].regenerate_mana< true >( mbparams, now );
+
+      int64_t consumed_rc = std::min( drc_manabars[i].current_mana, pool_manabars[i].current_mana );
+      consumed_rc = std::min( consumed_rc, rc - total_mana_available );
+      drc_manabars[i].use_mana( consumed_rc );
+      pool_manabars[i].use_mana( consumed_rc );
+
+      total_mana_available += consumed_rc;
+   }
+
+   mbparams.max_mana = get_maximum_rc( account, rc_account );
+   manabar rca_manabar = rc_account.rc_manabar;
+   rca_manabar.regenerate_mana< true >( mbparams, now );
+   int64_t consumed_rc = std::min( rca_manabar.current_mana, rc - total_mana_available );
+   int64_t total_mana_delegated = total_mana_available;
+   total_mana_available += consumed_rc;
+
+   bool has_mana = total_mana_available >= rc;
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
-      rca.rc_manabar.regenerate_mana< true >( mbparams, gpo.time.sec_since_epoch() );
-
-      bool has_mana = rca.rc_manabar.has_mana( rc );
+      rca.rc_manabar = rca_manabar;
 
       if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
@@ -330,8 +364,27 @@ void use_account_rcs(
 
       int64_t min_mana = -1 * ( STEEM_RC_MAX_NEGATIVE_PERCENT * mbparams.max_mana ) / STEEM_100_PERCENT;
 
-      rca.rc_manabar.use_mana( rc, min_mana );
+      rca.rc_manabar.use_mana( rc - total_mana_delegated, min_mana );
    } );
+
+   for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
+   {
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
+
+      if( drc_edge == nullptr ) continue;
+
+      db.modify( *drc_edge, [&]( rc_outdel_drc_edge_object& edge )
+      {
+         edge.drc_manabar = drc_manabars[i];
+      });
+
+      const auto& dpool = db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( rc_account.indel_slots[i], VESTS_SYMBOL ) );
+
+      db.modify( dpool, [&]( rc_delegation_pool_object& pool )
+      {
+         pool.rc_pool_manabar = pool_manabars[i];
+      });
+   }
 }
 
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
@@ -977,6 +1030,8 @@ struct post_apply_operation_visitor
    void operator()( const withdraw_vesting_operation& op )const
    {
       _mod_accounts.emplace_back( op.account, false );
+
+      update_outdel_overflow( op.account, op.vesting_shares );
    }
 
    void operator()( const delegate_vesting_shares_operation& op )const
@@ -1008,6 +1063,8 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.emplace_back( op.from_account );
       _mod_accounts.emplace_back( op.to_account );
+
+      update_outdel_overflow( op.from_account, op.withdrawn );
    }
 
    void operator()( const claim_reward_balance_operation& op )const

@@ -3,6 +3,7 @@
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
+#include <steem/chain/database_exceptions.hpp>
 #include <steem/protocol/steem_operations.hpp>
 
 #include <steem/plugins/rc/rc_objects.hpp>
@@ -383,6 +384,158 @@ BOOST_AUTO_TEST_CASE( rc_delegate_drc_from_pool )
       tx.operations.push_back( custom_op );
       sign( tx, bob_private_key );
       BOOST_CHECK_THROW( db->push_transaction( tx, 0 ), fc::exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( rc_drc_pool_consumption )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: rc_drc_pool_consumption" );
+
+      using steem::plugins::rc::detail::use_account_rcs;
+
+      /*
+      The first test is an edge test
+      poola has 100 rc, delegating 50 rc to alice
+      poolb has 25 rc, delegating 50 rc to alice
+      alice has 50 rc.
+
+      This test will consume 100 rc, which will cause the following changes:
+
+      poola has 50 rc, with 0 remaining to alice
+      poolb has 0 rc, with 25 remaining to alice
+      alice has 25 rc
+
+      The second test is the general test
+      poolc has 200 rc, with 100 rc to bob
+      bob has 100 rc
+
+      Bob will consume 50 rc, which will cause the following changes:
+      poolc has 150 rc, with 50 remaining to bob
+      bob has 100 rc
+
+      The third test will have bob consume 200 rc, which should fail
+      */
+
+      ACTORS( (alice)(bob)(poola)(poolb)(poolc) )
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( "alice" ), [&]( account_object& a )
+         {
+            a.vesting_shares = asset( 50, VESTS_SYMBOL );
+         });
+
+         db.modify( db.get< rc_account_object, by_name >( "alice" ), [&]( rc_account_object& rca )
+         {
+            rca.max_rc_creation_adjustment.amount.value = 0;
+            rca.rc_manabar.current_mana = 50;
+            rca.rc_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            rca.indel_slots[0] = "poola";
+            rca.indel_slots[1] = "poolb";
+         });
+
+         db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& rc_pool )
+         {
+            rc_pool.account = "poola";
+            rc_pool.asset_symbol = VESTS_SYMBOL;
+            rc_pool.rc_pool_manabar.current_mana = 100;
+            rc_pool.rc_pool_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            rc_pool.max_rc = 100;
+         });
+
+         db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& drc_edge )
+         {
+            drc_edge.from_pool = "poola";
+            drc_edge.to_account = "alice";
+            drc_edge.asset_symbol = VESTS_SYMBOL;
+            drc_edge.drc_manabar.current_mana = 50;
+            drc_edge.drc_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            drc_edge.drc_max_mana = 50;
+         });
+
+         db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& rc_pool )
+         {
+            rc_pool.account = "poolb";
+            rc_pool.asset_symbol = VESTS_SYMBOL;
+            rc_pool.rc_pool_manabar.current_mana = 25;
+            rc_pool.rc_pool_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            rc_pool.max_rc = 25;
+         });
+
+         db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& drc_edge )
+         {
+            drc_edge.from_pool = "poolb";
+            drc_edge.to_account = "alice";
+            drc_edge.asset_symbol = VESTS_SYMBOL;
+            drc_edge.drc_manabar.current_mana = 50;
+            drc_edge.drc_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            drc_edge.drc_max_mana = 50;
+         });
+
+         db.modify( db.get_account("bob"), [&]( account_object& a )
+         {
+            a.vesting_shares = asset( 100, VESTS_SYMBOL );
+         });
+
+         db.modify( db.get< rc_account_object, by_name >( "bob" ), [&]( rc_account_object& rca )
+         {
+            rca.max_rc_creation_adjustment.amount.value = 0;
+            rca.rc_manabar.current_mana = 100;
+            rca.rc_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            rca.indel_slots[0] = "poolc";
+         });
+
+         db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& rc_pool )
+         {
+            rc_pool.account = "poolc";
+            rc_pool.asset_symbol = VESTS_SYMBOL;
+            rc_pool.rc_pool_manabar.current_mana = 200;
+            rc_pool.rc_pool_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            rc_pool.max_rc = 200;
+         });
+
+         db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& drc_edge )
+         {
+            drc_edge.from_pool = "poolc";
+            drc_edge.to_account = "bob";
+            drc_edge.asset_symbol = VESTS_SYMBOL;
+            drc_edge.drc_manabar.current_mana = 100;
+            drc_edge.drc_manabar.last_update_time = db.head_block_time().sec_since_epoch();
+            drc_edge.drc_max_mana = 100;
+         });
+      });
+
+      const auto& alice_rc = db->get< rc_account_object, by_name >( "alice" );
+      const auto& poola_pool = db->get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( "poola", VESTS_SYMBOL ) );
+      const auto& poola_drc_alice = db->get< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( "poola", "alice", VESTS_SYMBOL ) );
+      const auto& poolb_pool = db->get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( "poolb", VESTS_SYMBOL ) );
+      const auto& poolb_drc_alice = db->get< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( "poolb", "alice", VESTS_SYMBOL ) );
+      const auto& bob_rc = db->get< rc_account_object, by_name >( "bob" );
+      const auto& poolc_pool = db->get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( "poolc", VESTS_SYMBOL ) );
+      const auto& poolc_drc_bob = db->get< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( "poolc", "bob", VESTS_SYMBOL ) );
+
+      const auto& gpo = db->get_dynamic_global_properties();
+      rc_plugin_skip_flags skip {0, 0, 0, 0};
+      set< account_name_type > whitelist;
+
+      use_account_rcs( *db, gpo, "alice", 100, skip, whitelist );
+      BOOST_REQUIRE( poola_pool.rc_pool_manabar.current_mana == 50 );
+      BOOST_REQUIRE( poola_drc_alice.drc_manabar.current_mana == 0 );
+      BOOST_REQUIRE( poolb_pool.rc_pool_manabar.current_mana == 0 );
+      BOOST_REQUIRE( poolb_drc_alice.drc_manabar.current_mana == 25 );
+      BOOST_REQUIRE( alice_rc.rc_manabar.current_mana == 25 );
+
+      use_account_rcs( *db, gpo, "bob", 50, skip, whitelist );
+      BOOST_REQUIRE( poolc_pool.rc_pool_manabar.current_mana == 150 );
+      BOOST_REQUIRE( poolc_drc_bob.drc_manabar.current_mana == 50 );
+      BOOST_REQUIRE( bob_rc.rc_manabar.current_mana == 100 );
+
+      db->set_producing( true );
+      BOOST_CHECK_THROW( use_account_rcs( *db, gpo, "bob", 200, skip, whitelist ), steem::chain::plugin_exception );
    }
    FC_LOG_AND_RETHROW()
 }
