@@ -3,9 +3,9 @@
 
 #ifdef STEEM_ENABLE_SMT
 
-namespace steem { namespace protocol { namespace utilities { namespace smt {
+namespace steem { namespace protocol { namespace smt {
 
-namespace generation_unit {
+namespace unit_target {
 
 bool is_contributor( const unit_target_type& unit_target )
 {
@@ -24,6 +24,9 @@ bool is_rewards( const unit_target_type& unit_target )
 
 bool is_founder_vesting( const unit_target_type& unit_target )
 {
+   if ( unit_target == SMT_DESTINATION_FROM_VESTING )
+      return false;
+
    std::string unit_target_str = unit_target;
    if ( unit_target_str.size() > std::strlen( SMT_DESTINATION_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ) )
    {
@@ -42,6 +45,24 @@ bool is_founder_vesting( const unit_target_type& unit_target )
 }
 
 bool is_vesting( const unit_target_type& unit_target )
+{
+   return unit_target == SMT_DESTINATION_VESTING;
+}
+
+bool is_account_name_type( const unit_target_type& unit_target )
+{
+   if ( is_contributor( unit_target ) )
+      return false;
+   if ( is_rewards( unit_target ) )
+      return false;
+   if ( is_market_maker( unit_target ) )
+      return false;
+   if ( is_vesting( unit_target ) )
+      return false;
+   return true;
+}
+
+bool is_vesting_type( const unit_target_type& unit_target )
 {
    if ( unit_target == SMT_DESTINATION_FROM_VESTING )
       return true;
@@ -83,8 +104,8 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
    return unit_target_account;
 }
 
-} // steem::protocol::utilities::smt::generation_unit
+} // steem::protocol::smt::unit_target
 
-} } } } // steem::protocol::utilities::smt
+} } } // steem::protocol::smt
 
 #endif

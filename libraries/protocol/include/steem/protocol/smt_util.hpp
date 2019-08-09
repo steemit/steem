@@ -12,19 +12,23 @@
 #define SMT_DESTINATION_REWARDS        unit_target_type( SMT_DESTINATION_PREFIX "rewards" )
 #define SMT_DESTINATION_VESTING        unit_target_type( SMT_DESTINATION_PREFIX "vesting" )
 
-namespace steem { namespace protocol { namespace utilities { namespace smt {
+namespace steem { namespace protocol { namespace smt {
 
-namespace generation_unit {
+namespace unit_target {
 
 bool is_contributor( const unit_target_type& unit_target );
 bool is_market_maker( const unit_target_type& unit_target );
 bool is_rewards( const unit_target_type& unit_target );
 bool is_founder_vesting( const unit_target_type& unit_target );
 bool is_vesting( const unit_target_type& unit_target );
+
+bool is_account_name_type( const unit_target_type& unit_target );
+bool is_vesting_type( const unit_target_type& unit_target );
+
 account_name_type get_unit_target_account( const unit_target_type& unit_target );
 
-} // steem::protocol::utilities::smt::generation_unit
+} // steem::protocol::smt::unit_target
 
-} } } } // steem::protocol::utilities::smt
+} } } // steem::protocol::smt
 
 #endif

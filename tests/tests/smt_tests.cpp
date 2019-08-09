@@ -10,6 +10,7 @@ FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
@@ -231,6 +232,52 @@ BOOST_AUTO_TEST_CASE( vesting_smt_creation )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_founder_vesting )
+{
+   using namespace steem::protocol;
+   BOOST_TEST_MESSAGE( "Testing: is_founder_vesting and get_unit_target_account" );
+
+   BOOST_TEST_MESSAGE( " -- Valid founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$alice.vesting" ) );
+
+   BOOST_TEST_MESSAGE( " -- Account name parsing" );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "$alice.vesting" ) == account_name_type( "alice" ) );
+
+   BOOST_TEST_MESSAGE( " -- No possible room for an account name" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$.vesting" ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Meant to be founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$@.vesting" ) );
+
+   BOOST_TEST_MESSAGE( " -- Invalid account name upon retrieval" );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$@.vesting" ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- SMT special destinations" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM_VESTING ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_REWARDS ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_MARKET_MAKER ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM_VESTING ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_VESTING ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Partial founder vesting special name" );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$bob" ) == false );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$bob" ), fc::assert_exception );
+
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "bob.vesting" ) == false );
+
+   BOOST_TEST_MESSAGE( " -- Valid account name that appears to be founder vesting" );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "bob.vesting" ) == account_name_type( "bob.vesting" ) );
+}
+
+/*
+ * SMT legacy tests
+ *
+ * The logic tests in legacy tests *should* be entirely duplicated in smt_operation_tests.cpp
+ * We are keeping these tests around to provide an additional layer re-assurance for the time being
+ */
+FC_TODO( "Remove SMT legacy tests and ensure code coverage is not reduced" );
+
 BOOST_AUTO_TEST_CASE( setup_validate )
 {
    try
@@ -415,6 +462,8 @@ BOOST_AUTO_TEST_CASE( setup_validate )
 
       gp.post_soft_cap_unit.steem_unit = { { "alice", 3 } };
       gp.post_soft_cap_unit.token_unit = { { "alice", 3 } };
+      gp.pre_soft_cap_unit.steem_unit = { { "alice", 3 } };
+      gp.pre_soft_cap_unit.token_unit = { { "alice", 3 } };
       op.initial_generation_policy = gp;
       op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
       op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
@@ -486,7 +535,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
 {
    try
    {
-      ACTORS( (alice)(bob) )
+      ACTORS( (alice)(bob)(xyz)(xyz2) )
 
       generate_block();
 
@@ -541,14 +590,6 @@ BOOST_AUTO_TEST_CASE( setup_apply )
    }
    FC_LOG_AND_RETHROW()
 }
-
-/*
- * SMT legacy tests
- *
- * The logic tests in legacy tests *should* be entirely duplicated in smt_operation_tests.cpp
- * We are keeping these tests around to provide an additional layer re-assurance for the time being
- */
-FC_TODO( "Remove SMT legacy tests and ensure code coverage is not reduced" );
 
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {

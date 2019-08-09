@@ -8,6 +8,7 @@
 
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/hardfork.hpp>
+#include <steem/protocol/smt_util.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
@@ -1728,7 +1729,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       smt_setup_emissions_operation op1;
       op1.control_account = "alice";
       op1.symbol = alice_symbol;
-      op1.emissions_unit.token_unit[ "alice" ] = 10;
+      op1.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op1.schedule_time = db->head_block_time() + fc::days(30);
       op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op1.interval_count = 1;
@@ -1740,7 +1741,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op2.schedule_time = op1.schedule_time + fc::days( 365 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 10;
@@ -1942,7 +1943,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
 
@@ -1995,10 +1996,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.emissions_unit.token_unit[ "@@@@" ] = 10;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.emissions_unit.token_unit.clear();
-      op.emissions_unit.token_unit[ "alice" ] = 1;
-      op.emissions_unit.token_unit[ "$rewards" ] = 1;
-      op.emissions_unit.token_unit[ "$market_maker" ] = 1;
-      op.emissions_unit.token_unit[ "$vesting" ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] = 1;
 
       BOOST_TEST_MESSAGE( " -- Invalid schedule time" );
       op.schedule_time = STEEM_GENESIS_TIME;
@@ -2089,7 +2089,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ "alice" ] = 10;
+      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
@@ -2121,7 +2121,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ "alice" ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 5;
@@ -2140,7 +2140,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op3;
       op3.control_account = "alice";
       op3.symbol = alice_symbol;
-      op3.emissions_unit.token_unit[ "alice" ] = 10;
+      op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op3.interval_count = SMT_EMIT_INDEFINITELY;
@@ -2161,7 +2161,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op4;
       op4.control_account = "alice";
       op4.symbol = alice_symbol;
-      op4.emissions_unit.token_unit[ "alice" ] = 10;
+      op4.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op4.schedule_time = op3.schedule_time + fc::days( 365 );
       op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op4.interval_count = 10;
@@ -3121,6 +3121,1020 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       validate_database();
    }
    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_setup_validate )
+{
+   ACTORS( (alice) )
+   generate_block();
+
+   BOOST_TEST_MESSAGE( "Testing: smt_setup_operation validate" );
+
+   smt_setup_operation op;
+   op.control_account = "alice";
+   op.symbol = create_smt( "alice", alice_private_key, 3 );
+
+   op.contribution_begin_time = fc::variant( "2020-12-21T00:00:00" ).as< fc::time_point_sec >();
+   op.contribution_end_time   = op.contribution_begin_time + fc::days( 365 );
+
+   op.launch_time = op.contribution_end_time + fc::days( 1 );
+   op.max_supply  = STEEM_MAX_SHARE_SUPPLY;
+   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+   op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+   op.steem_units_min      = 0;
+
+   smt_capped_generation_policy valid_generation_policy;
+   valid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   valid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   valid_generation_policy.max_unit_ratio = 100;
+   valid_generation_policy.min_unit_ratio = 50;
+   op.initial_generation_policy = valid_generation_policy;
+
+   op.validate();
+
+   BOOST_TEST_MESSAGE( " -- Failure on invalid control acount name" );
+   op.control_account = "@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.control_account = "alice";
+
+   BOOST_TEST_MESSAGE( " -- Failure on contribution_end_time > contribution_begin_time" );
+   op.contribution_end_time = op.contribution_begin_time - fc::seconds( 1 );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.contribution_end_time = op.contribution_begin_time + fc::days( 365 );
+
+   BOOST_TEST_MESSAGE( " -- Failure on launch_time > contribution_end_time" );
+   op.launch_time = op.contribution_end_time - fc::seconds( 1 );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.launch_time = op.contribution_end_time + fc::days( 1 );
+
+   BOOST_TEST_MESSAGE( " -- Failure on steem_units_hard_cap > SMT_MIN_HARD_CAP_STEEM_UNITS" );
+   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS - 1;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS * 2;
+
+   BOOST_TEST_MESSAGE( " -- Failure on steem_units_soft_cap > SMT_MIN_SOFT_CAP_STEEM_UNITS" );
+   op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS - 1;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS * 2;
+
+   BOOST_TEST_MESSAGE( " -- Failure on steem_units_hard_cap > steem_units_soft_cap" );
+   op.steem_units_hard_cap = op.steem_units_soft_cap - 1;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+
+   BOOST_TEST_MESSAGE( " -- Failure on steem_units_soft_cap > steem_units_min" );
+   op.steem_units_min = op.steem_units_soft_cap + 1;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.steem_units_min = 0;
+
+   BOOST_TEST_MESSAGE( " -- Failure on max_supply > STEEM_MAX_SHARE_SUPPLY" );
+   op.max_supply = STEEM_MAX_SHARE_SUPPLY + 1;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+
+   BOOST_TEST_MESSAGE( " -- Successful sanity check" );
+   op.validate();
+
+   smt_capped_generation_policy invalid_generation_policy;
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 1 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+
+   BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_REWARDS in steem_unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_FROM, 1 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_FROM, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_FROM in steem_unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_FROM_VESTING in steem_unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_VESTING, 1 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_VESTING, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_VESTING in steem_unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_VESTING in token_unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { "$market_malformed", 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in pre soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { "$market_malformed", 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in pre soft cap token unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { "$market_maker1", 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in post soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { "$rewardsx", 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on malformed special destination in post soft cap token unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   smt_capped_generation_policy valid_generation_policy2;
+   valid_generation_policy2.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   valid_generation_policy2.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {}
+   };
+   valid_generation_policy2.max_unit_ratio = 100;
+   valid_generation_policy2.min_unit_ratio = 50;
+
+   BOOST_TEST_MESSAGE( " -- Success on having an empty token unit in post soft cap units" );
+   op.initial_generation_policy = valid_generation_policy2;
+   op.validate();
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         {}
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on empty post soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         {}
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on empty pre soft cap token unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         {}
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 },
+         { SMT_DESTINATION_VESTING, 1 }
+      }
+   };
+
+   BOOST_TEST_MESSAGE( " -- Failure on empty pre soft cap steem unit" );
+   op.initial_generation_policy = invalid_generation_policy;
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.initial_generation_policy = valid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Successful sanity check" );
+   op.validate();
+}
+
+
+BOOST_AUTO_TEST_CASE( smt_setup_authorities )
+{
+   smt_setup_operation op;
+   op.control_account = "alice";
+
+   flat_set< account_name_type > auths;
+   flat_set< account_name_type > expected;
+
+   op.get_required_owner_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   op.get_required_posting_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   expected.insert( "alice" );
+   op.get_required_active_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
+
+BOOST_AUTO_TEST_CASE( smt_setup_apply )
+{
+   BOOST_TEST_MESSAGE( "Testing: smt_setup_operation apply" );
+   ACTORS( (alice)(bob)(sam)(dave) )
+
+   generate_block();
+
+   BOOST_TEST_MESSAGE( " -- SMT creation" );
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+   BOOST_TEST_MESSAGE( " -- SMT setup" );
+   signed_transaction tx;
+   smt_setup_operation setup_op;
+
+   setup_op.control_account = "alice";
+   setup_op.symbol = symbol;
+   setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+   setup_op.contribution_end_time = setup_op.contribution_begin_time + fc::days( 30 );
+   setup_op.steem_units_min      = 0;
+   setup_op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+   setup_op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+   setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+   setup_op.launch_time = setup_op.contribution_end_time + fc::days( 1 );
+
+   smt_capped_generation_policy invalid_generation_policy;
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "elaine", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on pre soft cap steem unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "elaine", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on pre soft cap token unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "elaine", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on post soft cap steem unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "elaine", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "elaine", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent account (elaine) on post soft cap token unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$elaine.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on pre soft cap steem unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$elaine.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on pre soft cap token unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$elaine.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on post soft cap steem unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   invalid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   invalid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$elaine.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   invalid_generation_policy.max_unit_ratio = 100;
+   invalid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = invalid_generation_policy;
+
+   BOOST_TEST_MESSAGE( " -- Failure on non-existent founder vesting account (elaine) on post soft cap token unit" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   smt_capped_generation_policy valid_generation_policy;
+   valid_generation_policy.pre_soft_cap_unit = {
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 }
+      },
+      {
+         { "alice", 2 },
+         { "$alice.vesting", 2 },
+         { SMT_DESTINATION_MARKET_MAKER, 2 },
+         { SMT_DESTINATION_REWARDS, 2 },
+         { SMT_DESTINATION_FROM, 2 },
+         { SMT_DESTINATION_FROM_VESTING, 2 }
+      }
+   };
+   valid_generation_policy.post_soft_cap_unit = {
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 }
+      },
+      {
+         { "alice", 1 },
+         { "$alice.vesting", 1 },
+         { SMT_DESTINATION_MARKET_MAKER, 1 },
+         { SMT_DESTINATION_REWARDS, 1 },
+         { SMT_DESTINATION_FROM, 1 },
+         { SMT_DESTINATION_FROM_VESTING, 1 }
+      }
+   };
+   valid_generation_policy.max_unit_ratio = 100;
+   valid_generation_policy.min_unit_ratio = 50;
+   setup_op.initial_generation_policy = valid_generation_policy;
+
+   setup_op.control_account = "bob";
+
+   BOOST_TEST_MESSAGE( " -- Failure to setup SMT with non controlling account" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   setup_op.control_account = "alice";
+
+   BOOST_TEST_MESSAGE( " -- Success on valid SMT setup" );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   generate_block();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
