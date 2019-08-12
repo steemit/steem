@@ -1515,7 +1515,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+   int64_t max_vote_denom = dgpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !_db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
@@ -1933,7 +1933,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
    }
 
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+   int64_t max_vote_denom = dgpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;

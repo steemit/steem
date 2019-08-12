@@ -5215,7 +5215,7 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
-               gpo.vote_power_reserve_rate = STEEM_REDUCED_VOTE_POWER_RATE;
+               gpo.target_votes_per_period = STEEM_REDUCED_VOTE_POWER_RATE;
             });
 
             modify( get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
@@ -5501,6 +5501,9 @@ void database::validate_invariants()const
          FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
       }
+
+      int64_t max_vote_denom = gpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+      FC_ASSERT( max_vote_denom > 0, "target_votes_per_period overflowed" );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }

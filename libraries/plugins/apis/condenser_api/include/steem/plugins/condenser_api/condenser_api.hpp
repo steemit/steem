@@ -375,7 +375,8 @@ struct extended_dynamic_global_properties
       recent_slots_filled( o.recent_slots_filled ),
       participation_count( o.participation_count ),
       last_irreversible_block_num( o.last_irreversible_block_num ),
-      vote_power_reserve_rate( o.vote_power_reserve_rate ),
+      target_votes_per_period( o.target_votes_per_period),
+      vote_power_reserve_rate( o.target_votes_per_period ),
       delegation_return_period( o.delegation_return_period ),
       reverse_auction_seconds( o.reverse_auction_seconds ),
       sbd_stop_percent( o.sbd_stop_percent ),
@@ -414,6 +415,7 @@ struct extended_dynamic_global_properties
 
    uint32_t          last_irreversible_block_num = 0;
 
+   uint32_t          target_votes_per_period = STEEM_INITIAL_VOTE_POWER_RATE;
    uint32_t          vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
    uint32_t          delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
@@ -1213,7 +1215,7 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (total_vesting_fund_steem)(total_vesting_shares)
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)
-            (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(vote_power_reserve_rate)
+            (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(target_votes_per_period)(vote_power_reserve_rate)
             (delegation_return_period)(reverse_auction_seconds)(sbd_stop_percent)(sbd_start_percent) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
