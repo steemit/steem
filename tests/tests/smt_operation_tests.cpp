@@ -1228,130 +1228,124 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
 
 BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_validate )
 {
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_validate with SMT" );
+   BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_validate with SMT" );
 
-      // Dramatis personae
-      ACTORS( (alice) )
-      generate_block();
-      // Create sample SMTs
-      auto smts = create_smt_3( "alice", alice_private_key );
-      const auto& smt1 = smts[0];
-      // Fund creator with SMTs
-      FUND( "alice", asset( 100, smt1 ) );
+   ACTORS( (alice) )
+   generate_block();
 
-      transfer_to_vesting_operation op;
-      op.from = "alice";
-      op.amount = asset( 20, smt1 );
-      op.validate();
+   auto token = create_smt( "alice", alice_private_key, 3 );
 
-      // Fail on invalid 'from' account name
-      op.from = "@@@@@";
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.from = "alice";
+   FUND( "alice", asset( 100, token ) );
 
-      // Fail on invalid 'to' account name
-      op.to = "@@@@@";
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.to = "";
+   transfer_to_vesting_operation op;
+   op.from = "alice";
+   op.amount = asset( 20, token );
+   op.validate();
 
-      // Fail on vesting symbol (instead of liquid)
-      op.amount = asset( 20, smt1.get_paired_symbol() );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on invalid 'from' account name" );
+   op.from = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.from = "alice";
 
-      // Fail on 0 amount
-      op.amount = asset( 0, smt1 );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on invalid 'to' account name" );
+   op.to = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.to = "";
 
-      // Fail on negative amount
-      op.amount = asset( -20, smt1 );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on vesting symbol (instead of liquid)" );
+   op.amount = asset( 20, token.get_paired_symbol() );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
 
-      validate_database();
-   }
-   FC_LOG_AND_RETHROW()
+   BOOST_TEST_MESSAGE( " -- Fail on 0 amount" );
+   op.amount = asset( 0, token );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
+
+   BOOST_TEST_MESSAGE( " -- Fail on negative amount" );
+   op.amount = asset( -20, token );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
+
+   op.validate();
 }
 
-// Here would be smt_transfer_to_vesting_authorities if it differed from transfer_to_vesting_authorities
-/*
 BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
 {
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: smt_transfer_to_vesting_apply" );
+   BOOST_TEST_MESSAGE( "Testing: smt_transfer_to_vesting_apply" );
 
-      auto test_single_smt = [this] (const asset_symbol_type& liquid_smt, const fc::ecc::private_key& key )
-      {
-         asset_symbol_type vesting_smt = liquid_smt.get_paired_symbol();
-         // Fund creator with SMTs
-         FUND( "alice", asset( 10000, liquid_smt ) );
+   ACTORS( (alice)(bob) )
+   generate_block();
 
-         const auto& smt_object = db->get< smt_token_object, by_symbol >( liquid_smt );
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
 
-         // Check pre-vesting balances
-         FC_ASSERT( db->get_balance( "alice", liquid_smt ).amount == 10000, "SMT balance adjusting error" );
-         FC_ASSERT( db->get_balance( "alice", vesting_smt ).amount == 0, "SMT balance adjusting error" );
+   FUND( "alice", asset( 10000, symbol ) );
 
-         auto smt_shares = asset( smt_object.total_vesting_shares, vesting_smt );
-         auto smt_vests = asset( smt_object.total_vesting_fund_smt, liquid_smt );
-         auto smt_share_price = smt_object.get_vesting_share_price();
-         auto alice_smt_shares = db->get_balance( "alice", vesting_smt );
-         auto bob_smt_shares = db->get_balance( "bob", vesting_smt );;
+   BOOST_TEST_MESSAGE( " -- Checking initial balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 10000 );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ).amount == 0 );
 
-         // Self transfer Alice's liquid
-         transfer_to_vesting_operation op;
-         op.from = "alice";
-         op.to = "";
-         op.amount = asset( 7500, liquid_smt );
-         PUSH_OP( op, key );
+   const auto& token = db->get< smt_token_object, by_symbol >( symbol );
 
-         auto new_vest = op.amount * smt_share_price;
-         smt_shares += new_vest;
-         smt_vests += op.amount;
-         alice_smt_shares += new_vest;
+   auto smt_shares      = asset( token.total_vesting_shares, symbol.get_paired_symbol() );
+   auto smt_vests       = asset( token.total_vesting_fund_smt, symbol );
+   auto smt_share_price = token.get_vesting_share_price();
 
-         BOOST_REQUIRE( db->get_balance( "alice", liquid_smt ) == asset( 2500, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "alice", vesting_smt ) == alice_smt_shares );
-         BOOST_REQUIRE( smt_object.total_vesting_fund_smt.value == smt_vests.amount.value );
-         BOOST_REQUIRE( smt_object.total_vesting_shares.value == smt_shares.amount.value );
-         validate_database();
-         smt_share_price = smt_object.get_vesting_share_price();
+   BOOST_TEST_MESSAGE( " -- Self transfer to vesting (alice)" );
+   transfer_to_vesting_operation op;
+   op.from = "alice";
+   op.to = "";
+   op.amount = asset( 7500, symbol );
+   PUSH_OP( op, alice_private_key );
 
-         // Transfer Alice's liquid to Bob's vests
-         op.to = "bob";
-         op.amount = asset( 2000, liquid_smt );
-         PUSH_OP( op, key );
+   auto new_vest = op.amount * smt_share_price;
+   smt_shares += new_vest;
+   smt_vests += op.amount;
+   auto alice_smt_shares = new_vest;
 
-         new_vest = op.amount * smt_share_price;
-         smt_shares += new_vest;
-         smt_vests += op.amount;
-         bob_smt_shares += new_vest;
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 2500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
 
-         BOOST_REQUIRE( db->get_balance( "alice", liquid_smt ) == asset( 500, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "alice", vesting_smt ) == alice_smt_shares );
-         BOOST_REQUIRE( db->get_balance( "bob", liquid_smt ) == asset( 0, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "bob", vesting_smt ) == bob_smt_shares );
-         BOOST_REQUIRE( smt_object.total_vesting_fund_smt.value == smt_vests.amount.value );
-         BOOST_REQUIRE( smt_object.total_vesting_shares.value == smt_shares.amount.value );
-         validate_database();
-      };
+   validate_database();
 
-      ACTORS( (alice)(bob) )
-      generate_block();
+   smt_share_price = token.get_vesting_share_price();
 
-      // Create sample SMTs
-      auto smts = create_smt_3( "alice", alice_private_key );
-      test_single_smt( smts[0], alice_private_key);
-      test_single_smt( smts[1], alice_private_key );
-      test_single_smt( smts[2], alice_private_key );
-   }
-   FC_LOG_AND_RETHROW()
+   BOOST_TEST_MESSAGE( " -- Transfer from alice to bob ( liquid -> vests)" );
+   op.to = "bob";
+   op.amount = asset( 2000, symbol );
+   PUSH_OP( op, alice_private_key );
+
+   new_vest = op.amount * smt_share_price;
+   smt_shares += new_vest;
+   smt_vests += op.amount;
+   auto bob_smt_shares = new_vest;
+
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 0, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol.get_paired_symbol() ) == bob_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
+
+   BOOST_TEST_MESSAGE( " -- Transfer from alice to bob ( liquid -> vests ) insufficient funds" );
+   op.amount = asset( 501, symbol );
+   FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 0, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol.get_paired_symbol() ) == bob_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
+
+   validate_database();
 }
-*/
+
 
 BOOST_AUTO_TEST_CASE( smt_create_validate )
 {

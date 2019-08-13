@@ -1244,20 +1244,26 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
-         // Get share price.
-         const auto& smt = db.get< smt_token_object, by_symbol >( liquid.symbol );
-         FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
-         price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
+
+         const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
+
+         if ( to_reward_balance )
+            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled." );
+
+         price vesting_share_price = to_reward_balance ? token.get_reward_vesting_share_price() : token.get_vesting_share_price();
+
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
          before_vesting_callback( new_vesting );
+
          // Add new vesting to owner's balance.
          if( to_reward_balance )
             db.adjust_reward_balance( to_account, liquid, new_vesting );
          else
             db.adjust_balance( to_account, new_vesting );
+
          // Update global vesting pool numbers.
-         db.modify( smt, [&]( smt_token_object& smt_object )
+         db.modify( token, [&]( smt_token_object& smt_object )
          {
             if( to_reward_balance )
             {
@@ -1271,7 +1277,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             }
          } );
 
-         // NOTE that SMT vesting does not impact witness voting.
+         // Note: SMT vesting does not impact witness voting.
 
          return new_vesting;
       }
