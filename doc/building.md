@@ -59,7 +59,8 @@ will build out of the box without further effort:
         make \
         pkg-config \
         python3 \
-        python3-jinja2
+        python3-jinja2 \
+        doxygen
 
     # Boost packages (also required)
     sudo apt-get install -y \
@@ -79,7 +80,6 @@ will build out of the box without further effort:
 
     # Optional packages (not required, but will make a nicer experience)
     sudo apt-get install -y \
-        doxygen \
         libncurses5-dev \
         libreadline-dev \
         perl
@@ -121,7 +121,8 @@ Here are the required packages:
         python-dev \
         perl \
         python3 \
-        python3-jinja2
+        python3-jinja2 \
+        doxygen
 
 The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old.
 Steem requires Boost 1.58 (as in Ubuntu 16.04) and works with versions up to 1.60 (including).
@@ -190,7 +191,8 @@ Install Homebrew by following the instructions here: http://brew.sh/
         snappy \
         zlib \
         bzip2 \
-        python3
+        python3 \
+        doxygen
         
     pip3 install --user jinja2
     
