@@ -375,7 +375,7 @@ struct extended_dynamic_global_properties
       recent_slots_filled( o.recent_slots_filled ),
       participation_count( o.participation_count ),
       last_irreversible_block_num( o.last_irreversible_block_num ),
-      target_votes_per_period( o.target_votes_per_period),
+      target_votes_per_period( o.target_votes_per_period ),
       vote_power_reserve_rate( o.target_votes_per_period ),
       delegation_return_period( o.delegation_return_period ),
       reverse_auction_seconds( o.reverse_auction_seconds ),
