@@ -198,7 +198,17 @@ void block_producer::apply_pending_transactions(
          temp_session.squash();
          total_block_size = new_total_size;
          required_actions.push_back( pending_required_itr->action );
+
+#ifdef ENABLE_MIRA
+         auto old = pending_required_itr++;
+         if( !( pending_required_itr != pending_required_action_idx.end() && pending_required_itr->execution_time <= when ) )
+         {
+            pending_required_itr = pending_required_action_idx.iterator_to( *old );
+            ++pending_required_itr;
+         }
+#else
          ++pending_required_itr;
+#endif
       }
       catch( fc::exception& e )
       {

@@ -407,26 +407,6 @@ public:
       return *this;
    }
 
-   rocksdb_iterator& operator=( rocksdb_iterator& other )
-   {
-      _handles = other._handles;
-      _index = other._index;
-      _snapshot = other._snapshot;
-      _db = other._db;
-      _cache = other._cache;
-      _cache_value = other._cache_value;
-
-      if ( other._iter )
-      {
-         _iter.reset( _db->NewIterator( _opts, &*(*_handles)[ _index ] ) );
-
-         if( other._iter->Valid() )
-            _iter->Seek( other._iter->key() );
-      }
-
-      return *this;
-   }
-
    rocksdb_iterator& operator=( rocksdb_iterator&& other )
    {
       _handles = other._handles;
