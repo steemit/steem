@@ -37,6 +37,7 @@ namespace steem { namespace protocol {
       account_name_type    contributor;
       asset_symbol_type    symbol;
       uint32_t             contribution_id;
+      asset                contribution;
       std::vector< asset > payouts;
 
       void validate()const;
@@ -104,7 +105,7 @@ FC_REFLECT( steem::protocol::example_required_action, (account) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::smt_refund_action, (contributor)(symbol)(contribution_id)(refund) )
-FC_REFLECT( steem::protocol::smt_contributor_payout_action, (contributor)(symbol)(contribution_id)(payouts) )
+FC_REFLECT( steem::protocol::smt_contributor_payout_action, (contributor)(symbol)(contribution_id)(contribution)(payouts) )
 FC_REFLECT( steem::protocol::smt_founder_payout_action, (symbol)(account_payouts)(market_maker_steem)(market_maker_tokens)(rewards_fund) )
 FC_REFLECT( steem::protocol::smt_ico_launch_action, (control_account)(symbol) )
 FC_REFLECT( steem::protocol::smt_ico_evaluation_action, (control_account)(symbol) )

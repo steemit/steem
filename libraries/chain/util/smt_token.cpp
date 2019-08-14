@@ -108,11 +108,6 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a )
       refund_action.contribution_id = itr->contribution_id;
       refund_action.refund = itr->contribution;
 
-      db.modify( db.get< smt_ico_object, by_symbol >( a ), [&]( smt_ico_object& o )
-      {
-         o.processed_contributions += itr->contribution.amount;
-      } );
-
       db.push_required_action( refund_action );
       action_scheduled = true;
    }
@@ -155,6 +150,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       smt_contributor_payout_action payout_action;
       payout_action.contributor = itr->contributor;
       payout_action.contribution_id = itr->contribution_id;
+      payout_action.contribution = itr->contribution;
       payout_action.symbol = itr->symbol;
 
       const auto& ico = db.get< smt_ico_object, by_symbol >( itr->symbol );
@@ -231,11 +227,6 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
 
       for ( auto it = payout_map.begin(); it != payout_map.end(); ++it )
          payout_action.payouts.push_back( asset( it->second, it->first ) );
-
-      db.modify( ico, [&]( smt_ico_object& ico )
-      {
-         ico.processed_contributions += itr->contribution.amount;
-      } );
 
       db.push_required_action( payout_action );
       action_scheduled = true;

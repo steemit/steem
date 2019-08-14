@@ -5476,7 +5476,10 @@ void database::validate_invariants()const
 
       for ( auto itr = smt_ico_idx.begin(); itr != smt_ico_idx.end(); ++itr )
       {
-         total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
+         if ( get< smt_token_object, by_symbol >( itr->symbol ).phase <= smt_phase::launch_failed )
+            total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
+         else
+            total_supply += asset( itr->contributed.amount, STEEM_SYMBOL );
       }
 
       const auto& smt_token_idx = get_index< smt_token_index, by_id >();

@@ -82,6 +82,7 @@ bool operator==( const smt_contributor_payout_action& lhs, const smt_contributor
       lhs.symbol == rhs.symbol &&
       lhs.contributor == rhs.contributor &&
       lhs.contribution_id == rhs.contribution_id &&
+      lhs.contribution == rhs.contribution &&
       lhs.payouts == rhs.payouts;
 }
 
