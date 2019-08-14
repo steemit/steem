@@ -1115,7 +1115,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( db->get_balance( "george", STEEM_SYMBOL ).amount == 40000000 );
       BOOST_REQUIRE( db->get_balance( "henry", STEEM_SYMBOL ).amount == 0 );
 
-      BOOST_REQUIRE( db->get_account( "george" ).vesting_shares.amount == 5071096637195003 );
+      BOOST_REQUIRE( db->get_account( "george" ).vesting_shares.amount == 5076086140430482 );
 
       BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 420000000 );
       BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 2100000000 );
