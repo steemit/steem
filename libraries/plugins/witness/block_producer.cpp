@@ -244,7 +244,17 @@ FC_TODO( "Remove ifdef when required actions are added" )
          optional_actions.push_back( pending_optional_itr->action );
       }
       catch( fc::exception& ) {}
+
+#ifdef ENABLE_MIRA
+      auto old = pending_optional_itr++;
+      if( !( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when ) )
+      {
+         pending_optional_itr = pending_optional_action_idx.iterator_to( *old );
+         ++pending_optional_itr;
+      }
+#else
       ++pending_optional_itr;
+#endif
    }
 
 FC_TODO( "Remove ifdef when optional actions are added" )
