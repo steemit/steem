@@ -122,6 +122,7 @@ namespace steem { namespace protocol {
       }
    };
 
+#ifdef STEEM_ENABLE_SMT
    void comment_payout_beneficiaries::validate()const
    {
       uint32_t sum = 0;
@@ -185,6 +186,7 @@ namespace steem { namespace protocol {
          if( v.second.beneficiaries.beneficiaries.size() ) v.second.beneficiaries.validate();
       }
    }
+#endif
 
    void comment_options_operation::validate()const
    {
