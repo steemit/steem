@@ -1667,6 +1667,49 @@ void database::update_owner_authority( const account_object& account, const auth
 
 void database::process_vesting_withdrawals()
 {
+#ifdef STEEM_ENABLE_SMT
+   const auto& token_balance_idx = get_index < account_regular_balance_index, by_next_vesting_withdrawal >();
+   for ( auto iter = token_balance_idx.begin(); iter != token_balance_idx.end() && iter->next_vesting_withdrawal <= head_block_time(); ++iter )
+   {
+      const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
+      share_type to_withdraw;
+      if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
+         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+      else
+         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+
+      auto converted_token = asset( to_withdraw, iter->get_liquid_symbol().get_paired_symbol() ) * token.get_vesting_share_price();
+
+      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, asset( to_withdraw, iter->get_liquid_symbol() ), converted_token );
+
+      pre_push_virtual_operation( vop );
+
+      modify( *iter, [&]( account_regular_balance_object& a )
+      {
+         a.liquid    += converted_token;
+         a.withdrawn += to_withdraw;
+
+         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         {
+            a.vesting_withdraw_rate.amount = 0;
+            a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+         }
+         else
+         {
+            a.next_vesting_withdrawal += fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+         }
+      } );
+
+      modify( token, [&]( smt_token_object& o )
+      {
+         o.total_vesting_fund_smt -= converted_token.amount;
+         o.total_vesting_shares   -= to_withdraw;
+      } );
+
+      post_push_virtual_operation( vop );
+
+   }
+#endif
    const auto& widx = get_index< account_index, by_next_vesting_withdrawal >();
    const auto& didx = get_index< withdraw_vesting_route_index, by_withdraw_route >();
    auto current = widx.begin();

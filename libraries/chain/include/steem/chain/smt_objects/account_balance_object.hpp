@@ -30,6 +30,15 @@ public:
    asset               liquid;   /// 'balance' for STEEM
    asset               vesting;  /// 'vesting_shares' for VESTS
 
+   asset               delegated_vesting_shares;
+   asset               received_vesting_shares;
+
+   asset               vesting_withdraw_rate;
+   time_point_sec      next_vesting_withdrawal = fc::time_point_sec::maximum();
+   share_type          withdrawn               = 0;
+   share_type          to_withdraw             = 0;
+   uint16_t            withdraw_routes         = 0;
+
    /** Set of simple methods that allow unification of
     *  regular and rewards balance manipulation code.
     */
@@ -38,12 +47,17 @@ public:
    {
       return liquid.symbol;
    }
+
    void clear_balance( asset_symbol_type liquid_symbol )
    {
-      owner = "";
-      liquid = asset( 0, liquid_symbol);
-      vesting = asset( 0, liquid_symbol.get_paired_symbol() );
+      owner                    = "";
+      liquid                   = asset( 0, liquid_symbol);
+      vesting                  = asset( 0, liquid_symbol.get_paired_symbol() );
+      delegated_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
+      received_vesting_shares  = asset( 0, liquid_symbol.get_paired_symbol() );
+      vesting_withdraw_rate    = asset( 0, liquid_symbol.get_paired_symbol() );
    }
+
    void add_vesting( const asset& vesting_shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
@@ -109,6 +123,7 @@ public:
 };
 
 struct by_owner_liquid_symbol;
+struct by_next_vesting_withdrawal;
 
 typedef multi_index_container <
    account_regular_balance_object,
@@ -116,8 +131,15 @@ typedef multi_index_container <
       ordered_unique< tag< by_id >,
          member< account_regular_balance_object, account_regular_balance_id_type, &account_regular_balance_object::id>
       >,
-      ordered_unique<tag<by_owner_liquid_symbol>,
-         composite_key<account_regular_balance_object,
+      ordered_unique< tag< by_owner_liquid_symbol >,
+         composite_key< account_regular_balance_object,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::owner >,
+            const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
+         >
+      >,
+      ordered_unique< tag< by_next_vesting_withdrawal >,
+         composite_key< account_regular_balance_object,
+            member< account_regular_balance_object, time_point_sec, &account_regular_balance_object::next_vesting_withdrawal >,
             member< account_regular_balance_object, account_name_type, &account_regular_balance_object::owner >,
             const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
          >
@@ -149,6 +171,13 @@ FC_REFLECT( steem::chain::account_regular_balance_object,
    (owner)
    (liquid)
    (vesting)
+   (delegated_vesting_shares)
+   (received_vesting_shares)
+   (vesting_withdraw_rate)
+   (next_vesting_withdrawal)
+   (withdrawn)
+   (to_withdraw)
+   (withdraw_routes)
 )
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,

@@ -509,7 +509,10 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 {
    try
    {
-      FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      if ( amount.symbol.space() == asset_symbol_type::legacy_space )
+         FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      else
+         FC_ASSERT( !amount.symbol.is_vesting(), "Can only vest liquid symbol" );
 
       transfer_to_vesting_operation op;
       op.from = from;
