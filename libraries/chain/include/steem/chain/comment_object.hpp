@@ -12,9 +12,9 @@ namespace steem { namespace chain {
 
    using protocol::beneficiary_route_type;
    using chainbase::t_vector;
-   using chainbase::t_pair;
+   using chainbase::t_flat_map;
 #ifdef STEEM_ENABLE_SMT
-   using protocol::votable_asset_info;
+   using protocol::votable_asset_options;
 #endif
 
    struct strcmp_less
@@ -107,7 +107,7 @@ namespace steem { namespace chain {
          using t_beneficiaries = t_vector< beneficiary_route_type >;
          t_beneficiaries   beneficiaries;
 #ifdef STEEM_ENABLE_SMT
-         using t_votable_assets = t_vector< t_pair< asset_symbol_type, votable_asset_info > >;
+         using t_votable_assets = t_flat_map< asset_symbol_type, votable_asset_options >;
          t_votable_assets  allowed_vote_assets;
 #endif
    };

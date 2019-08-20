@@ -5476,10 +5476,7 @@ void database::validate_invariants()const
 
       for ( auto itr = smt_ico_idx.begin(); itr != smt_ico_idx.end(); ++itr )
       {
-         if ( get< smt_token_object, by_symbol >( itr->symbol ).phase <= smt_phase::launch_failed )
-            total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
-         else
-            total_supply += asset( itr->contributed.amount, STEEM_SYMBOL );
+         total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
       }
 
       const auto& smt_token_idx = get_index< smt_token_index, by_id >();
@@ -5504,9 +5501,6 @@ void database::validate_invariants()const
          FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
       }
-
-      int64_t max_vote_denom = gpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
-      FC_ASSERT( max_vote_denom > 0, "target_votes_per_period overflowed" );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }

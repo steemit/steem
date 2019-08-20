@@ -4,6 +4,7 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/smt_objects.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/block_summary_object.hpp>
 
@@ -701,21 +702,35 @@ struct comment_options_extension_visitor
 #ifdef STEEM_ENABLE_SMT
    void operator()( const allowed_vote_assets& va) const
    {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Specifying SMT Comment Options not available until SMT Hardfork." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying allowed vote assets." );
-      auto remaining_asset_number = SMT_MAX_VOTABLE_ASSETS;
-      FC_ASSERT( remaining_asset_number > 0 );
-      _db.modify( _c, [&]( comment_object& c )
+
+      for( const auto& a : va.votable_assets )
       {
-         for( const auto& a : va.votable_assets )
+         auto smt = _db.find< smt_token_object, by_symbol >( a.first );
+         FC_ASSERT( smt != nullptr, "SMT ${s} was not found.", ("s", a.first) );
+         FC_ASSERT( smt->phase == smt_phase::launch_success, "SMT ${s} must be in active phase to be a votable asset.", ("s", a.first) );
+      }
+
+      auto allowed_vote_assets = _c.allowed_vote_assets;
+
+      for( const auto& a : va.votable_assets )
+      {
+         if( a.second.beneficiaries.beneficiaries.size() )
          {
-            if( a.first != STEEM_SYMBOL )
+            for( auto& b : a.second.beneficiaries.beneficiaries )
             {
-               FC_ASSERT( remaining_asset_number > 0, "Comment votable assets number exceeds allowed limit ${ava}.",
-                        ("ava", SMT_MAX_VOTABLE_ASSETS) );
-               --remaining_asset_number;
-               c.allowed_vote_assets.emplace_back( a.first, a.second );
+               auto acc = _db.find< account_object, by_name >( b.account );
+               FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
             }
          }
+
+         allowed_vote_assets.insert_or_assign( a.first, a.second );
+      }
+
+      _db.modify( _c, [&]( comment_object& c )
+      {
+         c.allowed_vote_assets = allowed_vote_assets;
       });
    }
 #endif
@@ -725,14 +740,15 @@ struct comment_options_extension_visitor
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries." );
 
+      for( auto& b : cpb.beneficiaries )
+      {
+         auto acc = _db.find< account_object, by_name >( b.account );
+         FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
+      }
+
       _db.modify( _c, [&]( comment_object& c )
       {
-         for( auto& b : cpb.beneficiaries )
-         {
-            auto acc = _db.find< account_object, by_name >( b.account );
-            FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
-            c.beneficiaries.push_back( b );
-         }
+         c.beneficiaries.insert( c.beneficiaries.end(), cpb.beneficiaries.begin(), cpb.beneficiaries.end() );
       });
    }
 };
