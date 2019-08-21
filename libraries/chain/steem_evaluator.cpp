@@ -705,11 +705,22 @@ struct comment_options_extension_visitor
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Specifying SMT Comment Options not available until SMT Hardfork." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying allowed vote assets." );
 
+      const auto& root = _db.get< comment_object, by_id >( _c.root_comment );
+
       for( const auto& a : va.votable_assets )
       {
-         auto smt = _db.find< smt_token_object, by_symbol >( a.first );
-         FC_ASSERT( smt != nullptr, "SMT ${s} was not found.", ("s", a.first) );
-         FC_ASSERT( smt->phase == smt_phase::launch_success, "SMT ${s} must be in active phase to be a votable asset.", ("s", a.first) );
+         if( _c.parent_author == STEEM_ROOT_POST_PARENT )
+         {
+            auto smt = _db.find< smt_token_object, by_symbol >( a.first );
+            FC_ASSERT( smt != nullptr, "SMT ${s} was not found.", ("s", a.first) );
+            FC_ASSERT( smt->phase == smt_phase::launch_success, "SMT ${s} must be in active phase to be a votable asset.", ("s", a.first) );
+         }
+         else
+         {
+            auto smt = root.allowed_vote_assets.find( a.first );
+            FC_ASSERT( smt != root.allowed_vote_assets.end(), "SMT ${s} is not a votable asset in the root comment ${a}/${p}",
+               ("s", a.first)("a", root.author)("p", root.permlink) );
+         }
       }
 
       auto allowed_vote_assets = _c.allowed_vote_assets;

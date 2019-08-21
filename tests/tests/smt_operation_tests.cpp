@@ -4434,6 +4434,44 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
       tx.operations.push_back( op );
       sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure specifying non-inherited votable asset" );
+
+      generate_block();
+      auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
+      generate_block();
+
+      comment.parent_author = comment.author;
+      comment.parent_permlink = comment.permlink;
+      comment.author = "bob";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      op.author = comment.author;
+      ava.votable_assets.clear();
+      ava.votable_assets[ bob_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Success specifying inherited votable asset" );
+
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
    }
    FC_LOG_AND_RETHROW()
 }
