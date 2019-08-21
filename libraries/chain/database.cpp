@@ -4439,20 +4439,10 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       // Check result to avoid negative balance storing.
       FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
 
-      // Exit if whole balance becomes zero.
-      if( is_all_zero )
+      modify( *bo, [&]( smt_balance_object_type& smt_balance )
       {
-         // Zero balance is the same as non object balance at all.
-         // Remove balance object if both liquid and vesting balances are zero.
-         remove( *bo );
-      }
-      else
-      {
-         modify( *bo, [&]( smt_balance_object_type& smt_balance )
-         {
-            balance_operator.add_to_balance( smt_balance );
-         } );
-      }
+         balance_operator.add_to_balance( smt_balance );
+      } );
    }
 }
 #endif

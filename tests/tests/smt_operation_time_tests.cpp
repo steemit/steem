@@ -1045,7 +1045,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
          {
             { SMT_DESTINATION_FROM, 5 },
             { SMT_DESTINATION_MARKET_MAKER, 1 },
-            { SMT_DESTINATION_REWARDS, 2 }
+            { SMT_DESTINATION_REWARDS, 2 },
+            { "$george.vesting", 2 }
          } ), /* post_soft_cap_unit */
          50,                                                            /* min_unit_ratio */
          100                                                            /* max_unit_ratio */
@@ -1126,6 +1127,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 0 );
 
+      BOOST_REQUIRE( db->get_balance( "george", symbol.get_paired_symbol() ).amount == 600000000000000 );
+
       BOOST_TEST_MESSAGE( " --- Checking market maker and rewards fund balances" );
 
       BOOST_REQUIRE( token.market_maker.steem_balance == asset( 75000000, STEEM_SYMBOL ) );
@@ -1177,7 +1180,7 @@ BOOST_AUTO_TEST_CASE( smt_vesting_withdrawals )
 
    BOOST_TEST_MESSAGE( " -- Generating block up to first withdrawal" );
    generate_blocks( next_withdrawal - ( STEEM_BLOCK_INTERVAL / 2 ), true);
-   balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+
    BOOST_REQUIRE( balance_obj->vesting.amount.value == vesting_shares.amount.value );
 
    BOOST_TEST_MESSAGE( " -- Generating block to cause withdrawal" );
