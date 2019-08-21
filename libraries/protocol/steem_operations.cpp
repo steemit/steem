@@ -122,7 +122,6 @@ namespace steem { namespace protocol {
       }
    };
 
-#ifdef STEEM_ENABLE_SMT
    void comment_payout_beneficiaries::validate()const
    {
       uint32_t sum = 0;
@@ -146,6 +145,7 @@ namespace steem { namespace protocol {
       }
    }
 
+#ifdef STEEM_ENABLE_SMT
    void allowed_vote_assets::add_votable_asset( const asset_symbol_type& symbol, const share_type& max_accepted_payout,
       bool allow_curation_rewards )
    {
