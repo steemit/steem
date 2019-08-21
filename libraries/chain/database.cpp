@@ -1678,21 +1678,23 @@ void database::process_vesting_withdrawals()
       else
          to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
 
-      auto converted_token = asset( to_withdraw, iter->get_liquid_symbol().get_paired_symbol() ) * token.get_vesting_share_price();
+      auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
+      auto converted_token = withdraw_token * token.get_vesting_share_price();
 
-      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, asset( to_withdraw, iter->get_liquid_symbol() ), converted_token );
+      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, withdraw_token, converted_token );
 
       pre_push_virtual_operation( vop );
 
       modify( *iter, [&]( account_regular_balance_object& a )
       {
+         a.vesting   -= withdraw_token;
          a.liquid    += converted_token;
          a.withdrawn += to_withdraw;
 
          if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
          {
             a.vesting_withdraw_rate.amount = 0;
-            a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+            a.next_vesting_withdrawal      = fc::time_point_sec::maximum();
          }
          else
          {
@@ -4424,7 +4426,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
 
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.clear_balance( liquid_symbol );
+         smt_balance.initialize_assets( liquid_symbol );
          smt_balance.owner = name;
          balance_operator.add_to_balance( smt_balance );
          smt_balance.validate();
