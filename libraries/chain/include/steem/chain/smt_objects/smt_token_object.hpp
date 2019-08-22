@@ -295,6 +295,8 @@ FC_REFLECT( steem::chain::smt_token_object,
    (current_supply)
    (total_vesting_fund_smt)
    (total_vesting_shares)
+   (total_vesting_fund_ballast)
+   (total_vesting_shares_ballast)
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
    (rewards_fund)
