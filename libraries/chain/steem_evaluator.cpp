@@ -1501,8 +1501,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    if( _db.has_hardfork( STEEM_HARDFORK_0_12__177 ) && _db.calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
    {
 #ifndef CLEAR_VOTES
-      const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
+      const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id, STEEM_SYMBOL ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1522,8 +1522,8 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
       return;
    }
 
-   const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
+   const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id, STEEM_SYMBOL ) );
 
    int64_t elapsed_seconds = _db.head_block_time().sec_since_epoch() - voter.voting_manabar.last_update_time;
 
@@ -1889,8 +1889,8 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    if( _db.calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
    {
 #ifndef CLEAR_VOTES
-      const auto& comment_vote_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
+      const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
+      auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id, STEEM_SYMBOL ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
@@ -1914,8 +1914,8 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       FC_ASSERT( _db.head_block_time() < comment.cashout_time, "Comment is actively being rewarded. Cannot vote on comment." );
    }
 
-   const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter >();
-   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id ) );
+   const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
+   auto itr = comment_vote_idx.find( boost::make_tuple( comment.id, voter.id, STEEM_SYMBOL ) );
 
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
@@ -1932,7 +1932,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    _db.modify( voter, [&]( account_object& a )
    {
-      util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+      util::update_manabar( _db.get_dynamic_global_properties(), a, STEEM_VOTING_MANA_REGENERATION_SECONDS. _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
    });
 
    if ( _db.has_hardfork( STEEM_HARDFORK_0_21__3004 ) )
@@ -2022,7 +2022,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       const auto& root = _db.get( comment.root_comment );
 
       auto old_vote_rshares = comment.vote_rshares;
@@ -2043,12 +2042,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       {
          c.children_abs_rshares += abs_rshares;
       });
-
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0) );
-
-      /// calculate rshares2 value
-      new_rshares = util::evaluate_reward_curve( new_rshares );
-      old_rshares = util::evaluate_reward_curve( old_rshares );
 
       uint64_t max_vote_weight = 0;
 
@@ -2155,7 +2148,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      fc::uint128_t old_rshares = std::max( comment.net_rshares.value, int64_t( 0 ) );
       const auto& root = _db.get( comment.root_comment );
 
       _db.modify( comment, [&]( comment_object& c )
@@ -2184,12 +2176,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
          c.children_abs_rshares += abs_rshares;
       });
 
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-
-      /// calculate rshares2 value
-      new_rshares = util::evaluate_reward_curve( new_rshares );
-      old_rshares = util::evaluate_reward_curve( old_rshares );
-
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
@@ -2208,6 +2194,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
 void vote_evaluator::do_apply( const vote_operation& o )
 { try {
+   FC_TODO( "Deprecate vote_operation in a future hardfork" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
    {
       hf20_vote_evaluator( o, _db );
@@ -2217,6 +2204,409 @@ void vote_evaluator::do_apply( const vote_operation& o )
       pre_hf20_vote_evaluator( o, _db );
    }
 } FC_CAPTURE_AND_RETHROW( (o) ) }
+
+#ifdef STEEM_ENABLE_SMT
+struct vote_context
+{
+   vote_context(
+      const vote_operation& o,
+      const comment_object& c,
+      const& dynamic_global_properties d,
+      account_id_type v_id,
+      int64_t r,
+      asset_symbol_type s,
+      uint32_t mrp,
+      uint32_t vprp ) :
+      op( o ),
+      comment( c ),
+      dgpo( d ),
+      voter_id( v_id ),
+      rshares( r ),
+      symbol( s ),
+      mana_regen_period( mrp ),
+      votes_per_regen_period( vprp )
+   {}
+
+   const vote_operation&            op;
+   const comment_object&            comment;
+   const dynamic_global_properties& dgpo;
+   account_id_type                  voter_id;
+   int64_t                          rshares;
+   asset_symbol_type                symbol;
+   fc::time_point_sec               mana_regen_period;
+   fc::time_point_sec               votes_per_regen_period;
+};
+
+template< typename AccountType >
+void generic_vote_evaluator(
+   vote_context ctx;
+   const AccountType& voter
+   database& _db )
+{
+   const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
+
+   auto now = _db.head_block_time();
+
+   if( _db.calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
+   {
+#ifndef CLEAR_VOTES
+      auto itr = comment_vote_idx.find( boost::make_tuple( ctx.comment.id, ctx.voter_id ) );
+
+      if( itr == comment_vote_idx.end() )
+         _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )
+         {
+            cvo.voter = ctx.voter_id;
+            cvo.comment = ctx.comment.id;
+            cvo.vote_percent = ctx.op.weight;
+            cvo.last_update = now;
+         });
+      else
+         _db.modify( *itr, [&]( comment_vote_object& cvo )
+         {
+            cvo.vote_percent = ctx.op.weight;
+            cvo.last_update = now;
+         });
+#endif
+      return;
+   }
+   else
+   {
+      FC_ASSERT( now < comment.cashout_time, "Comment is actively being rewarded. Cannot vote on comment." );
+   }
+
+   auto itr = comment_vote_idx.find( boost::make_tuple( ctx.comment.id, ctx.voter_id, ctx.symbol ) );
+
+   // Lazily delete vote
+   if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
+   {
+      FC_TODO( "This looks suspicious. We might not be deleting vote objects that we should be on nodes that are configured to clear votes" );
+      FC_ASSERT( false, "Cannot vote again on a comment after payout." );
+
+      _db.remove( *itr );
+      itr = comment_vote_idx.end();
+   }
+
+   FC_ASSERT( ( now - ctx.voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+
+   _db.modify( voter, [&]( AccountType& a )
+   {
+      util::update_manabar( _db.get_dynamic_global_properties(), a, ctx.mana_regen_period, true );
+   });
+
+   FC_ASSERT( voter.voting_manabar.current_mana >= 0, "Account does not have enough mana to vote." );
+
+   if( ctx.rshares < 0 )
+   {
+      max_abs_rshares = std::max(
+                           std::max(
+                              voter.downvote_manabar.current_mana,
+                              ( voter.downvote_manabar.current_mana * ctx.dgpo.downvote_pool_percent ) / ctx.votes_per_regen_period
+                           ),
+                           max_abs_rshares );
+   }
+
+   int64_t abs_rshares = abs( ctx.rshares );
+   uint64_t max_abs_rshares = ( voter.voting_manabar.current_mana + ctx.votes_per_regen_period - 1 ) / ctx.votes_per_regen_period;
+
+   FC_ASSERT( abs_rshares < max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
+      ("m", max_abs_rshares)("t", ctx.symbol)("r", ctx.rshares) );
+
+   if( ctx.dgpo.downvote_pool_percent && ctx.rshares < 0 )
+   {
+      FC_ASSERT( voter.voting_manabar.current_mana + voter.downvote_manabar.current_mana > max_abs_rshares,
+         "Account does not have enough mana to downvote. voting_mana: ${v} downvote_mana: ${d} required_mana: ${r}",
+         ("v", voter.voting_manabar.current_mana)("d", voter.downvote_manabar.current_mana)("r", max_abs_rshares) );
+   }
+   else
+   {
+      FC_ASSERT( voter.voting_manabar.has_mana( max_abs_rshares ), "Account does not have enough mana to vote." );
+   }
+
+   FC_TODO( "Determine if we should use the same dust threshold for SMTs or allow the creators to set it themselves" );
+   abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
+   abs_rshares = std::max( int64_t(0), abs_rshares );
+
+   uint32_t cashout_delta = ( ctx.comment.cashout_time - _db.head_block_time() ).to_seconds();
+
+   if( cashout_delta < STEEM_UPVOTE_LOCKOUT_SECONDS )
+   {
+      abs_rshares = (int64_t) ( ( uint128_t( abs_rshares ) * cashout_delta ) / STEEM_UPVOTE_LOCKOUT_SECONDS ).to_uint64();
+   }
+
+   if( itr == comment_vote_idx.end() )
+   {
+      FC_ASSERT( ctx.rshares != 0, "Cannot vote with 0 rshares." );
+      /// this is the rshares voting for or against the post
+
+      int64_t comment_rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
+
+      _db.modify( ctx.voter, [&]( AccountType& a )
+      {
+         if( ctx.dgpo.downvote_pool_percent > 0 && rshares < 0 )
+         {
+            if( abs_rshares > a.downvote_manabar.current_mana )
+            {
+               /* used mana is always less than downvote_mana + voting_mana because the amount used
+                * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
+                * there is downvote_mana, then it is because voting_mana is greater, and used_mana
+                * is strictly smaller than voting_mana. This is the same reason why a check is not
+                * required when using voting mana on its own as an upvote.
+                */
+               auto remainder = abs_rshares - a.downvote_manabar.current_mana;
+               a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
+               a.voting_manabar.use_mana( remainder );
+            }
+            else
+            {
+               a.downvote_manabar.use_mana( abs_rshares );
+            }
+         }
+         else
+         {
+            a.voting_manabar.use_mana( abs_rshares );
+         }
+
+         a.last_vote_time = _db.head_block_time();
+      });
+
+      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
+      fc::uint128_t old_rshares = std::max( ctx.comment.net_rshares.value, int64_t(0) );
+      const auto& root = _db.get( comment.root_comment );
+
+      auto old_vote_rshares = ctx.comment.vote_rshares;
+
+      _db.modify( comment, [&]( comment_object& c )
+      {
+         c.net_rshares += comment_rshares;
+         c.abs_rshares += abs_rshares;
+         if( comment_rshares > 0 )
+            c.vote_rshares += rshares;
+         if( comment_rshares > 0 )
+            c.net_votes++;
+         else
+            c.net_votes--;
+      });
+
+      FC_TODO( "Check if this needed anywhere. Possibly still used by Hivemind" );
+      _db.modify( root, [&]( comment_object& c )
+      {
+         c.children_abs_rshares += abs_rshares;
+      });
+
+      uint64_t max_vote_weight = 0;
+
+      /** this verifies uniqueness of voter
+       *
+       *  cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
+       *
+       *  W(R) = B * R / ( R + 2S )
+       *  W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
+       *
+       *  The equation for an individual vote is:
+       *    W(R_N) - W(R_N-1), which is the delta increase of proportional weight
+       *
+       *  c.total_vote_weight =
+       *    W(R_1) - W(R_0) +
+       *    W(R_2) - W(R_1) + ...
+       *    W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
+       *
+       *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
+       *
+      **/
+      _db.create< comment_vote_object >( [&]( comment_vote_object& cv )
+      {
+         cv.voter          = voter.id;
+         cv.comment        = comment.id;
+         cv.rshares        = rshares;
+         cv.last_update    = _db.head_block_time();
+         cv.symbol         = ctx.symbol;
+
+         bool curation_reward_eligible = ctx.rshares > 0 && ( comment.last_payout == fc::time_point_sec() );
+         if( ctx.symbol == STEEM_SYMBOL )
+         {
+            curation_reward_eligible &= comment.allow_curation_rewards;
+         }
+         else
+         {
+            auto smt_opts = comment.allowed_vote_assets.find( ctx.symbol );
+            if( smt_opts != comment.allowed_vote_assets.end() )
+            {
+               curation_reward_eligible &= smt_opts->second.allow_curation_rewards;
+            }
+         }
+
+         if( curation_reward_eligible )
+         {
+            if( ctx.symbol == STEEM_SYMBOL )
+            {
+               curation_reward_eligible = _db.get_curation_rewards_percent( comment ) > 0;
+            }
+            else
+            {
+               curation_reward_eligible = _db.get< smt_token_object, by_symbol >( ctx.symbol ).percent_curation_rewards;
+            }
+         }
+
+         if( curation_reward_eligible )
+         {
+            // cv.weight = W(R_1) - W(R_0)
+            if( ctx.symbol == STEEM_SYMBOL )
+            {
+               const auto& reward_fund = _db.get_reward_fund( comment );
+               auto curve = reward_fund.curation_reward_curve;
+               uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
+               uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
+               cv.weight = new_weight - old_weight;
+            }
+            else
+            {
+               const auto& smt = _db.get< smt_token_object, by_symbol >( ctx.symbol );
+               uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, smt.curation_reward_curve, smt.content_constant ).to_uint64();
+               uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, smt.curation_reward_curve, smt.content_constant ).to_uint64();
+               cv.weight = new_weight - old_weight;
+            }
+
+            max_vote_weight = cv.weight;
+
+            /// discount weight by time
+            uint128_t w(max_vote_weight);
+            uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
+
+            w *= delta_t;
+            w /= dgpo.reverse_auction_seconds;
+            cv.weight = w.to_uint64();
+         }
+         else
+         {
+            cv.weight = 0;
+         }
+      });
+
+      if( max_vote_weight ) // Optimization
+      {
+         _db.modify( comment, [&]( comment_object& c )
+         {
+            c.total_vote_weight += max_vote_weight;
+         });
+      }
+   }
+   else
+   {
+      FC_ASSERT( itr->num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
+
+      int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
+      FC_ASSERT( itr->vote_percent != rshares, "Your current vote on this comment is identical to the new vote." );
+
+      _db.modify( ctx.voter, [&]( AccountType& a )
+      {
+         if( ctx.dgpo.downvote_pool_percent > 0 && rshares < 0 )
+         {
+            if( abs_rshares > a.downvote_manabar.current_mana )
+            {
+               /* used mana is always less than downvote_mana + voting_mana because the amount used
+                * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
+                * there is downvote_mana, then it is because voting_mana is greater, and used_mana
+                * is strictly smaller than voting_mana. This is the same reason why a check is not
+                * required when using voting mana on its own as an upvote.
+                */
+               auto remainder = abs_rshares - a.downvote_manabar.current_mana;
+               a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
+               a.voting_manabar.use_mana( remainder );
+            }
+            else
+            {
+               a.downvote_manabar.use_mana( abs_rshares );
+            }
+         }
+         else
+         {
+            a.voting_manabar.use_mana( abs_rshares );
+         }
+
+         a.last_vote_time = _db.head_block_time();
+      });
+
+      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
+      fc::uint128_t old_rshares = std::max( ctx.comment.net_rshares.value, int64_t( 0 ) );
+      const auto& root = _db.get( ctx.comment.root_comment );
+
+      _db.modify( comment, [&]( comment_object& c )
+      {
+         c.net_rshares -= itr->rshares;
+         c.net_rshares += rshares;
+         c.abs_rshares += abs_rshares;
+
+         /// TODO: figure out how to handle remove a vote (rshares == 0 )
+         if( rshares > 0 && itr->rshares < 0 )
+            c.net_votes += 2;
+         else if( rshares > 0 && itr->rshares == 0 )
+            c.net_votes += 1;
+         else if( rshares == 0 && itr->rshares < 0 )
+            c.net_votes += 1;
+         else if( rshares == 0 && itr->rshares > 0 )
+            c.net_votes -= 1;
+         else if( rshares < 0 && itr->rshares == 0 )
+            c.net_votes -= 1;
+         else if( rshares < 0 && itr->rshares > 0 )
+            c.net_votes -= 2;
+      });
+
+      FC_TODO( "Check if this needed anywhere. Possibly still used by Hivemind" );
+      _db.modify( root, [&]( comment_object& c )
+      {
+         c.children_abs_rshares += abs_rshares;
+      });
+
+      _db.modify( comment, [&]( comment_object& c )
+      {
+         c.total_vote_weight -= itr->weight;
+      });
+
+      _db.modify( *itr, [&]( comment_vote_object& cv )
+      {
+         cv.rshares = rshares;
+         cv.last_update = _db.head_block_time();
+         cv.weight = 0;
+         cv.num_changes += 1;
+      });
+   }
+}
+
+void vote_evaluator::do_apply( const vote2_operation& o )
+{
+   FC_TODO( "Remove after SMT Hardfork" );
+   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "vote2_operation is not enabled until SMT Hardfork" );
+
+   const auto& comment = _db.get_comment( o.author, o.permlink );
+   const auto& root    = _db.get< comment_object, by_id >( o. );
+   const auto& voter   = _db.get_account( o.voter );
+   const auto& dgpo    = _db.get_dynamic_global_properties();
+
+   for( auto& smt_rshare : o.smt_rshares )
+   {
+      auto smt = root.allowed_vote_assets.find( smt_rshare->first );
+      FC_ASSERT( smt != root.allowed_vote_assets.end(), "SMT ${s} is not an allowed voting asset on comment ${a}/${p}",
+         ("s", smt_rshare->first)("a", o.author)("p", o.permlink) );
+   }
+
+   FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
+
+   if( o.rshares > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
+
+   vote_context ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, _db.get_dynamic_global_properties().target_votes_per_period, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+   generic_vote_evaluator( ctx, voter, _db );
+
+   for( auto& smt_rshare : o.smt_rshares )
+   {
+      const auto& smt = _db.get< smt_token_object, by_symbol >( smt_rshare->first );
+      ctx.rshares = smt_rshare->second;
+      ctx.symbol = smt_rshare->first;
+      ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
+      ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
+      generic_vote_evaluator( ctx, voter, _db );
+   }
+}
+#endif
 
 void custom_evaluator::do_apply( const custom_operation& o )
 {
@@ -3009,7 +3399,7 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    {
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
       {
-         util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.reward_vests.amount.value );
+         util::update_manabar( _db.get_dynamic_global_properties(), a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.reward_vests.amount.value );
       }
 
       a.vesting_shares += op.reward_vests;
@@ -3118,7 +3508,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       _db.modify( delegator, [&]( account_object& a )
       {
-         util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+         util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
@@ -3214,7 +3604,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.vesting_shares.amount.value );
+            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.vesting_shares.amount.value );
          }
 
          a.received_vesting_shares += op.vesting_shares;
@@ -3252,7 +3642,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
+            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
          }
 
          a.received_vesting_shares += delta;

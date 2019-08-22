@@ -62,6 +62,7 @@ STEEM_DEFINE_EVALUATOR( smt_set_setup_parameters )
 STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_create )
 STEEM_DEFINE_EVALUATOR( smt_contribute )
+STEEM_DEFINE_EVALUATOR( vote2_operation )
 #endif
 STEEM_DEFINE_EVALUATOR( create_proposal )
 STEEM_DEFINE_EVALUATOR( update_proposal_votes )

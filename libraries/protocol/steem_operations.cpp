@@ -238,10 +238,19 @@ namespace steem { namespace protocol {
    void vote_operation::validate() const
    {
       validate_account_name( voter );
-      validate_account_name( author );\
-      FC_ASSERT( abs(weight) <= STEEM_100_PERCENT, "Weight is not a STEEMIT percentage" );
+      validate_account_name( author );
+      FC_ASSERT( abs(weight) <= STEEM_100_PERCENT, "Weight is not a STEEM percentage (-10000 - 10000)" );
       validate_permlink( permlink );
    }
+
+#ifdef ENABLE_SMT_SUPPORT
+   void vote2_operation::validate() const
+   {
+      validate_account_name( voter );
+      validate_account_name( author );
+      validate_permlink( permlink );
+   }
+#endif
 
    void transfer_operation::validate() const
    { try {

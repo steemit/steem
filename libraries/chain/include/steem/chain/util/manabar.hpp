@@ -117,7 +117,7 @@ int64_t get_effective_vesting_shares( const T& account )
 }
 
 template< typename PropType, typename AccountType >
-void update_manabar( const PropType& gpo, AccountType& account, bool downvote_mana = false, int64_t new_mana = 0 )
+void update_manabar( const PropType& gpo, AccountType& account, fc::time_point_sec mana_regen_seconds, bool downvote_mana = false, int64_t new_mana = 0 )
 {
    auto effective_vests = util::get_effective_vesting_shares( account );
    manabar_params params( effective_vests, STEEM_VOTING_MANA_REGENERATION_SECONDS );

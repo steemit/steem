@@ -16,7 +16,7 @@ class account_regular_balance_object : public object< account_regular_balance_ob
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_regular_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_regular_balance_object(Constructor&& c, allocator< Allocator > a)
    {
@@ -28,7 +28,18 @@ public:
    /// Name of the account, the balance is held for.
    account_name_type   owner;
    asset               liquid;   /// 'balance' for STEEM
-   asset               vesting;  /// 'vesting_shares' for VESTS
+   asset               vesting_shares;  /// 'vesting_shares' for VESTS
+   asset               received_vesting_shares;
+   asset               delegated_vesting_shares;
+   fc::time_point_sec  next_vesting_withdrawal = fc::time_point_sec::maximum();
+   asset               vesting_withdraw_rate;
+   share_type          to_withdraw = 0;
+   share_type          withdrawn = 0;
+
+   util::manabar       voting_manabar;
+   util::manabar       downvote_manabar;
+
+   fc::time_point_sec  last_vote_time;
 
    /** Set of simple methods that allow unification of
     *  regular and rewards balance manipulation code.
@@ -64,7 +75,7 @@ class account_rewards_balance_object : public object< account_rewards_balance_ob
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_rewards_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_rewards_balance_object(Constructor&& c, allocator< Allocator > a)
    {

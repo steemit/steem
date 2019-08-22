@@ -154,27 +154,31 @@ namespace steem { namespace chain {
          comment_id_type   comment;
          uint64_t          weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
          int64_t           rshares = 0; ///< The number of rshares this vote is responsible for
+         FC_TODO( "Remove vote_percent field after SMT hardfork" );
          int16_t           vote_percent = 0; ///< The percent weight of the vote
          time_point_sec    last_update; ///< The time of the last update of the vote
          int8_t            num_changes = 0;
+         asset_symbol      voting_asset = STEEM_SYMBOL;
    };
 
-   struct by_comment_voter;
-   struct by_voter_comment;
+   struct by_comment_voter_symbol;
+   struct by_voter_comment_symbol;
    typedef multi_index_container<
       comment_vote_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< comment_vote_object, comment_vote_id_type, &comment_vote_object::id > >,
-         ordered_unique< tag< by_comment_voter >,
+         ordered_unique< tag< by_comment_voter_symbol >,
             composite_key< comment_vote_object,
-               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>,
-               member< comment_vote_object, account_id_type, &comment_vote_object::voter>
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::voting_asset >
             >
          >,
-         ordered_unique< tag< by_voter_comment >,
+         ordered_unique< tag< by_voter_comment_symbol >,
             composite_key< comment_vote_object,
-               member< comment_vote_object, account_id_type, &comment_vote_object::voter>,
-               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::voting_asset >
             >
          >
       >,
