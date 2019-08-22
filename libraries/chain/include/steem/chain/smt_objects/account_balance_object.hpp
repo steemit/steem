@@ -3,8 +3,6 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
 
-#ifdef STEEM_ENABLE_SMT
-
 namespace steem { namespace chain {
 
 /**
@@ -161,5 +159,3 @@ FC_REFLECT( steem::chain::account_rewards_balance_object,
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_regular_balance_object, steem::chain::account_regular_balance_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_rewards_balance_object, steem::chain::account_rewards_balance_index )
-
-#endif

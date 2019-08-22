@@ -4,8 +4,6 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
 
-#ifdef STEEM_ENABLE_SMT
-
 namespace steem { namespace chain {
 
 using protocol::curve_id;
@@ -348,5 +346,3 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_toke
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
-
-#endif

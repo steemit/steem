@@ -11,18 +11,14 @@ namespace steem { namespace protocol {
    typedef fc::static_variant<
 #ifdef IS_TEST_NET
             example_required_action
-   #ifdef STEEM_ENABLE_SMT
             ,
-   #endif
 #endif
-#ifdef STEEM_ENABLE_SMT
             smt_ico_launch_action,
             smt_ico_evaluation_action,
             smt_token_launch_action,
             smt_refund_action,
             smt_contributor_payout_action,
             smt_founder_payout_action
-#endif
          > required_automated_action;
 
 } } // steem::protocol

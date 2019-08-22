@@ -793,7 +793,6 @@ struct pre_apply_operation_visitor
       regenerate( op.account );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
       regenerate( op.account );
@@ -809,7 +808,6 @@ struct pre_apply_operation_visitor
       for ( auto& e : op.account_payouts )
          regenerate( e.first );
    }
-#endif
 
    void operator()( const hardfork_operation& op )const
    {
@@ -1072,7 +1070,6 @@ struct post_apply_operation_visitor
       _mod_accounts.emplace_back( op.account );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
       _mod_accounts.emplace_back( op.account );
@@ -1088,7 +1085,6 @@ struct post_apply_operation_visitor
       for ( auto& e : op.account_payouts )
          _mod_accounts.emplace_back( e.first );
    }
-#endif
 
    void operator()( const hardfork_operation& op )const
    {

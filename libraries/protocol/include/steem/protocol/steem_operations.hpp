@@ -123,7 +123,6 @@ namespace steem { namespace protocol {
       void validate()const;
    };
 
-#ifdef STEEM_ENABLE_SMT
    struct votable_asset_info_v1
    {
       votable_asset_info_v1() = default;
@@ -192,13 +191,10 @@ namespace steem { namespace protocol {
 
       flat_map< asset_symbol_type, votable_asset_info > votable_assets;
    };
-#endif /// STEEM_ENABLE_SMT
 
    typedef static_variant<
             comment_payout_beneficiaries
-#ifdef STEEM_ENABLE_SMT
             ,allowed_vote_assets
-#endif /// STEEM_ENABLE_SMT
            > comment_options_extension;
 
    typedef flat_set< comment_options_extension > comment_options_extensions_type;
@@ -1037,7 +1033,6 @@ namespace steem { namespace protocol {
       void validate() const;
    };
 
-#ifdef STEEM_ENABLE_SMT
    /** Differs with original operation with extensions field and a container of tokens that will
     *  be rewarded to an account. See discussion in issue #1859
     */
@@ -1054,7 +1049,6 @@ namespace steem { namespace protocol {
       void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
       void validate() const;
    };
-#endif
 
    /**
     * Delegate vesting shares from one account to the other. The vesting shares are still owned
@@ -1164,10 +1158,8 @@ FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
 
-#ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
 FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
-#endif
 
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
 FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
@@ -1183,7 +1175,5 @@ FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new
 FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
 FC_REFLECT( steem::protocol::decline_voting_rights_operation, (account)(decline) );
 FC_REFLECT( steem::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
-#ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::claim_reward_balance2_operation, (account)(extensions)(reward_tokens) )
-#endif
 FC_REFLECT( steem::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );

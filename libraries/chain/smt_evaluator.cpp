@@ -10,7 +10,6 @@
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/smt_util.hpp>
 
-#ifdef STEEM_ENABLE_SMT
 namespace steem { namespace chain {
 
 namespace {
@@ -352,4 +351,3 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
 }
 
 } }
-#endif

@@ -15,7 +15,6 @@ bool operator==( const example_required_action& lhs, const example_required_acti
 }
 #endif
 
-#ifdef STEEM_ENABLE_SMT
 void smt_ico_launch_action::validate() const
 {
    validate_account_name( control_account );
@@ -103,6 +102,5 @@ bool operator==( const smt_founder_payout_action& lhs, const smt_founder_payout_
       lhs.market_maker_tokens == rhs.market_maker_tokens &&
       lhs.rewards_fund == rhs.rewards_fund;
 }
-#endif
 
 } } //steem::protocol

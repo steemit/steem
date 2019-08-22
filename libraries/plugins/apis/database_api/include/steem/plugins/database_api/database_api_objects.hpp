@@ -230,11 +230,9 @@ struct api_account_object
       }
 #endif
 
-#ifdef STEEM_ENABLE_SMT
       const auto& by_control_account_index = db.get_index<smt_token_index>().indices().get<by_control_account>();
       auto smt_obj_itr = by_control_account_index.find( name );
       is_smt = smt_obj_itr != by_control_account_index.end();
-#endif
    }
 
 
@@ -540,8 +538,6 @@ struct api_hardfork_property_object
    fc::time_point_sec            next_hardfork_time;
 };
 
-#ifdef STEEM_ENABLE_SMT
-
 struct api_smt_token_object
 {
    api_smt_token_object( const smt_token_object& token, const database& db ) : token( token )
@@ -554,8 +550,6 @@ struct api_smt_token_object
    smt_token_object                token;
    fc::optional< smt_ico_object >  ico;
 };
-
-#endif
 
 enum proposal_status
 {
@@ -750,14 +744,10 @@ FC_REFLECT( steem::plugins::database_api::api_hardfork_property_object,
             (next_hardfork_time)
           )
 
-#ifdef STEEM_ENABLE_SMT
-
 FC_REFLECT( steem::plugins::database_api::api_smt_token_object,
    (token)
    (ico)
 )
-
-#endif
 
 FC_REFLECT_ENUM( steem::plugins::database_api::proposal_status,
                   (all)

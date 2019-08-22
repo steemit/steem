@@ -1,5 +1,5 @@
 
-#if defined IS_TEST_NET && defined STEEM_ENABLE_SMT
+#if defined IS_TEST_NET
 
 #include <boost/test/unit_test.hpp>
 

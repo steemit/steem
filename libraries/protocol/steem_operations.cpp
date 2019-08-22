@@ -110,12 +110,10 @@ namespace steem { namespace protocol {
    {
       typedef void result_type;
 
-#ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
          va.validate();
       }
-#endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
       {
          cpb.validate();
@@ -692,7 +690,6 @@ namespace steem { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void claim_reward_balance2_operation::validate()const
    {
       validate_account_name( account );
@@ -710,7 +707,6 @@ namespace steem { namespace protocol {
       }
       FC_ASSERT( is_substantial_reward, "Must claim something." );
    }
-#endif
 
    void delegate_vesting_shares_operation::validate()const
    {
