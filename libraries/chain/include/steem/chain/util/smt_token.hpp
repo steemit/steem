@@ -14,6 +14,16 @@ const smt_token_object* find_token( const database& db, asset_symbol_type symbol
 const smt_token_emissions_object* last_emission( const database& db, const asset_symbol_type& symbol );
 fc::optional< time_point_sec > last_emission_time( const database& db, const asset_symbol_type& symbol );
 
+namespace ico {
+
+bool schedule_next_refund( database& db, const asset_symbol_type& a );
+bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
+bool schedule_founder_payout( database& db, const asset_symbol_type& a );
+
+share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets );
+
+} // steem::chain::util::smt::ico
+
 } } } } // steem::chain::util::smt
 
 #endif

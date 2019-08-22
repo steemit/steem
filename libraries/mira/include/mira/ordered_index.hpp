@@ -20,7 +20,36 @@ namespace detail{
 
 /* no augment policy for plain ordered indices */
 
+#if BOOST_VERSION >= 105900
+
 using boost::multi_index::detail::null_augment_policy;
+
+#else
+
+struct null_augment_policy
+{
+  template<typename OrderedIndexImpl>
+  struct augmented_interface
+  {
+    typedef OrderedIndexImpl type;
+  };
+
+  template<typename OrderedIndexNodeImpl>
+  struct augmented_node
+  {
+    typedef OrderedIndexNodeImpl type;
+  };
+
+  template<typename Pointer> static void add(Pointer,Pointer){}
+  template<typename Pointer> static void remove(Pointer,Pointer){}
+  template<typename Pointer> static void copy(Pointer,Pointer){}
+  template<typename Pointer> static void rotate_left(Pointer,Pointer){}
+  template<typename Pointer> static void rotate_right(Pointer,Pointer){}
+
+  template<typename Pointer> static bool invariant(Pointer){return true;}
+};
+
+#endif
 
 } /* namespace multi_index::detail */
 

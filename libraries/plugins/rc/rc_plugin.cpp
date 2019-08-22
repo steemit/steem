@@ -41,6 +41,7 @@ namespace detail {
 
 using chain::plugin_exception;
 using steem::chain::util::manabar_params;
+using steem::chain::util::manabar;
 
 class rc_plugin_impl
 {
@@ -62,6 +63,8 @@ class rc_plugin_impl
       void on_post_apply_transaction( const transaction_notification& note );
       void on_pre_apply_operation( const operation_notification& note );
       void on_post_apply_operation( const operation_notification& note );
+      void on_pre_apply_required_action( const required_action_notification& note );
+      void on_post_apply_required_action( const required_action_notification& note );
       void on_pre_apply_optional_action( const optional_action_notification& note );
       void on_post_apply_optional_action( const optional_action_notification& note );
       void on_pre_apply_custom_operation( const custom_operation_notification& note );
@@ -101,6 +104,8 @@ class rc_plugin_impl
       boost::signals2::connection   _post_apply_transaction_conn;
       boost::signals2::connection   _pre_apply_operation_conn;
       boost::signals2::connection   _post_apply_operation_conn;
+      boost::signals2::connection   _pre_apply_required_action_conn;
+      boost::signals2::connection   _post_apply_required_action_conn;
       boost::signals2::connection   _pre_apply_optional_action_conn;
       boost::signals2::connection   _post_apply_optional_action_conn;
       boost::signals2::connection   _pre_apply_custom_operation_conn;
@@ -117,7 +122,7 @@ inline int64_t get_next_vesting_withdrawal( const account_object& account )
 }
 
 template< bool account_may_exist = false >
-void create_rc_account( database& db, uint32_t now, const account_object& account, asset max_rc_creation_adjustment )
+void create_rc_account( database& db, uint32_t now, const account_object& account, asset max_rc_creation_adjustment, const account_name_type& creator )
 {
    // ilog( "create_rc_account( ${a} )", ("a", account.name) );
    if( account_may_exist )
@@ -146,19 +151,27 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
    db.create< rc_account_object >( [&]( rc_account_object& rca )
    {
       rca.account = account.name;
+      rca.creator = creator;
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
       int64_t max_rc = get_maximum_rc( account, rca );
       rca.rc_manabar.current_mana = max_rc;
       rca.last_max_rc = max_rc;
+
+      rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = creator;
+      rca.indel_slots[ STEEM_RC_RECOVERY_SLOT_NUM ] = account.recovery_account;
+      for( int i = STEEM_RC_USER_SLOT_NUM; i < STEEM_RC_MAX_SLOTS; i++ )
+      {
+         rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
+      }
    } );
 }
 
 template< bool account_may_exist = false >
-void create_rc_account( database& db, uint32_t now, const account_name_type& account_name, asset max_rc_creation_adjustment )
+void create_rc_account( database& db, uint32_t now, const account_name_type& account_name, asset max_rc_creation_adjustment, const account_name_type& creator )
 {
    const account_object& account = db.get< account_object, by_name >( account_name );
-   create_rc_account< account_may_exist >( db, now, account, max_rc_creation_adjustment );
+   create_rc_account< account_may_exist >( db, now, account, max_rc_creation_adjustment, creator );
 }
 
 std::vector< std::pair< int64_t, account_name_type > > dump_all_accounts( const database& db )
@@ -273,15 +286,48 @@ void use_account_rcs(
    const account_object& account = db.get< account_object, by_name >( account_name );
    const rc_account_object& rc_account = db.get< rc_account_object, by_name >( account_name );
 
+   int64_t total_mana_available = 0;
+   std::array< manabar, STEEM_RC_MAX_SLOTS > drc_manabars;
+   std::array< manabar, STEEM_RC_MAX_SLOTS > pool_manabars;
    manabar_params mbparams;
-   mbparams.max_mana = get_maximum_rc( account, rc_account );
    mbparams.regen_time = STEEM_RC_REGEN_TIME;
+   auto now = gpo.time.sec_since_epoch();
+
+   for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
+   {
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
+
+      if( drc_edge == nullptr ) continue;
+
+      mbparams.max_mana = drc_edge->drc_max_mana;
+      drc_manabars[i] = drc_edge->drc_manabar;
+      drc_manabars[i].regenerate_mana< true >( mbparams, now );
+
+      const auto& pool = db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( rc_account.indel_slots[i], VESTS_SYMBOL ) );
+      mbparams.max_mana = pool.max_rc;
+      pool_manabars[i] = pool.rc_pool_manabar;
+      pool_manabars[i].regenerate_mana< true >( mbparams, now );
+
+      int64_t consumed_rc = std::min( drc_manabars[i].current_mana, pool_manabars[i].current_mana );
+      consumed_rc = std::min( consumed_rc, rc - total_mana_available );
+      drc_manabars[i].use_mana( consumed_rc );
+      pool_manabars[i].use_mana( consumed_rc );
+
+      total_mana_available += consumed_rc;
+   }
+
+   mbparams.max_mana = get_maximum_rc( account, rc_account );
+   manabar rca_manabar = rc_account.rc_manabar;
+   rca_manabar.regenerate_mana< true >( mbparams, now );
+   int64_t consumed_rc = std::min( rca_manabar.current_mana, rc - total_mana_available );
+   int64_t total_mana_delegated = total_mana_available;
+   total_mana_available += consumed_rc;
+
+   bool has_mana = total_mana_available >= rc;
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
-      rca.rc_manabar.regenerate_mana< true >( mbparams, gpo.time.sec_since_epoch() );
-
-      bool has_mana = rca.rc_manabar.has_mana( rc );
+      rca.rc_manabar = rca_manabar;
 
       if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
@@ -318,8 +364,27 @@ void use_account_rcs(
 
       int64_t min_mana = -1 * ( STEEM_RC_MAX_NEGATIVE_PERCENT * mbparams.max_mana ) / STEEM_100_PERCENT;
 
-      rca.rc_manabar.use_mana( rc, min_mana );
+      rca.rc_manabar.use_mana( rc - total_mana_delegated, min_mana );
    } );
+
+   for( int i = 0; i < STEEM_RC_MAX_SLOTS; i++ )
+   {
+      const auto* drc_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( rc_account.indel_slots[i], account_name, VESTS_SYMBOL ) );
+
+      if( drc_edge == nullptr ) continue;
+
+      db.modify( *drc_edge, [&]( rc_outdel_drc_edge_object& edge )
+      {
+         edge.drc_manabar = drc_manabars[i];
+      });
+
+      const auto& dpool = db.get< rc_delegation_pool_object, by_account_symbol >( boost::make_tuple( rc_account.indel_slots[i], VESTS_SYMBOL ) );
+
+      db.modify( dpool, [&]( rc_delegation_pool_object& pool )
+      {
+         pool.rc_pool_manabar = pool_manabars[i];
+      });
+   }
 }
 
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
@@ -569,7 +634,7 @@ void rc_plugin_impl::on_first_block()
    const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
    for( auto it=idx.begin(); it!=idx.end(); ++it )
    {
-      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ) );
+      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ), it->name );
    }
 
    return;
@@ -733,6 +798,17 @@ struct pre_apply_operation_visitor
    {
       regenerate( op.account );
    }
+
+   void operator()( const smt_contributor_payout_action& op )const
+   {
+      regenerate( op.contributor );
+   }
+
+   void operator()( const smt_founder_payout_action& op )const
+   {
+      for ( auto& e : op.account_payouts )
+         regenerate( e.first );
+   }
 #endif
 
    void operator()( const hardfork_operation& op )const
@@ -797,7 +873,7 @@ struct pre_apply_operation_visitor
 
    void operator()( const delegate_to_pool_operation& op )const
    {
-      //ilog( "Regenerating ${acct}", ("acct", op.from_account) );
+      // ilog( "Regenerating ${acct}", ("acct", op.from_account) );
       regenerate( op.from_account );
    }
 
@@ -915,24 +991,24 @@ struct post_apply_operation_visitor
 
    void operator()( const account_create_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, op.fee );
+      create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
    }
 
    void operator()( const account_create_with_delegation_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, op.fee );
+      create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
       _mod_accounts.emplace_back( op.creator );
    }
 
    void operator()( const create_claimed_account_operation& op )const
    {
-      create_rc_account( _db, _current_time, op.new_account_name, _db.get_witness_schedule_object().median_props.account_creation_fee );
+      create_rc_account( _db, _current_time, op.new_account_name, _db.get_witness_schedule_object().median_props.account_creation_fee, op.creator );
    }
 
    void operator()( const pow_operation& op )const
    {
       // ilog( "handling post-apply pow_operation" );
-      create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ) );
+      create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ), op.worker_account );
       _mod_accounts.emplace_back( op.worker_account );
       _mod_accounts.emplace_back( _current_witness );
    }
@@ -940,7 +1016,7 @@ struct post_apply_operation_visitor
    void operator()( const pow2_operation& op )const
    {
       auto worker_name = get_worker_name( op.work );
-      create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ) );
+      create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ), worker_name );
       _mod_accounts.emplace_back( worker_name );
       _mod_accounts.emplace_back( _current_witness );
    }
@@ -954,6 +1030,8 @@ struct post_apply_operation_visitor
    void operator()( const withdraw_vesting_operation& op )const
    {
       _mod_accounts.emplace_back( op.account, false );
+
+      update_outdel_overflow( op.account, op.vesting_shares );
    }
 
    void operator()( const delegate_vesting_shares_operation& op )const
@@ -985,6 +1063,8 @@ struct post_apply_operation_visitor
    {
       _mod_accounts.emplace_back( op.from_account );
       _mod_accounts.emplace_back( op.to_account );
+
+      update_outdel_overflow( op.from_account, op.withdrawn );
    }
 
    void operator()( const claim_reward_balance_operation& op )const
@@ -996,6 +1076,17 @@ struct post_apply_operation_visitor
    void operator()( const claim_reward_balance2_operation& op )const
    {
       _mod_accounts.emplace_back( op.account );
+   }
+
+   void operator()( const smt_contributor_payout_action& op )const
+   {
+      _mod_accounts.emplace_back( op.contributor );
+   }
+
+   void operator()( const smt_founder_payout_action& op )const
+   {
+      for ( auto& e : op.account_payouts )
+         _mod_accounts.emplace_back( e.first );
    }
 #endif
 
@@ -1076,7 +1167,24 @@ struct post_apply_operation_visitor
 
 typedef post_apply_operation_visitor post_apply_optional_action_visitor;
 
+void rc_plugin_impl::on_pre_apply_required_action( const required_action_notification& note )
+{
+   if( before_first_block() )
+      return;
 
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   pre_apply_operation_visitor vtor( _db );
+
+   // TODO: Add issue number to HF constant
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+      vtor._vesting_share_price = gpo.get_vesting_share_price();
+
+   vtor._current_witness = gpo.current_witness;
+   vtor._skip = _skip;
+
+   // ilog( "Calling pre-vtor on ${op}", ("op", note.op) );
+   note.action.visit( vtor );
+}
 
 void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note )
 {
@@ -1140,6 +1248,23 @@ void update_modified_accounts( database& db, const std::vector< account_regen_in
          rca.rc_manabar.current_mana += std::max( drc, int64_t( 0 ) );
       } );
    }
+}
+
+void rc_plugin_impl::on_post_apply_required_action( const required_action_notification& note )
+{
+   if( before_first_block() )
+      return;
+
+   const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
+   const uint32_t now = gpo.time.sec_since_epoch();
+
+   vector< account_regen_info > modified_accounts;
+
+   // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   note.action.visit( vtor );
+
+   update_modified_accounts( _db, modified_accounts );
 }
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
@@ -1268,7 +1393,6 @@ void rc_plugin_impl::validate_database()
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
       int64_t max_rc = get_maximum_rc( account, rc_account );
 
-      assert( max_rc == rc_account.last_max_rc );
       FC_ASSERT( max_rc == rc_account.last_max_rc,
          "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
          ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
@@ -1328,6 +1452,10 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
          { try { my->on_pre_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note )
          { try { my->on_post_apply_operation( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_pre_apply_required_action_conn = db.add_pre_apply_required_action_handler( [&]( const required_action_notification& note )
+         { try { my->on_pre_apply_required_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
+      my->_post_apply_required_action_conn = db.add_post_apply_required_action_handler( [&]( const required_action_notification& note )
+         { try { my->on_post_apply_required_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_pre_apply_optional_action_conn = db.add_pre_apply_optional_action_handler( [&]( const optional_action_notification& note )
          { try { my->on_pre_apply_optional_action( note ); } FC_LOG_AND_RETHROW() }, *this, 0 );
       my->_post_apply_optional_action_conn = db.add_post_apply_optional_action_handler( [&]( const optional_action_notification& note )
@@ -1383,6 +1511,8 @@ void rc_plugin::plugin_initialize( const boost::program_options::variables_map& 
 
       // Add each operation evaluator to the registry
       my->_custom_operation_interpreter->register_evaluator< delegate_to_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< delegate_drc_from_pool_evaluator >( this );
+      my->_custom_operation_interpreter->register_evaluator< set_slot_delegator_evaluator >( this );
 
       // Add the registry to the database so the database can delegate custom ops to the plugin
       my->_db.register_custom_operation_interpreter( my->_custom_operation_interpreter );

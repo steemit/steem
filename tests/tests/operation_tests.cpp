@@ -848,7 +848,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
          auto itr = vote_idx.find( boost::make_tuple( alice_comment.id, alice.id ) );
-         int64_t max_vote_denom = ( db->get_dynamic_global_properties().vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS ) / (60*60*24);
+         int64_t max_vote_denom = ( db->get_dynamic_global_properties().target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS ) / (60*60*24);
 
          BOOST_REQUIRE( alice.last_vote_time == db->head_block_time() );
          BOOST_REQUIRE( alice_comment.net_rshares.value == ( old_mana - alice.voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
@@ -1110,7 +1110,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             old_manabar.regenerate_mana( params, db->head_block_time() );
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
             alice_weight = old_manabar.current_mana * 60 * 60 * 24;
-            auto max_vote_denom = db->get_dynamic_global_properties().vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+            auto max_vote_denom = db->get_dynamic_global_properties().target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
             alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom;
 
             const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );

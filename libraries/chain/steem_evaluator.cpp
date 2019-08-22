@@ -1515,8 +1515,7 @@ void pre_hf20_vote_evaluator( const vote_operation& o, database& _db )
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
-   FC_ASSERT( max_vote_denom > 0 );
+   int64_t max_vote_denom = dgpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
 
    if( !_db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
    {
@@ -1933,8 +1932,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       used_mana = ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
    }
 
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEM_VOTING_MANA_REGENERATION_SECONDS;
-   FC_ASSERT( max_vote_denom > 0 );
+   int64_t max_vote_denom = dgpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
 
    used_mana = ( used_mana + max_vote_denom - 1 ) / max_vote_denom;
    if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
@@ -2211,6 +2209,8 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
    database& d = db();
 
+   // ilog( "custom_json_evaluator   is_producing = ${p}    operation = ${o}", ("p", d.is_producing())("o", o) );
+
    if( d.is_producing() )
       FC_ASSERT( o.json.length() <= STEEM_CUSTOM_OP_DATA_MAX_LENGTH,
          "Operation JSON must be less than ${bytes} bytes.", ("bytes", STEEM_CUSTOM_OP_DATA_MAX_LENGTH) );
@@ -2225,6 +2225,7 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
    {
+      // ilog( "Accepting, no evaluator registered" );
       return;
    }
 
@@ -2236,12 +2237,14 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    {
       if( d.is_producing() )
       {
+         // ilog( "Re-throwing exception ${e}", ("e", e) );
          throw e;
       }
+      // ilog( "Suppressing exception ${e}", ("e", e) );
    }
    catch(...)
    {
-      elog( "Unexpected exception applying custom json evaluator." );
+      // elog( "Unexpected exception applying custom json evaluator." );
    }
 }
 

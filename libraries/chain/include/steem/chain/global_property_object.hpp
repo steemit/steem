@@ -124,7 +124,7 @@ namespace steem { namespace chain {
           * "wasting" voting power through spillover; any user voting faster than this rate will have
           * their votes reduced.
           */
-         uint32_t vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
+         uint32_t target_votes_per_period = STEEM_INITIAL_VOTE_POWER_RATE;
 
          uint32_t delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
@@ -199,7 +199,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (recent_slots_filled)
              (participation_count)
              (last_irreversible_block_num)
-             (vote_power_reserve_rate)
+             (target_votes_per_period)
              (delegation_return_period)
              (reverse_auction_seconds)
              (available_account_subsidies)

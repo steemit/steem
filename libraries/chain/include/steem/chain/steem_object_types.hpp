@@ -21,6 +21,8 @@
       object_type () {}
 #endif
 
+#define STEEM_OBJECT_ID_TYPE( object ) typedef oid< object ## _object > object ## _id_type;
+
 namespace steem {
 
 namespace protocol {
@@ -94,7 +96,7 @@ enum object_type
    nai_pool_object_type,
    smt_token_emissions_object_type,
    smt_contribution_object_type,
-   smt_ico_object_type,
+   smt_ico_object_type
 #endif
 };
 
