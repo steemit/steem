@@ -1465,13 +1465,13 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == fc::time_point_sec::maximum() );
    validate_database();
 
-   BOOST_TEST_MESSAGE( "--- Test withdrawing minimal VESTS" );
+   BOOST_TEST_MESSAGE( "--- Test withdrawing with no balance" );
    op.account = "bob";
    op.vesting_shares = db->get_balance( "bob", symbol.get_paired_symbol() );
    tx.clear();
    tx.operations.push_back( op );
    sign( tx, bob_private_key );
-   db->push_transaction( tx, 0 ); // We do not need to test the result of this, simply that it works.
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 }
 
 BOOST_AUTO_TEST_CASE( smt_create_validate )

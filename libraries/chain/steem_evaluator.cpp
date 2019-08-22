@@ -1227,45 +1227,45 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    if ( o.vesting_shares.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       FC_ASSERT( o.vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
-      FC_ASSERT( _db.get_balance( account, o.vesting_shares.symbol ) >= asset( 0, o.vesting_shares.symbol ), "Account does not have sufficient Token Power for withdrawal." );
       auto liquid_symbol = o.vesting_shares.symbol.get_paired_symbol();
       const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
-      if ( bal_obj != nullptr )
+
+      FC_ASSERT( bal_obj != nullptr, "Account does not have sufficient Token Power for withdrawal." );
+      FC_ASSERT( bal_obj->vesting - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
+
+      if ( o.vesting_shares.amount == 0 )
       {
-         FC_ASSERT( bal_obj->vesting - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
+         FC_ASSERT( bal_obj->vesting_withdraw_rate.amount != 0, "This operation would not change the vesting withdraw rate." );
 
-         if ( o.vesting_shares.amount == 0 )
+         _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
          {
-            _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
-            {
-               a.vesting_withdraw_rate = asset( 0, liquid_symbol.get_paired_symbol() );
-               a.next_vesting_withdrawal = time_point_sec::maximum();
-               a.to_withdraw = 0;
-               a.withdrawn = 0;
-            } );
-         }
-         else
+            a.vesting_withdraw_rate = asset( 0, liquid_symbol.get_paired_symbol() );
+            a.next_vesting_withdrawal = time_point_sec::maximum();
+            a.to_withdraw = 0;
+            a.withdrawn = 0;
+         } );
+      }
+      else
+      {
+         _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
          {
-            _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
-            {
-               int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS;
+            int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS;
 
-               auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, liquid_symbol.get_paired_symbol() );
+            auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, liquid_symbol.get_paired_symbol() );
 
-               if( new_vesting_withdraw_rate.amount == 0 )
-                  new_vesting_withdraw_rate.amount = 1;
+            if( new_vesting_withdraw_rate.amount == 0 )
+               new_vesting_withdraw_rate.amount = 1;
 
-               if( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
-                  new_vesting_withdraw_rate.amount += 1;
+            if( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
+               new_vesting_withdraw_rate.amount += 1;
 
-               FC_ASSERT( a.vesting_withdraw_rate != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
+            FC_ASSERT( a.vesting_withdraw_rate != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
 
-               a.vesting_withdraw_rate = new_vesting_withdraw_rate;
-               a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
-               a.to_withdraw = o.vesting_shares.amount;
-               a.withdrawn = 0;
-            } );
-         }
+            a.vesting_withdraw_rate = new_vesting_withdraw_rate;
+            a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+            a.to_withdraw = o.vesting_shares.amount;
+            a.withdrawn = 0;
+         } );
       }
    }
    else
