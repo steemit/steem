@@ -145,6 +145,49 @@ namespace steem { namespace protocol {
       }
    }
 
+#ifdef STEEM_ENABLE_SMT
+   void allowed_vote_assets::add_votable_asset( const asset_symbol_type& symbol, const share_type& max_accepted_payout,
+      bool allow_curation_rewards )
+   {
+      votable_assets[symbol] = votable_asset_options( max_accepted_payout, allow_curation_rewards );
+   }
+
+   bool allowed_vote_assets::is_allowed( const asset_symbol_type& symbol, share_type* max_accepted_payout,
+      bool* allow_curation_rewards ) const
+   {
+      auto foundI = votable_assets.find( symbol );
+
+      if( foundI == votable_assets.end() )
+      {
+         if( max_accepted_payout != nullptr )
+            *max_accepted_payout = 0;
+         if( allow_curation_rewards != nullptr )
+            *allow_curation_rewards = false;
+         return false;
+      }
+
+      if(max_accepted_payout != nullptr)
+         *max_accepted_payout = foundI->second.max_accepted_payout;
+      if(allow_curation_rewards != nullptr)
+         *allow_curation_rewards = foundI->second.allow_curation_rewards;
+
+      return true;
+   }
+
+   void allowed_vote_assets::validate() const
+   {
+      FC_ASSERT( votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS,
+         "Comment votable assets number exceeds allowed limit ${max}.", ("max", SMT_MAX_VOTABLE_ASSETS) );
+      FC_ASSERT( !is_allowed( STEEM_SYMBOL ) && !is_allowed( SBD_SYMBOL ) && !is_allowed( VESTS_SYMBOL ) ,
+         "Invalid core asset symbol specified in votable assets");
+
+      for( auto& v : votable_assets )
+      {
+         if( v.second.beneficiaries.beneficiaries.size() ) v.second.beneficiaries.validate();
+      }
+   }
+#endif
+
    void comment_options_operation::validate()const
    {
       validate_account_name( author );

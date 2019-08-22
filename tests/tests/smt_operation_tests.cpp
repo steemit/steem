@@ -4137,5 +4137,344 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    generate_block();
 }
 
+BOOST_AUTO_TEST_CASE( comment_votable_assets_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+      ACTORS((alice));
+
+      generate_block();
+
+      std::array< asset_symbol_type, SMT_MAX_VOTABLE_ASSETS + 1 > smts;
+      /// Create one more than limit to test negative cases
+      for( size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS + 1; ++i )
+      {
+         smts[i] = create_smt( "alice", alice_private_key, 0 );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration: no votable_assets" );
+         allowed_vote_assets ava;
+         op.extensions.insert( ava );
+         idump( (op) );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration of votable_assets" );
+         allowed_vote_assets ava;
+         for( size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS; ++i )
+         {
+            ava.add_votable_asset( smts[i], 10 + i, (i & 2) != 0 );
+         }
+
+         op.extensions.insert( ava );
+         idump( (op) );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - too much assets specified" );
+         allowed_vote_assets ava;
+         for( size_t i = 0; i < smts.size(); ++i )
+         {
+            ava.add_votable_asset( smts[i], 20 + i, (i & 2) != 0 );
+         }
+
+         op.extensions.insert( ava );
+         idump( (op) );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - STEEM added to container" );
+         allowed_vote_assets ava;
+         ava.add_votable_asset( smts.front(), 20, false);
+         ava.add_votable_asset( STEEM_SYMBOL, 20, true);
+         op.extensions.insert( ava );
+         idump( (op) );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing more than 100% weight on a single route" );
+         allowed_vote_assets ava;
+         ava.add_votable_asset( smts[0], 10, true );
+
+         auto& b = ava.votable_assets[smts[0]].beneficiaries;
+
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEM_100_PERCENT + 1 ) );
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing more than 100% total weight" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEM_1_PERCENT * 75 ) );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), STEEM_1_PERCENT * 75 ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing maximum number of routes" );
+         b.beneficiaries.clear();
+         for( size_t i = 0; i < 127; i++ )
+         {
+            b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "foo" + fc::to_string( i ) ), 1 ) );
+         }
+
+         op.extensions.clear();
+         std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+         op.extensions.insert( ava );
+         op.validate();
+
+         BOOST_TEST_MESSAGE( "--- Testing one too many routes" );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bar" ), 1 ) );
+         std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+         BOOST_TEST_MESSAGE( "--- Testing duplicate accounts" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT * 2 ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing incorrect account sort order" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing correct account sort order" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         op.validate();
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: comment votable assets apply" );
+      ACTORS( (alice)(bob) );
+
+      SMT_SYMBOL( alice, 3, db );
+      generate_block();
+
+      comment_operation comment;
+      comment_options_operation op;
+      allowed_vote_assets ava;
+      votable_asset_options opts;
+      signed_transaction tx;
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar";
+
+      tx.operations.push_back( comment );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure when SMT does not exist" );
+
+      op.author = "alice";
+      op.permlink = "test";
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure when SMT is not launched" );
+
+      alice_symbol = create_smt( "alice", alice_private_key, 3 );
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+         });
+      });
+      generate_block();
+
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      {
+         const auto& alice_comment = db->get_comment( op.author, op.permlink );
+
+         BOOST_REQUIRE( alice_comment.allowed_vote_assets.find( alice_symbol ) != alice_comment.allowed_vote_assets.end() );
+         const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
+         BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
+         BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
+         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 0 );
+      }
+
+
+      BOOST_TEST_MESSAGE( "--- Failure with non-existent beneficiary" );
+
+      opts.beneficiaries.beneficiaries.push_back( beneficiary_route_type{ "charlie", STEEM_100_PERCENT } );
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Success changing when rshares are 0" );
+
+      opts.beneficiaries.beneficiaries.clear();
+      opts.beneficiaries.beneficiaries.push_back( beneficiary_route_type{ "bob", STEEM_100_PERCENT } );
+      opts.max_accepted_payout = 100;
+      opts.allow_curation_rewards = false;
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      {
+         const auto& alice_comment = db->get_comment( op.author, op.permlink );
+
+         BOOST_REQUIRE( alice_comment.allowed_vote_assets.find( alice_symbol ) != alice_comment.allowed_vote_assets.end() );
+         const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
+         BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
+         BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
+         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 1 );
+      }
+
+
+      BOOST_TEST_MESSAGE( "--- Failure changing when rshares are non-zero" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_comment( op.author, op.permlink ), [=]( comment_object& c )
+         {
+            c.net_rshares = 1;
+            c.abs_rshares = 1;
+         });
+      });
+      generate_block();
+
+      opts.beneficiaries.beneficiaries.clear();
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure specifying non-inherited votable asset" );
+
+      generate_block();
+      auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
+      generate_block();
+
+      comment.parent_author = comment.author;
+      comment.parent_permlink = comment.permlink;
+      comment.author = "bob";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      op.author = comment.author;
+      ava.votable_assets.clear();
+      ava.votable_assets[ bob_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Success specifying inherited votable asset" );
+
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
