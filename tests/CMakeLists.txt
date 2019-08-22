@@ -51,8 +51,8 @@ function(parse_unit_tests RESULT)
 endfunction()
 
 parse_unit_tests(TEST_CASES ${UNIT_TESTS})
-
-#message(STATUS "${TEST_CASES}")
+string (REPLACE ";" "\n" TEST_CASES "${TEST_CASES}")
+message(STATUS "${TEST_CASES}")
 
 add_boost_test( chain_test
    SOURCES ${UNIT_TESTS}
@@ -247,6 +247,58 @@ add_boost_test( chain_test
    serialization_tests/asset_symbol_type_test
    serialization_tests/unpack_clear_test
    serialization_tests/unpack_recursion_test
+   smt_operation_tests/smt_limit_order_create_authorities
+   smt_operation_tests/smt_limit_order_create2_authorities
+   smt_operation_tests/smt_limit_order_create_apply
+   smt_operation_tests/smt_limit_order_cancel_authorities
+   smt_operation_tests/smt_limit_order_cancel_apply
+   smt_operation_tests/smt_limit_order_create2_apply
+   smt_operation_tests/claim_reward_balance2_validate
+   smt_operation_tests/claim_reward_balance2_authorities
+   smt_operation_tests/claim_reward_balance2_apply
+   smt_operation_tests/smt_transfer_to_vesting_validate
+   smt_operation_tests/smt_create_validate
+   smt_operation_tests/smt_create_authorities
+   smt_operation_tests/smt_create_duplicate
+   smt_operation_tests/smt_create_duplicate_differing_decimals
+   smt_operation_tests/smt_create_duplicate_different_users
+   smt_operation_tests/smt_create_with_steem_funds
+   smt_operation_tests/smt_create_with_sbd_funds
+   smt_operation_tests/smt_create_with_invalid_nai
+   smt_operation_tests/smt_creation_fee_test
+   smt_operation_tests/smt_create_reset
+   smt_operation_tests/smt_nai_pool_removal
+   smt_operation_tests/smt_nai_pool_count
+   smt_operation_tests/smt_setup_emissions_validate
+   smt_operation_tests/smt_setup_emissions_authorities
+   smt_operation_tests/smt_setup_emissions_apply
+   smt_operation_tests/set_setup_parameters_validate
+   smt_operation_tests/set_setup_parameters_authorities
+   smt_operation_tests/set_setup_parameters_apply
+   smt_operation_tests/smt_set_runtime_parameters_validate
+   smt_operation_tests/smt_set_runtime_parameters_authorities
+   smt_operation_tests/smt_set_runtime_parameters_apply
+   smt_operation_tests/smt_contribute_validate
+   smt_operation_tests/smt_contribute_apply
+   smt_operation_tests/smt_transfer_validate
+   smt_operation_tests/smt_transfer_apply
+   smt_operation_tests/smt_setup_validate
+   smt_operation_tests/smt_setup_authorities
+   smt_operation_tests/smt_setup_apply
+   smt_operation_time_tests/smt_liquidity_rewards
+   smt_operation_time_tests/smt_refunds
+   smt_operation_time_tests/smt_ico_payouts
+   smt_operation_time_tests/smt_ico_payouts_special_destinations
+   smt_tests/smt_transfer_validate
+   smt_tests/smt_transfer_apply
+   smt_tests/comment_votable_assers_validate
+   smt_tests/asset_symbol_vesting_methods
+   smt_tests/vesting_smt_creation
+   smt_tests/smt_founder_vesting
+   smt_tests/setup_validate
+   smt_tests/setup_authorities
+   smt_tests/setup_apply
+   smt_tests/smt_create_apply
    undo_tests/undo_basic
    undo_tests/undo_object_disapear
    undo_tests/undo_key_collision
