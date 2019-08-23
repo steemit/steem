@@ -1576,13 +1576,26 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
 
 BOOST_AUTO_TEST_CASE( withdraw_vesting_validate )
 {
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_validate" );
+   BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_validate" );
 
-      validate_database();
-   }
-   FC_LOG_AND_RETHROW()
+   withdraw_vesting_operation op;
+   op.account = "alice";
+   op.vesting_shares = asset( 10, VESTS_SYMBOL );
+   op.validate();
+
+   BOOST_TEST_MESSAGE( " -- Testing invalid account name" );
+   op.account = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.account = "alice";
+
+   BOOST_TEST_MESSAGE( " -- Testing withdrawal of non-vest symbol" );
+   op.vesting_shares = asset( 10, STEEM_SYMBOL );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.vesting_shares = asset( 10, SBD_SYMBOL );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.vesting_shares = asset( 10, VESTS_SYMBOL );
+
+   op.validate();
 }
 
 BOOST_AUTO_TEST_CASE( withdraw_vesting_authorities )

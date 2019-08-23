@@ -79,16 +79,12 @@ share_type payout( database& db, const asset_symbol_type& symbol, const account_
    for ( auto& _asset : assets )
    {
       if ( _asset.symbol.is_vesting() )
-      {
          db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
-      }
       else
-      {
          db.adjust_balance( account, _asset );
 
-         if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
-            additional_token_supply += _asset.amount;
-      }
+      if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
+         additional_token_supply += _asset.amount;
    }
 
    return additional_token_supply;
