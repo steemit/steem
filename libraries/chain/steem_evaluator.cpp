@@ -715,6 +715,7 @@ struct comment_options_extension_visitor
             auto smt = _db.find< smt_token_object, by_symbol >( a.first );
             FC_ASSERT( smt != nullptr, "SMT ${s} was not found.", ("s", a.first) );
             FC_ASSERT( smt->phase == smt_phase::launch_success, "SMT ${s} must be in active phase to be a votable asset.", ("s", a.first) );
+            FC_ASSERT( smt->allow_voting, "SMT ${s} does not support voting", ("s", a.first) );
          }
          else
          {
