@@ -4562,6 +4562,14 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
       generate_block();
       auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
       generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( bob_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+         });
+      });
+      generate_block();
 
       comment.parent_author = comment.author;
       comment.parent_permlink = comment.permlink;
@@ -4593,6 +4601,34 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
       tx.operations.push_back( op );
       sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure specifying an SMT that disallows voting" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( bob_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.allow_voting = false;
+         });
+      });
+      generate_block();
+
+      comment.parent_author = "";
+      comment.parent_permlink = "foorbar";
+      comment.permlink = "foobar";
+      op.author = comment.author;
+      op.permlink = comment.permlink;
+      ava.votable_assets.clear();
+      ava.votable_assets[ bob_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
