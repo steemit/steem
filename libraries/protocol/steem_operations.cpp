@@ -243,7 +243,7 @@ namespace steem { namespace protocol {
       validate_permlink( permlink );
    }
 
-#ifdef ENABLE_SMT_SUPPORT
+#ifdef STEEM_ENABLE_SMT
    void vote2_operation::validate() const
    {
       validate_account_name( voter );

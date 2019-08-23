@@ -787,7 +787,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
       vest( STEEM_INIT_MINER_NAME, "dave" , ASSET( "10.000 TESTS" ) );
       generate_block();
 
-      const auto& vote_idx = db->get_index< comment_vote_index >().indices().get< by_comment_voter >();
+      const auto& vote_idx = db->get_index< comment_vote_index, by_comment_voter_symbol >();
 
       {
          const auto& alice = db->get_account( "alice" );
@@ -1161,7 +1161,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          comment_id_type bob_comment_id = db->get_comment( "bob", string( "foo" ) ).id;
 
          {
-            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( bob_comment_id, dave_id ) );
+            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter_symbol >( boost::make_tuple( bob_comment_id, dave_id, STEEM_SYMBOL ) );
             BOOST_REQUIRE( dave_bob_vote.rshares = new_rshares );
          }
          validate_database();
@@ -1184,7 +1184,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          new_rshares = ( new_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
 
          {
-            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( bob_comment_id, dave_id ) );
+            auto dave_bob_vote = db->get< comment_vote_object, by_comment_voter_symbol >( boost::make_tuple( bob_comment_id, dave_id, STEEM_SYMBOL ) );
             BOOST_REQUIRE( dave_bob_vote.rshares = new_rshares );
          }
          validate_database();
@@ -6190,7 +6190,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
-      db->get< comment_vote_object, by_comment_voter >( boost::make_tuple( db->get_comment( "alice", string( "test" ) ).id, db->get_account( "alice" ).id ) );
+      db->get< comment_vote_object, by_comment_voter_symbol >( boost::make_tuple( db->get_comment( "alice", string( "test" ) ).id, db->get_account( "alice" ).id, STEEM_SYMBOL )  );
 
       vote.weight = 0;
       tx.clear();
@@ -6631,7 +6631,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       db->push_transaction( tx, 0 );
       generate_blocks(1);
 
-      const auto& vote_idx = db->get_index< comment_vote_index >().indices().get< by_comment_voter >();
+      const auto& vote_idx = db->get_index< comment_vote_index, by_comment_voter_symbol >();
 
       auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
       auto itr = vote_idx.find( boost::make_tuple( alice_comment.id, bob_acc.id ) );
