@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef STEEM_ENABLE_SMT
-
 #include <fc/optional.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/smt_objects/smt_token_object.hpp>
@@ -25,5 +23,3 @@ share_type payout( database& db, const asset_symbol_type& symbol, const account_
 } // steem::chain::util::smt::ico
 
 } } } } // steem::chain::util::smt
-
-#endif

@@ -4,8 +4,6 @@
 #include <steem/protocol/asset.hpp>
 #include <steem/protocol/misc_utilities.hpp>
 
-#ifdef STEEM_ENABLE_SMT
-
 #define SMT_MAX_UNIT_ROUTES            10
 #define SMT_MAX_UNIT_COUNT             20
 #define SMT_MAX_DECIMAL_PLACES         8
@@ -330,5 +328,3 @@ FC_REFLECT(
    (contribution)
    (extensions)
    )
-
-#endif

@@ -110,12 +110,10 @@ namespace steem { namespace protocol {
    {
       typedef void result_type;
 
-#ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
          va.validate();
       }
-#endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
       {
          cpb.validate();
@@ -145,7 +143,6 @@ namespace steem { namespace protocol {
       }
    }
 
-#ifdef STEEM_ENABLE_SMT
    void allowed_vote_assets::add_votable_asset( const asset_symbol_type& symbol, const share_type& max_accepted_payout,
       bool allow_curation_rewards )
    {
@@ -186,7 +183,6 @@ namespace steem { namespace protocol {
          if( v.second.beneficiaries.beneficiaries.size() ) v.second.beneficiaries.validate();
       }
    }
-#endif
 
    void comment_options_operation::validate()const
    {
@@ -275,7 +271,7 @@ namespace steem { namespace protocol {
    void withdraw_vesting_operation::validate() const
    {
       validate_account_name( account );
-      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
+      FC_ASSERT( vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
    }
 
    void set_withdraw_vesting_route_operation::validate() const
@@ -744,7 +740,6 @@ namespace steem { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void claim_reward_balance2_operation::validate()const
    {
       validate_account_name( account );
@@ -762,7 +757,6 @@ namespace steem { namespace protocol {
       }
       FC_ASSERT( is_substantial_reward, "Must claim something." );
    }
-#endif
 
    void delegate_vesting_shares_operation::validate()const
    {

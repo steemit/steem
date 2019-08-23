@@ -1,5 +1,5 @@
 
-#if defined IS_TEST_NET && defined STEEM_ENABLE_SMT
+#if defined IS_TEST_NET
 
 #include <boost/test/unit_test.hpp>
 
@@ -1045,7 +1045,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
          {
             { SMT_DESTINATION_FROM, 5 },
             { SMT_DESTINATION_MARKET_MAKER, 1 },
-            { SMT_DESTINATION_REWARDS, 2 }
+            { SMT_DESTINATION_REWARDS, 2 },
+            { "$george.vesting", 2 }
          } ), /* post_soft_cap_unit */
          50,                                                            /* min_unit_ratio */
          100                                                            /* max_unit_ratio */
@@ -1126,6 +1127,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 0 );
 
+      BOOST_REQUIRE( db->get_balance( "george", symbol.get_paired_symbol() ).amount == 600000000000000 );
+
       BOOST_TEST_MESSAGE( " --- Checking market maker and rewards fund balances" );
 
       BOOST_REQUIRE( token.market_maker.steem_balance == asset( 75000000, STEEM_SYMBOL ) );
@@ -1140,6 +1143,97 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       BOOST_REQUIRE( contribution_idx.find( boost::make_tuple( symbol, 0 ) ) == contribution_idx.end() );
    }
    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_vesting_withdrawals )
+{
+   BOOST_TEST_MESSAGE( "Testing: SMT vesting withdrawals" );
+
+   ACTORS( (alice)(creator) )
+   generate_block();
+
+   auto symbol = create_smt( "creator", creator_private_key, 3 );
+   fund( "alice", asset( 100000, symbol ) );
+   vest( "alice", asset( 100000, symbol ) );
+
+   const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+
+   auto key = boost::make_tuple( "alice", symbol );
+   const auto* balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+   BOOST_REQUIRE( balance_obj != nullptr );
+
+   BOOST_TEST_MESSAGE( " -- Setting up withdrawal" );
+
+   signed_transaction tx;
+   withdraw_vesting_operation op;
+   op.account = "alice";
+   op.vesting_shares = asset( balance_obj->vesting.amount / 2, symbol.get_paired_symbol() );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   auto next_withdrawal = db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
+   asset vesting_shares = balance_obj->vesting;
+   asset original_vesting = vesting_shares;
+   asset withdraw_rate = balance_obj->vesting_withdraw_rate;
+
+   BOOST_TEST_MESSAGE( " -- Generating block up to first withdrawal" );
+   generate_blocks( next_withdrawal - ( STEEM_BLOCK_INTERVAL / 2 ), true);
+
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == vesting_shares.amount.value );
+
+   BOOST_TEST_MESSAGE( " -- Generating block to cause withdrawal" );
+   generate_block();
+
+   auto fill_op = get_last_operations( 1 )[ 0 ].get< fill_vesting_withdraw_operation >();
+
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == ( vesting_shares - withdraw_rate ).amount.value );
+   BOOST_REQUIRE( ( withdraw_rate * token.get_vesting_share_price() ).amount.value - balance_obj->liquid.amount.value <= 1 ); // Check a range due to differences in the share price
+   BOOST_REQUIRE( fill_op.from_account == "alice" );
+   BOOST_REQUIRE( fill_op.to_account == "alice" );
+   BOOST_REQUIRE( fill_op.withdrawn.amount.value == withdraw_rate.amount.value );
+   BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * token.get_vesting_share_price() ).amount.value ) <= 1 );
+   validate_database();
+
+   BOOST_TEST_MESSAGE( " -- Generating the rest of the blocks in the withdrawal" );
+
+   vesting_shares = balance_obj->vesting;
+   auto balance = balance_obj->liquid;
+   auto old_next_vesting = balance_obj->next_vesting_withdrawal;
+
+   for( int i = 1; i < STEEM_VESTING_WITHDRAW_INTERVALS - 1; i++ )
+   {
+      generate_blocks( db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+
+      fill_op = get_last_operations( 2 )[ 1 ].get< fill_vesting_withdraw_operation >();
+
+      BOOST_REQUIRE( balance_obj->vesting.amount.value == ( vesting_shares - withdraw_rate ).amount.value );
+      BOOST_REQUIRE( balance.amount.value + ( withdraw_rate * token.get_vesting_share_price() ).amount.value - balance_obj->liquid.amount.value <= 1 );
+      BOOST_REQUIRE( fill_op.from_account == "alice" );
+      BOOST_REQUIRE( fill_op.to_account == "alice" );
+      BOOST_REQUIRE( fill_op.withdrawn.amount.value == withdraw_rate.amount.value );
+      BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * token.get_vesting_share_price() ).amount.value ) <= 1 );
+
+      if ( i == STEEM_VESTING_WITHDRAW_INTERVALS - 1 )
+         BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == fc::time_point_sec::maximum() );
+      else
+         BOOST_REQUIRE( balance_obj->next_vesting_withdrawal.sec_since_epoch() == ( old_next_vesting + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
+
+      validate_database();
+
+      vesting_shares = balance_obj->vesting;
+      balance = balance_obj->liquid;
+      old_next_vesting = balance_obj->next_vesting_withdrawal;
+   }
+
+   BOOST_TEST_MESSAGE( " -- Generating one more block to finish vesting withdrawal" );
+   generate_blocks( db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
+
+   BOOST_REQUIRE( balance_obj->next_vesting_withdrawal.sec_since_epoch() == fc::time_point_sec::maximum().sec_since_epoch() );
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == ( original_vesting - op.vesting_shares ).amount.value );
+
+   validate_database();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

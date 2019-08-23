@@ -77,7 +77,6 @@ class database_api_impl
          (verify_authority)
          (verify_account_authority)
          (verify_signatures)
-#ifdef STEEM_ENABLE_SMT
          (get_nai_pool)
          (list_smt_contributions)
          (find_smt_contributions)
@@ -85,7 +84,6 @@ class database_api_impl
          (find_smt_tokens)
          (list_smt_token_emissions)
          (find_smt_token_emissions)
-#endif
       )
 
       template< typename ResultType >
@@ -1794,7 +1792,6 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
    return result;
 }
 
-#ifdef STEEM_ENABLE_SMT
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // SMT                                                              //
@@ -2031,7 +2028,6 @@ DEFINE_API_IMPL( database_api_impl, find_smt_token_emissions )
    return result;
 }
 
-#endif
 
 DEFINE_LOCKLESS_APIS( database_api, (get_config)(get_version) )
 
@@ -2084,7 +2080,6 @@ DEFINE_READ_APIS( database_api,
    (verify_authority)
    (verify_account_authority)
    (verify_signatures)
-#ifdef STEEM_ENABLE_SMT
    (get_nai_pool)
    (list_smt_contributions)
    (find_smt_contributions)
@@ -2092,7 +2087,6 @@ DEFINE_READ_APIS( database_api,
    (find_smt_tokens)
    (list_smt_token_emissions)
    (find_smt_token_emissions)
-#endif
 )
 
 } } } // steem::plugins::database_api

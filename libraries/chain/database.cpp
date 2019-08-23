@@ -687,7 +687,6 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    if( vested_symbol == VESTS_SYMBOL )
       return account.vesting_shares - account.delegated_vesting_shares + account.received_vesting_shares;
 
-#ifdef STEEM_ENABLE_SMT
    FC_ASSERT( vested_symbol.space() == asset_symbol_type::smt_nai_space );
    FC_ASSERT( vested_symbol.is_vesting() );
 
@@ -698,9 +697,6 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
       return asset( 0, vested_symbol );
 
    return bo->vesting_shares;
-#else
-   FC_ASSERT( false, "Invalid symbol" );
-#endif
 }
 
 uint32_t database::witness_participation_rate()const
@@ -1240,24 +1236,29 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
          return new_vesting;
          };
 
-#ifdef STEEM_ENABLE_SMT
       if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
-         // Get share price.
-         const auto& smt = db.get< smt_token_object, by_symbol >( liquid.symbol );
-         FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
-         price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
+
+         const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
+
+         if ( to_reward_balance )
+            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled. Please report this as it should not be triggered." );
+
+         price vesting_share_price = to_reward_balance ? token.get_reward_vesting_share_price() : token.get_vesting_share_price();
+
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
          before_vesting_callback( new_vesting );
+
          // Add new vesting to owner's balance.
          if( to_reward_balance )
             db.adjust_reward_balance( to_account, liquid, new_vesting );
          else
             db.adjust_balance( to_account, new_vesting );
+
          // Update global vesting pool numbers.
-         db.modify( smt, [&]( smt_token_object& smt_object )
+         db.modify( token, [&]( smt_token_object& smt_object )
          {
             if( to_reward_balance )
             {
@@ -1271,11 +1272,10 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             }
          } );
 
-         // NOTE that SMT vesting does not impact witness voting.
+         // Note: SMT vesting does not impact witness voting.
 
          return new_vesting;
       }
-#endif
 
       FC_ASSERT( liquid.symbol == STEEM_SYMBOL );
       // ^ A novelty, needed but risky in case someone managed to slip SBD/TESTS here in blockchain history.
@@ -1662,6 +1662,50 @@ void database::update_owner_authority( const account_object& account, const auth
 
 void database::process_vesting_withdrawals()
 {
+   const auto& token_balance_idx = get_index < account_regular_balance_index, by_next_vesting_withdrawal >();
+   for ( auto iter = token_balance_idx.begin(); iter != token_balance_idx.end() && iter->next_vesting_withdrawal <= head_block_time(); ++iter )
+   {
+      const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
+      share_type to_withdraw;
+      if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
+         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+      else
+         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+
+      auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
+      auto converted_token = withdraw_token * token.get_vesting_share_price();
+
+      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, withdraw_token, converted_token );
+
+      pre_push_virtual_operation( vop );
+
+      modify( *iter, [&]( account_regular_balance_object& a )
+      {
+         a.vesting   -= withdraw_token;
+         a.liquid    += converted_token;
+         a.withdrawn += to_withdraw;
+
+         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         {
+            a.vesting_withdraw_rate.amount = 0;
+            a.next_vesting_withdrawal      = fc::time_point_sec::maximum();
+         }
+         else
+         {
+            a.next_vesting_withdrawal += fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+         }
+      } );
+
+      modify( token, [&]( smt_token_object& o )
+      {
+         o.total_vesting_fund_smt -= converted_token.amount;
+         o.total_vesting_shares   -= to_withdraw;
+      } );
+
+      post_push_virtual_operation( vop );
+
+   }
+
    const auto& widx = get_index< account_index, by_next_vesting_withdrawal >();
    const auto& didx = get_index< withdraw_vesting_route_index, by_withdraw_route >();
    auto current = widx.begin();
@@ -2674,22 +2718,16 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< reset_account_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< set_reset_account_evaluator              >();
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
-#ifdef STEEM_ENABLE_SMT
    _my->_evaluator_registry.register_evaluator< claim_reward_balance2_evaluator          >();
-#endif
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
    _my->_evaluator_registry.register_evaluator< witness_set_properties_evaluator         >();
-
-#ifdef STEEM_ENABLE_SMT
    _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
    _my->_evaluator_registry.register_evaluator< smt_setup_emissions_evaluator            >();
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
    _my->_evaluator_registry.register_evaluator< smt_contribute_evaluator                 >();
-#endif
-
    _my->_evaluator_registry.register_evaluator< create_proposal_evaluator                >();
    _my->_evaluator_registry.register_evaluator< update_proposal_votes_evaluator          >();
    _my->_evaluator_registry.register_evaluator< remove_proposal_evaluator                >();
@@ -2701,14 +2739,12 @@ void database::initialize_evaluators()
    _my->_opt_action_evaluator_registry.register_evaluator< example_optional_evaluator    >();
 #endif
 
-#ifdef STEEM_ENABLE_SMT
    _my->_req_action_evaluator_registry.register_evaluator< smt_ico_launch_evaluator         >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_ico_evaluation_evaluator     >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_token_launch_evaluator       >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator             >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_contributor_payout_evaluator >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_founder_payout_evaluator     >();
-#endif
 }
 
 
@@ -2948,9 +2984,7 @@ void database::init_genesis( uint64_t init_supply, uint64_t sbd_init_supply )
          util::rd_setup_dynamics_params( account_subsidy_per_witness_user_params, account_subsidy_system_params, wso.account_subsidy_witness_rd );
       } );
 
-#ifdef STEEM_ENABLE_SMT
       create< nai_pool_object >( [&]( nai_pool_object& npo ) {} );
-#endif
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -4357,7 +4391,7 @@ void database::clear_expired_delegations()
       itr = delegations_by_exp.begin();
    }
 }
-#ifdef STEEM_ENABLE_SMT
+
 template< typename smt_balance_object_type, class balance_operator_type >
 void database::adjust_smt_balance( const account_name_type& name, const asset& delta, bool check_account,
    balance_operator_type balance_operator )
@@ -4378,7 +4412,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
 
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.clear_balance( liquid_symbol );
+         smt_balance.initialize_assets( liquid_symbol );
          smt_balance.owner = name;
          balance_operator.add_to_balance( smt_balance );
          smt_balance.validate();
@@ -4391,23 +4425,12 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       // Check result to avoid negative balance storing.
       FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
 
-      // Exit if whole balance becomes zero.
-      if( is_all_zero )
+      modify( *bo, [&]( smt_balance_object_type& smt_balance )
       {
-         // Zero balance is the same as non object balance at all.
-         // Remove balance object if both liquid and vesting balances are zero.
-         remove( *bo );
-      }
-      else
-      {
-         modify( *bo, [&]( smt_balance_object_type& smt_balance )
-         {
-            balance_operator.add_to_balance( smt_balance );
-         } );
-      }
+         balance_operator.add_to_balance( smt_balance );
+      } );
    }
 }
-#endif
 
 void database::modify_balance( const account_object& a, const asset& delta, bool check_balance )
 {
@@ -4527,7 +4550,6 @@ const index_delegate_map& database::index_delegates()
    return _index_delegate_map;
 }
 
-#ifdef STEEM_ENABLE_SMT
 struct smt_regular_balance_operator
 {
    smt_regular_balance_operator( const asset& delta ) : delta(delta), is_vesting(delta.symbol.is_vesting()) {}
@@ -4580,7 +4602,6 @@ struct smt_reward_balance_operator
    asset share_delta;
    bool  is_vesting;
 };
-#endif
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
@@ -4594,7 +4615,6 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-#ifdef STEEM_ENABLE_SMT
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       // No account object modification for SMT balance, hence separate handling here.
@@ -4603,7 +4623,6 @@ void database::adjust_balance( const account_object& a, const asset& delta )
       adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
    }
    else
-#endif
    {
       modify_balance( a, delta, check_balance );
    }
@@ -4621,7 +4640,6 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-#ifdef STEEM_ENABLE_SMT
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       // No account object modification for SMT balance, hence separate handling here.
@@ -4630,7 +4648,6 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
       adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
    }
    else
-#endif
    {
       modify_balance( get_account( name ), delta, check_balance );
    }
@@ -4696,7 +4713,6 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-#ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
@@ -4705,7 +4721,6 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
       adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
       return;
    }
-#endif
 
    modify_reward_balance(a, value_delta, share_delta, check_balance);
 }
@@ -4716,7 +4731,6 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-#ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
@@ -4725,7 +4739,6 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
       adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
       return;
    }
-#endif
 
    const auto& a = get_account( name );
    modify_reward_balance(a, value_delta, share_delta, check_balance);
@@ -4733,7 +4746,6 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
-#ifdef STEEM_ENABLE_SMT
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       const auto& smt = get< smt_token_object, by_symbol >( delta.symbol );
@@ -4745,7 +4757,6 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
       });
       return;
    }
-#endif
 
    bool check_supply = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
@@ -4794,7 +4805,6 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
          return a.sbd_balance;
       default:
       {
-#ifdef STEEM_ENABLE_SMT
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "Invalid symbol: ${s}", ("s", symbol) );
          auto key = boost::make_tuple( a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
          const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
@@ -4806,16 +4816,12 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
          {
             return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
          }
-#else
-         FC_ASSERT( false, "Invalid symbol: ${s}", ("s", symbol) );
-#endif
       }
    }
 }
 
 asset database::get_balance( const account_name_type& name, asset_symbol_type symbol )const
 {
-#ifdef STEEM_ENABLE_SMT
    if ( symbol.space() == asset_symbol_type::smt_nai_space )
    {
       auto key = boost::make_tuple( name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
@@ -4830,7 +4836,6 @@ asset database::get_balance( const account_name_type& name, asset_symbol_type sy
          return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
       }
    }
-#endif
    return get_balance( get_account( name ), symbol );
 }
 
@@ -5339,9 +5344,8 @@ void database::apply_hardfork( uint32_t hardfork )
       break;
       case STEEM_SMT_HARDFORK:
       {
-#ifdef STEEM_ENABLE_SMT
          replenish_nai_pool( *this );
-#endif
+
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
@@ -5475,12 +5479,14 @@ void database::validate_invariants()const
          total_supply += itr->reward_balance;
       }
 
-#ifdef STEEM_ENABLE_SMT
       const auto& smt_ico_idx = get_index< smt_ico_index, by_id >();
 
       for ( auto itr = smt_ico_idx.begin(); itr != smt_ico_idx.end(); ++itr )
       {
-         total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
+         if ( get< smt_token_object, by_symbol >( itr->symbol ).phase <= smt_phase::launch_failed )
+            total_supply += asset( itr->contributed.amount - itr->processed_contributions, STEEM_SYMBOL );
+         else
+            total_supply += asset( itr->contributed.amount, STEEM_SYMBOL );
       }
 
       const auto& smt_token_idx = get_index< smt_token_index, by_id >();
@@ -5489,7 +5495,6 @@ void database::validate_invariants()const
       {
          total_supply += itr->market_maker.steem_balance;
       }
-#endif
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
@@ -5505,11 +5510,12 @@ void database::validate_invariants()const
          FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
       }
+
+      int64_t max_vote_denom = gpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
+      FC_ASSERT( max_vote_denom > 0, "target_votes_per_period overflowed" );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
-
-#ifdef STEEM_ENABLE_SMT
 
 namespace {
    template <typename index_type, typename lambda>
@@ -5636,7 +5642,6 @@ void database::validate_smt_invariants()const
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
-#endif
 
 void database::perform_vesting_share_split( uint32_t magnitude )
 {

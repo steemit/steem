@@ -306,7 +306,6 @@ struct count_operation_visitor
       execution_time_count += _e.witness_set_properties_operation_exec_time;
    }
 
-#ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
@@ -353,7 +352,6 @@ struct count_operation_visitor
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
       execution_time_count += _e.smt_contribute_operation_exec_time;
    }
-#endif
 
    void operator()( const create_proposal_operation& op ) const
    {

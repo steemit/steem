@@ -349,7 +349,6 @@
 /// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.
 #define STEEM_PROPOSAL_MAX_IDS_NUMBER              5
 
-#ifdef STEEM_ENABLE_SMT
 
 #define SMT_MAX_VOTABLE_ASSETS 2
 #define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
@@ -360,6 +359,6 @@
 #define SMT_MAX_VOTES_PER_REGENERATION          ((SMT_MAX_NOMINAL_VOTES_PER_DAY * SMT_VESTING_WITHDRAW_INTERVAL_SECONDS) / 86400)
 #define SMT_DEFAULT_VOTES_PER_REGEN_PERIOD      (50)
 #define SMT_DEFAULT_PERCENT_CURATION_REWARDS    (25 * STEEM_1_PERCENT)
-
-#endif /// STEEM_ENABLE_SMT
+#define SMT_INITIAL_VESTING_PER_UNIT            (1000000)
+#define SMT_BALLAST_SUPPLY_PERCENT              (STEEM_1_PERCENT/10)
 

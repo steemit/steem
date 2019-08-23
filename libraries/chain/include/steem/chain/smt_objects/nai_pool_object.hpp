@@ -4,8 +4,6 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/asset_symbol.hpp>
 
-#ifdef STEEM_ENABLE_SMT
-
 namespace steem { namespace chain {
 
    class nai_pool_object : public object< nai_pool_object_type, nai_pool_object >
@@ -49,5 +47,3 @@ namespace steem { namespace chain {
 FC_REFLECT( steem::chain::nai_pool_object, (id)(num_available_nais)(nais) )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::nai_pool_object, steem::chain::nai_pool_index )
-
-#endif

@@ -569,8 +569,6 @@ struct verify_signatures_return
    bool valid;
 };
 
-#ifdef STEEM_ENABLE_SMT
-
 typedef void_type get_nai_pool_args;
 
 struct get_nai_pool_return
@@ -624,7 +622,6 @@ struct find_smt_token_emissions_args
 
 typedef list_smt_token_emissions_return find_smt_token_emissions_return;
 
-#endif
 
 } } } // steem::database_api
 
@@ -839,8 +836,6 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_args,
 FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
 
-#ifdef STEEM_ENABLE_SMT
-
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
 
@@ -862,4 +857,3 @@ FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_return,
 FC_REFLECT( steem::plugins::database_api::find_smt_token_emissions_args,
    (asset_symbol) )
 
-#endif

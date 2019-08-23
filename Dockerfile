@@ -73,9 +73,8 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
-        -DENABLE_MIRA=ON \
         .. && \
-    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
+    make -j$(nproc) chain_test test_fixed_string plugin_test && \
     if [ "$CI_BUILD" ] ; then \
         mkdir -p build/tests/Testing/Temporary && \
         cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
@@ -83,7 +82,6 @@ RUN \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
     cd .. && \
-    ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
@@ -107,10 +105,9 @@ RUN \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_MIRA=ON \
-        -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
-    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
     make install && \
     if [ "$CI_BUILD" ] ; then \
         mkdir -p build/tests/Testing/Temporary && \
@@ -119,6 +116,7 @@ RUN \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
     cd .. && \
+    ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \

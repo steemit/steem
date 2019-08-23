@@ -206,9 +206,7 @@ struct database_fixture {
    virtual ~database_fixture() { appbase::reset(); }
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
-#ifdef STEEM_ENABLE_SMT
    static asset_symbol_type get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db );
-#endif
    void open_database( uint16_t shared_file_size_in_mb = 8 );
    void generate_block(uint32_t skip = 0,
                                const fc::ecc::private_key& key = generate_private_key("init_key"),
@@ -261,6 +259,7 @@ struct database_fixture {
    void convert( const string& account_name, const asset& amount );
    void vest( const string& from, const string& to, const asset& amount );
    void vest( const string& from, const share_type& amount );
+   void vest( const string& from, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
    void set_witness_props( const flat_map< string, vector< char > >& new_props );
@@ -289,7 +288,6 @@ struct live_database_fixture : public database_fixture
    fc::path _chain_dir;
 };
 
-#ifdef STEEM_ENABLE_SMT
 template< typename T >
 struct t_smt_database_fixture : public T
 {
@@ -328,7 +326,6 @@ struct t_smt_database_fixture : public T
 using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;
 using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture >;
 
-#endif
 
 struct sps_proposal_database_fixture : public clean_database_fixture
 {

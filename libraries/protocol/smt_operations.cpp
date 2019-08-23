@@ -2,7 +2,6 @@
 #include <steem/protocol/smt_operations.hpp>
 #include <steem/protocol/validation.hpp>
 #include <steem/protocol/smt_util.hpp>
-#ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace protocol {
 
@@ -325,4 +324,3 @@ void smt_contribute_operation::validate() const
 }
 
 } }
-#endif
