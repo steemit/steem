@@ -766,7 +766,21 @@ BOOST_AUTO_TEST_CASE( vote_authorities )
    {
       BOOST_TEST_MESSAGE( "Testing: vote_authorities" );
 
-      validate_database();
+      vote_operation op;
+      op.voter = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
    }
    FC_LOG_AND_RETHROW()
 }

@@ -2297,17 +2297,17 @@ void generic_vote_evaluator(
 
    FC_ASSERT( voter.voting_manabar.current_mana >= 0, "Account does not have enough mana to vote." );
 
+   idump( (ctx.votes_per_regen_period)(voter.voting_manabar.current_mana) );
+
    int64_t max_abs_rshares = std::max( int64_t(0), ( voter.voting_manabar.current_mana + ctx.votes_per_regen_period - 1 ) / ctx.votes_per_regen_period );
    int64_t abs_rshares = abs( ctx.rshares );
 
    if( ctx.rshares < 0 )
    {
-      max_abs_rshares = std::min(
-                           std::max(
-                              voter.downvote_manabar.current_mana,
-                              ( voter.downvote_manabar.current_mana * ctx.dgpo.downvote_pool_percent ) / ctx.votes_per_regen_period
-                           ),
-                           max_abs_rshares );
+      max_abs_rshares = std::max(
+                           max_abs_rshares,
+                           ( voter.downvote_manabar.current_mana * STEEM_100_PERCENT + ctx.votes_per_regen_period - 1 ) / ctx.votes_per_regen_period / ctx.dgpo.downvote_pool_percent
+                        );
    }
 
    FC_ASSERT( abs_rshares < max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
@@ -2325,6 +2325,7 @@ void generic_vote_evaluator(
    }
 
    FC_TODO( "Determine if we should use the same dust threshold for SMTs or allow the creators to set it themselves" );
+   auto consumed_rshares = abs_rshares;
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
 
@@ -2344,9 +2345,11 @@ void generic_vote_evaluator(
 
       _db.modify( voter, [&]( AccountType& a )
       {
+         idump( (consumed_rshares) );
          if( ctx.dgpo.downvote_pool_percent > 0 && ctx.rshares < 0 )
          {
-            if( abs_rshares > a.downvote_manabar.current_mana )
+            idump( (a.downvote_manabar.current_mana)(a.voting_manabar.current_mana) );
+            if( consumed_rshares > a.downvote_manabar.current_mana )
             {
                /* used mana is always less than downvote_mana + voting_mana because the amount used
                 * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
@@ -2354,18 +2357,20 @@ void generic_vote_evaluator(
                 * is strictly smaller than voting_mana. This is the same reason why a check is not
                 * required when using voting mana on its own as an upvote.
                 */
-               auto remainder = abs_rshares - a.downvote_manabar.current_mana;
+               auto remainder = consumed_rshares - a.downvote_manabar.current_mana;
+               idump( (remainder) );
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
             else
             {
-               a.downvote_manabar.use_mana( abs_rshares );
+               a.downvote_manabar.use_mana( consumed_rshares );
             }
          }
          else
          {
-            a.voting_manabar.use_mana( abs_rshares );
+            idump( (a.voting_manabar.current_mana) );
+            a.voting_manabar.use_mana( consumed_rshares );
          }
 
          a.last_vote_time = _db.head_block_time();
@@ -2485,14 +2490,16 @@ void generic_vote_evaluator(
    {
       FC_ASSERT( itr->num_changes < STEEM_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
 
-      int64_t rshares = ctx.rshares < 0 ? -abs_rshares : abs_rshares;
-      FC_ASSERT( itr->vote_percent != rshares, "Your current vote on this comment is identical to the new vote." );
+      int64_t comment_rshares = ctx.rshares < 0 ? -abs_rshares : abs_rshares;
+      FC_ASSERT( itr->rshares != comment_rshares, "Your current vote on this comment is identical to the new vote." );
 
       _db.modify( voter, [&]( AccountType& a )
       {
-         if( ctx.dgpo.downvote_pool_percent > 0 && rshares < 0 )
+         idump( (consumed_rshares) );
+         if( ctx.dgpo.downvote_pool_percent > 0 && comment_rshares < 0 )
          {
-            if( abs_rshares > a.downvote_manabar.current_mana )
+            idump( (a.downvote_manabar.current_mana)(a.voting_manabar.current_mana) );
+            if( consumed_rshares > a.downvote_manabar.current_mana )
             {
                /* used mana is always less than downvote_mana + voting_mana because the amount used
                 * is a fraction of max( downvote_mana, voting_mana ). If more mana is consumed than
@@ -2500,52 +2507,53 @@ void generic_vote_evaluator(
                 * is strictly smaller than voting_mana. This is the same reason why a check is not
                 * required when using voting mana on its own as an upvote.
                 */
-               auto remainder = abs_rshares - a.downvote_manabar.current_mana;
+               auto remainder = consumed_rshares - a.downvote_manabar.current_mana;
+               idump( (remainder) );
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
             else
             {
-               a.downvote_manabar.use_mana( abs_rshares );
+               a.downvote_manabar.use_mana( consumed_rshares );
             }
          }
          else
          {
-            a.voting_manabar.use_mana( abs_rshares );
+            a.voting_manabar.use_mana( consumed_rshares );
          }
 
          a.last_vote_time = _db.head_block_time();
       });
 
-      _db.modify( *itr, [&]( comment_vote_object& cv )
-      {
-         cv.rshares = rshares;
-         cv.last_update = _db.head_block_time();
-         cv.weight = 0;
-         cv.num_changes += 1;
-      });
-
       _db.modify( ctx.comment, [&]( comment_object& c )
       {
          c.net_rshares -= itr->rshares;
-         c.net_rshares += rshares;
+         c.net_rshares += comment_rshares;
          c.abs_rshares += abs_rshares;
 
-         c.total_vote_weight -= itr->weight;
-
          /// TODO: figure out how to handle remove a vote (rshares == 0 )
-         if( rshares > 0 && itr->rshares < 0 )
+         if( comment_rshares > 0 && itr->rshares < 0 )
             c.net_votes += 2;
-         else if( rshares > 0 && itr->rshares == 0 )
+         else if( comment_rshares > 0 && itr->rshares == 0 )
             c.net_votes += 1;
-         else if( rshares == 0 && itr->rshares < 0 )
+         else if( comment_rshares == 0 && itr->rshares < 0 )
             c.net_votes += 1;
-         else if( rshares == 0 && itr->rshares > 0 )
+         else if( comment_rshares == 0 && itr->rshares > 0 )
             c.net_votes -= 1;
-         else if( rshares < 0 && itr->rshares == 0 )
+         else if( comment_rshares < 0 && itr->rshares == 0 )
             c.net_votes -= 1;
-         else if( rshares < 0 && itr->rshares > 0 )
+         else if( comment_rshares < 0 && itr->rshares > 0 )
             c.net_votes -= 2;
+
+         c.total_vote_weight -= itr->weight;
+      });
+
+      _db.modify( *itr, [&]( comment_vote_object& cv )
+      {
+         cv.rshares = comment_rshares;
+         cv.last_update = _db.head_block_time();
+         cv.weight = 0;
+         cv.num_changes += 1;
       });
 
       FC_TODO( "Check if this needed anywhere. Possibly still used by Hivemind" );
@@ -2577,7 +2585,7 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
 
    if( o.rshares > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
 
-   vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, _db.get_dynamic_global_properties().target_votes_per_period, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+   vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
    generic_vote_evaluator( ctx, voter, _db );
 
    for( auto& smt_rshare : o.smt_rshares )
