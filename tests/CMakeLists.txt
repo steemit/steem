@@ -51,8 +51,8 @@ function(parse_unit_tests RESULT)
 endfunction()
 
 parse_unit_tests(TEST_CASES ${UNIT_TESTS})
-string (REPLACE ";" "\n" TEST_CASES "${TEST_CASES}")
-message(STATUS "${TEST_CASES}")
+#string (REPLACE ";" "\n" TEST_CASES "${TEST_CASES}")
+#message(STATUS "${TEST_CASES}")
 
 add_boost_test( chain_test
    SOURCES ${UNIT_TESTS}
