@@ -134,6 +134,12 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    if ( additional_token_supply > 0 )
       _db.adjust_supply( asset( additional_token_supply, a.symbol ) );
 
+   _db.modify( token, []( smt_token_object& obj )
+   {
+      obj.total_vesting_fund_ballast   = ( obj.current_supply * SMT_BALLAST_SUPPLY_PERCENT ) / STEEM_100_PERCENT;
+      obj.total_vesting_shares_ballast = obj.total_vesting_fund_ballast * SMT_INITIAL_VESTING_PER_UNIT;
+   } );
+
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 

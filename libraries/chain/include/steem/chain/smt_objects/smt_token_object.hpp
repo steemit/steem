@@ -42,30 +42,34 @@ public:
       c( *this );
    }
 
-   price    one_vesting_to_one_liquid() const
+   price initial_vesting_share_price() const
    {
-      int64_t one_smt = std::pow(10, liquid_symbol.decimals());
-      return price ( asset( one_smt, liquid_symbol.get_paired_symbol() ), asset( one_smt, liquid_symbol ) );
-      // ^ On the assumption that liquid and vesting SMT have the same precision. See issue 2212
+      int64_t one_smt = std::pow( 10, liquid_symbol.decimals() );
+      return
+         price(
+            asset( one_smt * SMT_INITIAL_VESTING_PER_UNIT, liquid_symbol.get_paired_symbol() ),
+            asset( one_smt, liquid_symbol )
+         );
    }
 
-   price    get_vesting_share_price() const
+   price get_vesting_share_price() const
    {
-      if ( total_vesting_fund_smt == 0 || total_vesting_shares == 0 )
-         return one_vesting_to_one_liquid();
-         // ^ In original method of globa_property_object it was one liquid to one vesting which seems to be a bug.
+      if ( total_vesting_fund_ballast == 0 || total_vesting_shares_ballast == 0 )
+         return initial_vesting_share_price();
 
-      return price( asset( total_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( total_vesting_fund_smt, liquid_symbol ) );
+      share_type effective_total_vesting_shares = total_vesting_shares_ballast + total_vesting_shares;
+      share_type effective_total_vesting_fund   = total_vesting_fund_ballast + total_vesting_fund_smt;
+
+      return price( asset( effective_total_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( effective_total_vesting_fund, liquid_symbol ) );
    }
 
-   price    get_reward_vesting_share_price() const
+   price get_reward_vesting_share_price() const
    {
-      share_type reward_vesting_shares = total_vesting_shares + pending_rewarded_vesting_shares;
-      share_type reward_vesting_smt = total_vesting_fund_smt + pending_rewarded_vesting_smt;
+      if ( total_vesting_fund_ballast == 0 || total_vesting_shares_ballast == 0 )
+         return initial_vesting_share_price();
 
-      if( reward_vesting_shares == 0 || reward_vesting_smt == 0 )
-          return one_vesting_to_one_liquid();
-      // ^ Additional check not found in original get_reward_vesting_share_price. See issue 2212
+      share_type reward_vesting_shares = total_vesting_shares_ballast + total_vesting_shares + pending_rewarded_vesting_shares;
+      share_type reward_vesting_smt    = total_vesting_fund_ballast + total_vesting_fund_smt + pending_rewarded_vesting_smt;
 
       return price( asset( reward_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( reward_vesting_smt, liquid_symbol ) );
    }
@@ -78,12 +82,14 @@ public:
     */
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
-   smt_phase            phase = smt_phase::setup;
-   share_type           current_supply = 0;
-   share_type           total_vesting_fund_smt = 0;
-   share_type           total_vesting_shares = 0;
+   smt_phase            phase                           = smt_phase::setup;
+   share_type           current_supply                  = 0;
+   share_type           total_vesting_fund_smt          = 0;
+   share_type           total_vesting_shares            = 0;
+   share_type           total_vesting_fund_ballast      = 0;
+   share_type           total_vesting_shares_ballast    = 0;
    share_type           pending_rewarded_vesting_shares = 0;
-   share_type           pending_rewarded_vesting_smt = 0;
+   share_type           pending_rewarded_vesting_smt    = 0;
    asset                rewards_fund;
 
    smt_market_maker_state  market_maker;
@@ -287,6 +293,8 @@ FC_REFLECT( steem::chain::smt_token_object,
    (current_supply)
    (total_vesting_fund_smt)
    (total_vesting_shares)
+   (total_vesting_fund_ballast)
+   (total_vesting_shares_ballast)
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
    (rewards_fund)

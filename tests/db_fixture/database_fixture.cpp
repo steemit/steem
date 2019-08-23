@@ -507,7 +507,10 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 {
    try
    {
-      FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      if ( amount.symbol.space() == asset_symbol_type::legacy_space )
+         FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      else
+         FC_ASSERT( !amount.symbol.is_vesting(), "Can only vest liquid symbol" );
 
       transfer_to_vesting_operation op;
       op.from = from;
@@ -532,12 +535,17 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 
 void database_fixture::vest( const string& from, const share_type& amount )
 {
+   vest( from, asset( amount, STEEM_SYMBOL ) );
+}
+
+void database_fixture::vest( const string& from, const asset& amount )
+{
    try
    {
       transfer_to_vesting_operation op;
       op.from = from;
       op.to = "";
-      op.amount = asset( amount, STEEM_SYMBOL );
+      op.amount = amount;
 
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );

@@ -1239,20 +1239,26 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
-         // Get share price.
-         const auto& smt = db.get< smt_token_object, by_symbol >( liquid.symbol );
-         FC_ASSERT( smt.allow_voting == to_reward_balance, "No voting - no rewards" );
-         price vesting_share_price = to_reward_balance ? smt.get_reward_vesting_share_price() : smt.get_vesting_share_price();
+
+         const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
+
+         if ( to_reward_balance )
+            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled. Please report this as it should not be triggered." );
+
+         price vesting_share_price = to_reward_balance ? token.get_reward_vesting_share_price() : token.get_vesting_share_price();
+
          // Calculate new vesting from provided liquid using share price.
          asset new_vesting = calculate_new_vesting( vesting_share_price );
          before_vesting_callback( new_vesting );
+
          // Add new vesting to owner's balance.
          if( to_reward_balance )
             db.adjust_reward_balance( to_account, liquid, new_vesting );
          else
             db.adjust_balance( to_account, new_vesting );
+
          // Update global vesting pool numbers.
-         db.modify( smt, [&]( smt_token_object& smt_object )
+         db.modify( token, [&]( smt_token_object& smt_object )
          {
             if( to_reward_balance )
             {
@@ -1266,7 +1272,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
             }
          } );
 
-         // NOTE that SMT vesting does not impact witness voting.
+         // Note: SMT vesting does not impact witness voting.
 
          return new_vesting;
       }
@@ -1655,6 +1661,50 @@ void database::update_owner_authority( const account_object& account, const auth
 
 void database::process_vesting_withdrawals()
 {
+   const auto& token_balance_idx = get_index < account_regular_balance_index, by_next_vesting_withdrawal >();
+   for ( auto iter = token_balance_idx.begin(); iter != token_balance_idx.end() && iter->next_vesting_withdrawal <= head_block_time(); ++iter )
+   {
+      const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
+      share_type to_withdraw;
+      if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
+         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+      else
+         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+
+      auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
+      auto converted_token = withdraw_token * token.get_vesting_share_price();
+
+      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, withdraw_token, converted_token );
+
+      pre_push_virtual_operation( vop );
+
+      modify( *iter, [&]( account_regular_balance_object& a )
+      {
+         a.vesting   -= withdraw_token;
+         a.liquid    += converted_token;
+         a.withdrawn += to_withdraw;
+
+         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         {
+            a.vesting_withdraw_rate.amount = 0;
+            a.next_vesting_withdrawal      = fc::time_point_sec::maximum();
+         }
+         else
+         {
+            a.next_vesting_withdrawal += fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+         }
+      } );
+
+      modify( token, [&]( smt_token_object& o )
+      {
+         o.total_vesting_fund_smt -= converted_token.amount;
+         o.total_vesting_shares   -= to_withdraw;
+      } );
+
+      post_push_virtual_operation( vop );
+
+   }
+
    const auto& widx = get_index< account_index, by_next_vesting_withdrawal >();
    const auto& didx = get_index< withdraw_vesting_route_index, by_withdraw_route >();
    auto current = widx.begin();
@@ -4359,7 +4409,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
 
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.clear_balance( liquid_symbol );
+         smt_balance.initialize_assets( liquid_symbol );
          smt_balance.owner = name;
          balance_operator.add_to_balance( smt_balance );
          smt_balance.validate();
@@ -4372,20 +4422,10 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       // Check result to avoid negative balance storing.
       FC_ASSERT( result >= 0, "Insufficient SMT ${smt} funds", ( "smt", delta.symbol ) );
 
-      // Exit if whole balance becomes zero.
-      if( is_all_zero )
+      modify( *bo, [&]( smt_balance_object_type& smt_balance )
       {
-         // Zero balance is the same as non object balance at all.
-         // Remove balance object if both liquid and vesting balances are zero.
-         remove( *bo );
-      }
-      else
-      {
-         modify( *bo, [&]( smt_balance_object_type& smt_balance )
-         {
-            balance_operator.add_to_balance( smt_balance );
-         } );
-      }
+         balance_operator.add_to_balance( smt_balance );
+      } );
    }
 }
 

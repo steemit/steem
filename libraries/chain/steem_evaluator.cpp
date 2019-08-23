@@ -4,8 +4,10 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/smt_objects.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/block_summary_object.hpp>
+#include <steem/chain/smt_objects/account_balance_object.hpp>
 
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/manabar.hpp>
@@ -700,21 +702,46 @@ struct comment_options_extension_visitor
 
    void operator()( const allowed_vote_assets& va) const
    {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Specifying SMT Comment Options not available until SMT Hardfork." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying allowed vote assets." );
-      auto remaining_asset_number = SMT_MAX_VOTABLE_ASSETS;
-      FC_ASSERT( remaining_asset_number > 0 );
-      _db.modify( _c, [&]( comment_object& c )
+
+      const auto& root = _db.get< comment_object, by_id >( _c.root_comment );
+
+      for( const auto& a : va.votable_assets )
       {
-         for( const auto& a : va.votable_assets )
+         if( _c.parent_author == STEEM_ROOT_POST_PARENT )
          {
-            if( a.first != STEEM_SYMBOL )
+            auto smt = _db.find< smt_token_object, by_symbol >( a.first );
+            FC_ASSERT( smt != nullptr, "SMT ${s} was not found.", ("s", a.first) );
+            FC_ASSERT( smt->phase == smt_phase::launch_success, "SMT ${s} must be in active phase to be a votable asset.", ("s", a.first) );
+         }
+         else
+         {
+            auto smt = root.allowed_vote_assets.find( a.first );
+            FC_ASSERT( smt != root.allowed_vote_assets.end(), "SMT ${s} is not a votable asset in the root comment ${a}/${p}",
+               ("s", a.first)("a", root.author)("p", root.permlink) );
+         }
+      }
+
+      auto allowed_vote_assets = _c.allowed_vote_assets;
+
+      for( const auto& a : va.votable_assets )
+      {
+         if( a.second.beneficiaries.beneficiaries.size() )
+         {
+            for( auto& b : a.second.beneficiaries.beneficiaries )
             {
-               FC_ASSERT( remaining_asset_number > 0, "Comment votable assets number exceeds allowed limit ${ava}.",
-                        ("ava", SMT_MAX_VOTABLE_ASSETS) );
-               --remaining_asset_number;
-               c.allowed_vote_assets.emplace_back( a.first, a.second );
+               auto acc = _db.find< account_object, by_name >( b.account );
+               FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
             }
          }
+
+         allowed_vote_assets.insert_or_assign( a.first, a.second );
+      }
+
+      _db.modify( _c, [&]( comment_object& c )
+      {
+         c.allowed_vote_assets = allowed_vote_assets;
       });
    }
 
@@ -723,14 +750,15 @@ struct comment_options_extension_visitor
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries." );
 
+      for( auto& b : cpb.beneficiaries )
+      {
+         auto acc = _db.find< account_object, by_name >( b.account );
+         FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
+      }
+
       _db.modify( _c, [&]( comment_object& c )
       {
-         for( auto& b : cpb.beneficiaries )
-         {
-            auto acc = _db.find< account_object, by_name >( b.account );
-            FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
-            c.beneficiaries.push_back( b );
-         }
+         c.beneficiaries.insert( c.beneficiaries.end(), cpb.beneficiaries.begin(), cpb.beneficiaries.end() );
       });
    }
 };
@@ -1220,61 +1248,107 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       return;
    }
 
-
-   FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
-   FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
-
-   FC_TODO( "Remove this entire block after HF 20" )
-   if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1860 ) && !account.mined && _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
+   if ( o.vesting_shares.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      const auto& props = _db.get_dynamic_global_properties();
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Withdraw vesting operation for SMTs is not enabled until the SMT hardfork." );
+      FC_ASSERT( o.vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
+      auto liquid_symbol = o.vesting_shares.symbol.get_paired_symbol();
+      const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
 
-      asset min_vests = wso.median_props.account_creation_fee * props.get_vesting_share_price();
-      min_vests.amount.value *= 10;
+      FC_ASSERT( bal_obj != nullptr, "Account does not have sufficient Token Power for withdrawal." );
+      FC_ASSERT( bal_obj->vesting - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
 
-      FC_ASSERT( account.vesting_shares > min_vests || ( _db.has_hardfork( STEEM_HARDFORK_0_16__562 ) && o.vesting_shares.amount == 0 ),
-                 "Account registered by another account requires 10x account creation fee worth of Steem Power before it can be powered down." );
-   }
+      if ( o.vesting_shares.amount == 0 )
+      {
+         FC_ASSERT( bal_obj->vesting_withdraw_rate.amount != 0, "This operation would not change the vesting withdraw rate." );
 
-   if( o.vesting_shares.amount == 0 )
-   {
-      if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
-         FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "This operation would not change the vesting withdraw rate." );
+         _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
+         {
+            a.vesting_withdraw_rate = asset( 0, liquid_symbol.get_paired_symbol() );
+            a.next_vesting_withdrawal = time_point_sec::maximum();
+            a.to_withdraw = 0;
+            a.withdrawn = 0;
+         } );
+      }
+      else
+      {
+         int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS;
 
-      _db.modify( account, [&]( account_object& a ) {
-         a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
-         a.next_vesting_withdrawal = time_point_sec::maximum();
-         a.to_withdraw = 0;
-         a.withdrawn = 0;
-      });
+         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, liquid_symbol.get_paired_symbol() );
+
+         if ( new_vesting_withdraw_rate.amount == 0 )
+            new_vesting_withdraw_rate.amount = 1;
+
+         if ( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
+            new_vesting_withdraw_rate.amount += 1;
+
+         FC_ASSERT( bal_obj->vesting_withdraw_rate != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
+
+         _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
+         {
+            a.vesting_withdraw_rate = new_vesting_withdraw_rate;
+            a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+            a.to_withdraw = o.vesting_shares.amount;
+            a.withdrawn = 0;
+         } );
+      }
    }
    else
    {
-      int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
-      if( _db.has_hardfork( STEEM_HARDFORK_0_16__551 ) )
-         vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS; /// 13 weeks = 1 quarter of a year
+      FC_ASSERT( o.vesting_shares.symbol == VESTS_SYMBOL, "Vesting shares must be a vesting symbol." );
+      FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
+      FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
-      _db.modify( account, [&]( account_object& a )
+      FC_TODO( "Remove this entire block after HF 20" )
+      if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1860 ) && !account.mined && _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
       {
+         const auto& props = _db.get_dynamic_global_properties();
+         const witness_schedule_object& wso = _db.get_witness_schedule_object();
+
+         asset min_vests = wso.median_props.account_creation_fee * props.get_vesting_share_price();
+         min_vests.amount.value *= 10;
+
+         FC_ASSERT( account.vesting_shares > min_vests || ( _db.has_hardfork( STEEM_HARDFORK_0_16__562 ) && o.vesting_shares.amount == 0 ),
+                    "Account registered by another account requires 10x account creation fee worth of Steem Power before it can be powered down." );
+      }
+
+      if( o.vesting_shares.amount == 0 )
+      {
+         if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
+            FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "This operation would not change the vesting withdraw rate." );
+
+         _db.modify( account, [&]( account_object& a ) {
+            a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
+            a.next_vesting_withdrawal = time_point_sec::maximum();
+            a.to_withdraw = 0;
+            a.withdrawn = 0;
+         });
+      }
+      else
+      {
+         int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
+         if( _db.has_hardfork( STEEM_HARDFORK_0_16__551 ) )
+            vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS; /// 13 weeks = 1 quarter of a year
+
          auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, VESTS_SYMBOL );
 
          if( new_vesting_withdraw_rate.amount == 0 )
-               new_vesting_withdraw_rate.amount = 1;
+            new_vesting_withdraw_rate.amount = 1;
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_21 ) && new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
-         {
             new_vesting_withdraw_rate.amount += 1;
-         }
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
 
-         a.vesting_withdraw_rate = new_vesting_withdraw_rate;
-         a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds(STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS);
-         a.to_withdraw = o.vesting_shares.amount;
-         a.withdrawn = 0;
-      });
+         _db.modify( account, [&]( account_object& a )
+         {
+            a.vesting_withdraw_rate = new_vesting_withdraw_rate;
+            a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds(STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS);
+            a.to_withdraw = o.vesting_shares.amount;
+            a.withdrawn = 0;
+         });
+      }
    }
 }
 

@@ -257,6 +257,9 @@ add_boost_test( chain_test
    smt_operation_tests/claim_reward_balance2_authorities
    smt_operation_tests/claim_reward_balance2_apply
    smt_operation_tests/smt_transfer_to_vesting_validate
+   smt_operation_tests/smt_transfer_to_vesting_apply
+   smt_operation_tests/smt_withdraw_vesting_validate
+   smt_operation_tests/smt_withdraw_vesting_apply
    smt_operation_tests/smt_create_validate
    smt_operation_tests/smt_create_authorities
    smt_operation_tests/smt_create_duplicate
@@ -285,13 +288,15 @@ add_boost_test( chain_test
    smt_operation_tests/smt_setup_validate
    smt_operation_tests/smt_setup_authorities
    smt_operation_tests/smt_setup_apply
+   smt_operation_tests/comment_votable_assets_validate
+   smt_operation_tests/comment_votable_assets_apply
    smt_operation_time_tests/smt_liquidity_rewards
    smt_operation_time_tests/smt_refunds
    smt_operation_time_tests/smt_ico_payouts
    smt_operation_time_tests/smt_ico_payouts_special_destinations
+   smt_operation_time_tests/smt_vesting_withdrawals
    smt_tests/smt_transfer_validate
    smt_tests/smt_transfer_apply
-   smt_tests/comment_votable_assers_validate
    smt_tests/asset_symbol_vesting_methods
    smt_tests/vesting_smt_creation
    smt_tests/smt_founder_vesting

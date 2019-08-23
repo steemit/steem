@@ -1228,130 +1228,251 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
 
 BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_validate )
 {
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_validate with SMT" );
+   BOOST_TEST_MESSAGE( "Testing: transfer_to_vesting_validate with SMT" );
 
-      // Dramatis personae
-      ACTORS( (alice) )
-      generate_block();
-      // Create sample SMTs
-      auto smts = create_smt_3( "alice", alice_private_key );
-      const auto& smt1 = smts[0];
-      // Fund creator with SMTs
-      FUND( "alice", asset( 100, smt1 ) );
+   ACTORS( (alice) )
+   generate_block();
 
-      transfer_to_vesting_operation op;
-      op.from = "alice";
-      op.amount = asset( 20, smt1 );
-      op.validate();
+   auto token = create_smt( "alice", alice_private_key, 3 );
 
-      // Fail on invalid 'from' account name
-      op.from = "@@@@@";
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.from = "alice";
+   FUND( "alice", asset( 100, token ) );
 
-      // Fail on invalid 'to' account name
-      op.to = "@@@@@";
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.to = "";
+   transfer_to_vesting_operation op;
+   op.from = "alice";
+   op.amount = asset( 20, token );
+   op.validate();
 
-      // Fail on vesting symbol (instead of liquid)
-      op.amount = asset( 20, smt1.get_paired_symbol() );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on invalid 'from' account name" );
+   op.from = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.from = "alice";
 
-      // Fail on 0 amount
-      op.amount = asset( 0, smt1 );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on invalid 'to' account name" );
+   op.to = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.to = "";
 
-      // Fail on negative amount
-      op.amount = asset( -20, smt1 );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      op.amount = asset( 20, smt1 );
+   BOOST_TEST_MESSAGE( " -- Fail on vesting symbol (instead of liquid)" );
+   op.amount = asset( 20, token.get_paired_symbol() );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
 
-      validate_database();
-   }
-   FC_LOG_AND_RETHROW()
+   BOOST_TEST_MESSAGE( " -- Fail on 0 amount" );
+   op.amount = asset( 0, token );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
+
+   BOOST_TEST_MESSAGE( " -- Fail on negative amount" );
+   op.amount = asset( -20, token );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.amount = asset( 20, token );
+
+   op.validate();
 }
 
-// Here would be smt_transfer_to_vesting_authorities if it differed from transfer_to_vesting_authorities
-/*
 BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
 {
-   try
-   {
-      BOOST_TEST_MESSAGE( "Testing: smt_transfer_to_vesting_apply" );
+   BOOST_TEST_MESSAGE( "Testing: smt_transfer_to_vesting_apply" );
 
-      auto test_single_smt = [this] (const asset_symbol_type& liquid_smt, const fc::ecc::private_key& key )
-      {
-         asset_symbol_type vesting_smt = liquid_smt.get_paired_symbol();
-         // Fund creator with SMTs
-         FUND( "alice", asset( 10000, liquid_smt ) );
+   ACTORS( (alice)(bob) )
+   generate_block();
 
-         const auto& smt_object = db->get< smt_token_object, by_symbol >( liquid_smt );
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
 
-         // Check pre-vesting balances
-         FC_ASSERT( db->get_balance( "alice", liquid_smt ).amount == 10000, "SMT balance adjusting error" );
-         FC_ASSERT( db->get_balance( "alice", vesting_smt ).amount == 0, "SMT balance adjusting error" );
+   FUND( "alice", asset( 10000, symbol ) );
 
-         auto smt_shares = asset( smt_object.total_vesting_shares, vesting_smt );
-         auto smt_vests = asset( smt_object.total_vesting_fund_smt, liquid_smt );
-         auto smt_share_price = smt_object.get_vesting_share_price();
-         auto alice_smt_shares = db->get_balance( "alice", vesting_smt );
-         auto bob_smt_shares = db->get_balance( "bob", vesting_smt );;
+   BOOST_TEST_MESSAGE( " -- Checking initial balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 10000 );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ).amount == 0 );
 
-         // Self transfer Alice's liquid
-         transfer_to_vesting_operation op;
-         op.from = "alice";
-         op.to = "";
-         op.amount = asset( 7500, liquid_smt );
-         PUSH_OP( op, key );
+   const auto& token = db->get< smt_token_object, by_symbol >( symbol );
 
-         auto new_vest = op.amount * smt_share_price;
-         smt_shares += new_vest;
-         smt_vests += op.amount;
-         alice_smt_shares += new_vest;
+   auto smt_shares      = asset( token.total_vesting_shares, symbol.get_paired_symbol() );
+   auto smt_vests       = asset( token.total_vesting_fund_smt, symbol );
+   auto smt_share_price = token.get_vesting_share_price();
 
-         BOOST_REQUIRE( db->get_balance( "alice", liquid_smt ) == asset( 2500, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "alice", vesting_smt ) == alice_smt_shares );
-         BOOST_REQUIRE( smt_object.total_vesting_fund_smt.value == smt_vests.amount.value );
-         BOOST_REQUIRE( smt_object.total_vesting_shares.value == smt_shares.amount.value );
-         validate_database();
-         smt_share_price = smt_object.get_vesting_share_price();
+   BOOST_TEST_MESSAGE( " -- Self transfer to vesting (alice)" );
+   transfer_to_vesting_operation op;
+   op.from = "alice";
+   op.to = "";
+   op.amount = asset( 7500, symbol );
+   PUSH_OP( op, alice_private_key );
 
-         // Transfer Alice's liquid to Bob's vests
-         op.to = "bob";
-         op.amount = asset( 2000, liquid_smt );
-         PUSH_OP( op, key );
+   auto new_vest = op.amount * smt_share_price;
+   smt_shares += new_vest;
+   smt_vests += op.amount;
+   auto alice_smt_shares = new_vest;
 
-         new_vest = op.amount * smt_share_price;
-         smt_shares += new_vest;
-         smt_vests += op.amount;
-         bob_smt_shares += new_vest;
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 2500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
 
-         BOOST_REQUIRE( db->get_balance( "alice", liquid_smt ) == asset( 500, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "alice", vesting_smt ) == alice_smt_shares );
-         BOOST_REQUIRE( db->get_balance( "bob", liquid_smt ) == asset( 0, liquid_smt ) );
-         BOOST_REQUIRE( db->get_balance( "bob", vesting_smt ) == bob_smt_shares );
-         BOOST_REQUIRE( smt_object.total_vesting_fund_smt.value == smt_vests.amount.value );
-         BOOST_REQUIRE( smt_object.total_vesting_shares.value == smt_shares.amount.value );
-         validate_database();
-      };
+   validate_database();
 
-      ACTORS( (alice)(bob) )
-      generate_block();
+   smt_share_price = token.get_vesting_share_price();
 
-      // Create sample SMTs
-      auto smts = create_smt_3( "alice", alice_private_key );
-      test_single_smt( smts[0], alice_private_key);
-      test_single_smt( smts[1], alice_private_key );
-      test_single_smt( smts[2], alice_private_key );
-   }
-   FC_LOG_AND_RETHROW()
+   BOOST_TEST_MESSAGE( " -- Transfer from alice to bob ( liquid -> vests)" );
+   op.to = "bob";
+   op.amount = asset( 2000, symbol );
+   PUSH_OP( op, alice_private_key );
+
+   new_vest = op.amount * smt_share_price;
+   smt_shares += new_vest;
+   smt_vests += op.amount;
+   auto bob_smt_shares = new_vest;
+
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 0, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol.get_paired_symbol() ) == bob_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
+
+   BOOST_TEST_MESSAGE( " -- Transfer from alice to bob ( liquid -> vests ) insufficient funds" );
+   op.amount = asset( 501, symbol );
+   FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Checking balances" );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol ) == asset( 500, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ) == alice_smt_shares );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol ) == asset( 0, symbol ) );
+   BOOST_REQUIRE( db->get_balance( "bob", symbol.get_paired_symbol() ) == bob_smt_shares );
+   BOOST_REQUIRE( token.total_vesting_fund_smt.value == smt_vests.amount.value );
+   BOOST_REQUIRE( token.total_vesting_shares.value == smt_shares.amount.value );
+
+   validate_database();
 }
-*/
+
+BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_validate )
+{
+   BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_validate" );
+
+   ACTORS( (alice) )
+   generate_block();
+
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+   withdraw_vesting_operation op;
+   op.account = "alice";
+   op.vesting_shares = asset( 10, symbol.get_paired_symbol() );
+   op.validate();
+
+   BOOST_TEST_MESSAGE( " -- Testing invalid account name" );
+   op.account = "@@@@@";
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.account = "alice";
+
+   BOOST_TEST_MESSAGE( " -- Testing withdrawal of non-vest symbol" );
+   op.vesting_shares = asset( 10, symbol );
+   BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.vesting_shares = asset( 10, symbol.get_paired_symbol() );
+
+   op.validate();
+}
+
+BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
+{
+   BOOST_TEST_MESSAGE( "Testing: smt_withdraw_vesting_apply" );
+
+   ACTORS( (alice)(bob)(charlie) )
+   generate_block();
+
+   auto symbol = create_smt( "charlie", charlie_private_key, 3 );
+
+   FUND( STEEM_INIT_MINER_NAME, asset( 10000, symbol ) );
+   vest( STEEM_INIT_MINER_NAME, "alice", asset( 10000, symbol ) );
+
+   BOOST_TEST_MESSAGE( "--- Test failure withdrawing negative SMT VESTS" );
+
+   withdraw_vesting_operation op;
+   op.account = "alice";
+   op.vesting_shares = asset( -1, symbol.get_paired_symbol() );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( "--- Test withdraw of existing SMT VESTS" );
+   op.vesting_shares = asset( db->get_balance( "alice", symbol.get_paired_symbol() ).amount / 2, symbol.get_paired_symbol() );
+
+   auto old_vesting_shares = db->get_balance( "alice", symbol.get_paired_symbol() );
+
+   tx.clear();
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   auto key = boost::make_tuple( "alice", symbol );
+   const auto* balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+
+   BOOST_REQUIRE( balance_obj != nullptr );
+   BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ).amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 2 ) ).value + 1 );
+   BOOST_REQUIRE( balance_obj->to_withdraw.value == op.vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+   validate_database();
+
+   BOOST_TEST_MESSAGE( "--- Test changing vesting withdrawal" );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   op.vesting_shares = asset( balance_obj->vesting.amount / 3, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
+   BOOST_REQUIRE( balance_obj->to_withdraw.value == op.vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+   validate_database();
+
+   BOOST_TEST_MESSAGE( "--- Test withdrawing more vests than available" );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   op.vesting_shares = asset( balance_obj->vesting.amount * 2, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
+   BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+   validate_database();
+
+   BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to reset vesting withdraw" );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   op.vesting_shares = asset( 0, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == 0 );
+   BOOST_REQUIRE( balance_obj->to_withdraw.value == 0 );
+   BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == fc::time_point_sec::maximum() );
+   validate_database();
+
+   BOOST_TEST_MESSAGE( "--- Test withdrawing with no balance" );
+   op.account = "bob";
+   op.vesting_shares = db->get_balance( "bob", symbol.get_paired_symbol() );
+   tx.clear();
+   tx.operations.push_back( op );
+   sign( tx, bob_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+}
 
 BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
@@ -4135,6 +4256,345 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    db->push_transaction( tx, 0 );
 
    generate_block();
+}
+
+BOOST_AUTO_TEST_CASE( comment_votable_assets_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+      ACTORS((alice));
+
+      generate_block();
+
+      std::array< asset_symbol_type, SMT_MAX_VOTABLE_ASSETS + 1 > smts;
+      /// Create one more than limit to test negative cases
+      for( size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS + 1; ++i )
+      {
+         smts[i] = create_smt( "alice", alice_private_key, 0 );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration: no votable_assets" );
+         allowed_vote_assets ava;
+         op.extensions.insert( ava );
+         idump( (op) );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing valid configuration of votable_assets" );
+         allowed_vote_assets ava;
+         for( size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS; ++i )
+         {
+            ava.add_votable_asset( smts[i], 10 + i, (i & 2) != 0 );
+         }
+
+         op.extensions.insert( ava );
+         idump( (op) );
+         op.validate();
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - too much assets specified" );
+         allowed_vote_assets ava;
+         for( size_t i = 0; i < smts.size(); ++i )
+         {
+            ava.add_votable_asset( smts[i], 20 + i, (i & 2) != 0 );
+         }
+
+         op.extensions.insert( ava );
+         idump( (op) );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing invalid configuration of votable_assets - STEEM added to container" );
+         allowed_vote_assets ava;
+         ava.add_votable_asset( smts.front(), 20, false);
+         ava.add_votable_asset( STEEM_SYMBOL, 20, true);
+         op.extensions.insert( ava );
+         idump( (op) );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      }
+
+      {
+         comment_options_operation op;
+
+         op.author = "alice";
+         op.permlink = "test";
+
+         BOOST_TEST_MESSAGE( "--- Testing more than 100% weight on a single route" );
+         allowed_vote_assets ava;
+         ava.add_votable_asset( smts[0], 10, true );
+
+         auto& b = ava.votable_assets[smts[0]].beneficiaries;
+
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEM_100_PERCENT + 1 ) );
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing more than 100% total weight" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEM_1_PERCENT * 75 ) );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), STEEM_1_PERCENT * 75 ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing maximum number of routes" );
+         b.beneficiaries.clear();
+         for( size_t i = 0; i < 127; i++ )
+         {
+            b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "foo" + fc::to_string( i ) ), 1 ) );
+         }
+
+         op.extensions.clear();
+         std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+         op.extensions.insert( ava );
+         op.validate();
+
+         BOOST_TEST_MESSAGE( "--- Testing one too many routes" );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bar" ), 1 ) );
+         std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+         BOOST_TEST_MESSAGE( "--- Testing duplicate accounts" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT * 2 ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing incorrect account sort order" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Testing correct account sort order" );
+         b.beneficiaries.clear();
+         b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+         op.extensions.clear();
+         op.extensions.insert( ava );
+         op.validate();
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: comment votable assets apply" );
+      ACTORS( (alice)(bob) );
+
+      SMT_SYMBOL( alice, 3, db );
+      generate_block();
+
+      comment_operation comment;
+      comment_options_operation op;
+      allowed_vote_assets ava;
+      votable_asset_options opts;
+      signed_transaction tx;
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar";
+
+      tx.operations.push_back( comment );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure when SMT does not exist" );
+
+      op.author = "alice";
+      op.permlink = "test";
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure when SMT is not launched" );
+
+      alice_symbol = create_smt( "alice", alice_private_key, 3 );
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+         });
+      });
+      generate_block();
+
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      {
+         const auto& alice_comment = db->get_comment( op.author, op.permlink );
+
+         BOOST_REQUIRE( alice_comment.allowed_vote_assets.find( alice_symbol ) != alice_comment.allowed_vote_assets.end() );
+         const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
+         BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
+         BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
+         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 0 );
+      }
+
+
+      BOOST_TEST_MESSAGE( "--- Failure with non-existent beneficiary" );
+
+      opts.beneficiaries.beneficiaries.push_back( beneficiary_route_type{ "charlie", STEEM_100_PERCENT } );
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Success changing when rshares are 0" );
+
+      opts.beneficiaries.beneficiaries.clear();
+      opts.beneficiaries.beneficiaries.push_back( beneficiary_route_type{ "bob", STEEM_100_PERCENT } );
+      opts.max_accepted_payout = 100;
+      opts.allow_curation_rewards = false;
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      {
+         const auto& alice_comment = db->get_comment( op.author, op.permlink );
+
+         BOOST_REQUIRE( alice_comment.allowed_vote_assets.find( alice_symbol ) != alice_comment.allowed_vote_assets.end() );
+         const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
+         BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
+         BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
+         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 1 );
+      }
+
+
+      BOOST_TEST_MESSAGE( "--- Failure changing when rshares are non-zero" );
+
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_comment( op.author, op.permlink ), [=]( comment_object& c )
+         {
+            c.net_rshares = 1;
+            c.abs_rshares = 1;
+         });
+      });
+      generate_block();
+
+      opts.beneficiaries.beneficiaries.clear();
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Failure specifying non-inherited votable asset" );
+
+      generate_block();
+      auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
+      generate_block();
+
+      comment.parent_author = comment.author;
+      comment.parent_permlink = comment.permlink;
+      comment.author = "bob";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      op.author = comment.author;
+      ava.votable_assets.clear();
+      ava.votable_assets[ bob_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Success specifying inherited votable asset" );
+
+      ava.votable_assets.clear();
+      ava.votable_assets[ alice_symbol ] = opts;
+      op.extensions.clear();
+      op.extensions.insert( ava );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
