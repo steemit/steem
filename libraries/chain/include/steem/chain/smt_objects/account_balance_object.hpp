@@ -2,6 +2,7 @@
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
+#include <steem/chain/util/manabar.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -53,17 +54,17 @@ public:
    {
       owner = "";
       liquid = asset( 0, liquid_symbol);
-      vesting = asset( 0, liquid_symbol.get_paired_symbol() );
+      vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
    }
-   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+   void add_vesting( const asset& shares, const asset& value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
-      vesting += vesting_shares;
+      vesting_shares += shares;
    }
    ///@}
 
    bool validate() const
-   { return liquid.symbol == vesting.symbol.get_paired_symbol(); }
+   { return liquid.symbol == vesting_shares.symbol.get_paired_symbol(); }
 };
 
 /**
@@ -159,7 +160,7 @@ FC_REFLECT( steem::chain::account_regular_balance_object,
    (id)
    (owner)
    (liquid)
-   (vesting)
+   (vesting_shares)
 )
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,

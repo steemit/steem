@@ -50,10 +50,8 @@ struct pre_operation_visitor
 
    typedef void result_type;
 
-   template< typename T >
-   void operator()( const T& )const {}
-
-   void operator()( const vote_operation& op )const
+   template< typename VoteOperation >
+   void pre_update_reputation( const VoteOperation& op )const
    {
       try
       {
@@ -62,14 +60,14 @@ struct pre_operation_visitor
 
          if( db.calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() ) return;
 
-         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( boost::make_tuple( c.id, db.get_account( op.voter ).id ) );
+         const auto& cv_idx = db.get_index< comment_vote_index, by_comment_voter_symbol >();
+         auto cv = cv_idx.find( boost::make_tuple( c.id, db.get_account( op.voter ).id, STEEM_SYMBOL ) );
 
          if( cv != cv_idx.end() )
          {
             auto rep_delta = ( cv->rshares >> 6 );
 
-            const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
+            const auto& rep_idx = db.get_index< reputation_index, by_account >();
             auto voter_rep = rep_idx.find( op.voter );
             auto author_rep = rep_idx.find( op.author );
 
@@ -97,6 +95,19 @@ struct pre_operation_visitor
       }
       catch( const fc::exception& e ) {}
    }
+
+   template< typename T >
+   void operator()( const T& )const {}
+
+   void operator()( const vote_operation& op )const
+   {
+      pre_update_reputation( op );
+   }
+
+   void operator()( const vote2_operation& op )const
+   {
+      pre_update_reputation( op );
+   }
 };
 
 struct post_operation_visitor
@@ -108,10 +119,8 @@ struct post_operation_visitor
 
    typedef void result_type;
 
-   template< typename T >
-   void operator()( const T& )const {}
-
-   void operator()( const vote_operation& op )const
+   template< typename VoteOperation >
+   void post_update_reputation( const VoteOperation& op )const
    {
       try
       {
@@ -121,10 +130,10 @@ struct post_operation_visitor
          if( db.calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
             return;
 
-         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( boost::make_tuple( comment.id, db.get_account( op.voter ).id ) );
+         const auto& cv_idx = db.get_index< comment_vote_index, by_comment_voter_symbol >();
+         auto cv = cv_idx.find( boost::make_tuple( comment.id, db.get_account( op.voter ).id, STEEM_SYMBOL ) );
 
-         const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
+         const auto& rep_idx = db.get_index< reputation_index, by_account >();
          auto voter_rep = rep_idx.find( op.voter );
          auto author_rep = rep_idx.find( op.author );
 
@@ -156,6 +165,19 @@ struct post_operation_visitor
          }
       }
       FC_CAPTURE_AND_RETHROW()
+   }
+
+   template< typename T >
+   void operator()( const T& )const {}
+
+   void operator()( const vote_operation& op )const
+   {
+      post_update_reputation( op );
+   }
+
+   void operator()( const vote2_operation& op )const
+   {
+      post_update_reputation( op );
    }
 };
 

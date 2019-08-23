@@ -148,10 +148,17 @@ struct count_operation_visitor
 
    void operator()( const vote_operation& op )const
    {
-      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
       state_bytes_count += _w.comment_vote_object_base_size;
       execution_time_count += _e.vote_operation_exec_time;
    }
+
+#ifdef STEEM_ENABLE_SMT
+   void operator()( const vote2_operation& op )const
+   {
+      state_bytes_count += _w.comment_vote_object_base_size * ( op.smt_rshares.size() + 1 );
+      execution_time_count += _e.vote_operation_exec_time * ( op.smt_rshares.size() + 1 );
+   }
+#endif
 
    void operator()( const witness_update_operation& op )const
    {

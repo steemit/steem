@@ -158,11 +158,14 @@ namespace steem { namespace chain {
          int16_t           vote_percent = 0; ///< The percent weight of the vote
          time_point_sec    last_update; ///< The time of the last update of the vote
          int8_t            num_changes = 0;
-         asset_symbol      voting_asset = STEEM_SYMBOL;
+         asset_symbol_type symbol = STEEM_SYMBOL;
    };
 
    struct by_comment_voter_symbol;
+   struct by_comment_symbol_voter;
    struct by_voter_comment_symbol;
+   struct by_voter_symbol_comment;
+
    typedef multi_index_container<
       comment_vote_object,
       indexed_by<
@@ -171,14 +174,28 @@ namespace steem { namespace chain {
             composite_key< comment_vote_object,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
                member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
-               member< comment_vote_object, asset_symbol_type, &comment_vote_object::voting_asset >
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >
+            >
+         >,
+         ordered_unique< tag< by_comment_symbol_voter >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >
             >
          >,
          ordered_unique< tag< by_voter_comment_symbol >,
             composite_key< comment_vote_object,
                member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
-               member< comment_vote_object, asset_symbol_type, &comment_vote_object::voting_asset >
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >
+            >
+         >,
+         ordered_unique< tag< by_voter_symbol_comment >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >
             >
          >
       >,
@@ -295,7 +312,7 @@ FC_REFLECT( steem::chain::comment_content_object,
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_content_object, steem::chain::comment_content_index )
 
 FC_REFLECT( steem::chain::comment_vote_object,
-             (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
+             (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)(symbol)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )
 
