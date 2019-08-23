@@ -94,6 +94,45 @@ RUN \
     fi
 
 RUN \
+    if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
+    cd /usr/local/src/steem && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-testnet \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_STEEM_TESTNET=ON \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=ON \
+        -DSKIP_BY_TX_ID=ON \
+        -DENABLE_MIRA=ON \
+        -DENABLE_SMT_SUPPORT=ON \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+        .. && \
+    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    make install && \
+    if [ "$CI_BUILD" ] ; then \
+        mkdir -p build/tests/Testing/Temporary && \
+        cp /usr/local/src/steem/CTestCostData.txt build/tests/Testing/Temporary ; \
+    fi && \
+    cd tests && \
+    ctest -j$(nproc) --output-on-failure && \
+    cd .. && \
+    ./programs/util/test_fixed_string && \
+    cd /usr/local/src/steem && \
+    doxygen && \
+    PYTHONPATH=programs/build_helpers \
+    python3 -m steem_build_helpers.check_reflect && \
+    programs/build_helpers/get_config_check.sh && \
+    if [ "$CI_BUILD" ] ; then \
+        aws s3 cp s3://steemit-dev-ci/steemd-CTestCostData.txt s3://steemit-dev-ci/steemd-CTestCostData.txt.bk && \
+        aws s3 cp build/tests/Testing/Temporary/CTestCostData.txt s3://steemit-dev-ci/steemd-CTestCostData.txt; \
+    fi && \
+    rm -rf /usr/local/src/steem/build ; \
+    fi
+
+RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
