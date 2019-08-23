@@ -105,7 +105,6 @@ RUN \
         -DCLEAR_VOTES=ON \
         -DSKIP_BY_TX_ID=ON \
         -DENABLE_MIRA=ON \
-        -DENABLE_SMT_SUPPORT=ON \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         .. && \
     make -j$(nproc) chain_test mira_test test_fixed_string plugin_test && \
