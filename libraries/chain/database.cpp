@@ -1248,7 +1248,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
          const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
 
          if ( to_reward_balance )
-            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled." );
+            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled. Please report this as it should not be triggered." );
 
          price vesting_share_price = to_reward_balance ? token.get_reward_vesting_share_price() : token.get_vesting_share_price();
 

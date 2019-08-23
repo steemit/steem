@@ -1226,6 +1226,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 #ifdef STEEM_ENABLE_SMT
    if ( o.vesting_shares.symbol.space() == asset_symbol_type::smt_nai_space )
    {
+      FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Withdraw vesting operation for SMTs is not enabled until the SMT hardfork." );
       FC_ASSERT( o.vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
       auto liquid_symbol = o.vesting_shares.symbol.get_paired_symbol();
       const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
@@ -1247,20 +1248,20 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       }
       else
       {
+         int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS;
+
+         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, liquid_symbol.get_paired_symbol() );
+
+         if ( new_vesting_withdraw_rate.amount == 0 )
+            new_vesting_withdraw_rate.amount = 1;
+
+         if ( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
+            new_vesting_withdraw_rate.amount += 1;
+
+         FC_ASSERT( bal_obj->vesting_withdraw_rate != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
+
          _db.modify( *bal_obj, [&]( account_regular_balance_object& a )
          {
-            int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS;
-
-            auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, liquid_symbol.get_paired_symbol() );
-
-            if( new_vesting_withdraw_rate.amount == 0 )
-               new_vesting_withdraw_rate.amount = 1;
-
-            if( new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
-               new_vesting_withdraw_rate.amount += 1;
-
-            FC_ASSERT( a.vesting_withdraw_rate != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
-
             a.vesting_withdraw_rate = new_vesting_withdraw_rate;
             a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds( SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
             a.to_withdraw = o.vesting_shares.amount;
@@ -1271,6 +1272,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    else
 #endif
    {
+      FC_ASSERT( o.vesting_shares.symbol == VESTS_SYMBOL, "Vesting shares must be a vesting symbol." );
       FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
       FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
@@ -1305,21 +1307,19 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          if( _db.has_hardfork( STEEM_HARDFORK_0_16__551 ) )
             vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS; /// 13 weeks = 1 quarter of a year
 
+         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, VESTS_SYMBOL );
+
+         if( new_vesting_withdraw_rate.amount == 0 )
+            new_vesting_withdraw_rate.amount = 1;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_21 ) && new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
+            new_vesting_withdraw_rate.amount += 1;
+
+         if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
+            FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
+
          _db.modify( account, [&]( account_object& a )
          {
-            auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, VESTS_SYMBOL );
-
-            if( new_vesting_withdraw_rate.amount == 0 )
-                  new_vesting_withdraw_rate.amount = 1;
-
-            if( _db.has_hardfork( STEEM_HARDFORK_0_21 ) && new_vesting_withdraw_rate.amount * vesting_withdraw_intervals < o.vesting_shares.amount )
-            {
-               new_vesting_withdraw_rate.amount += 1;
-            }
-
-            if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
-               FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
-
             a.vesting_withdraw_rate = new_vesting_withdraw_rate;
             a.next_vesting_withdrawal = _db.head_block_time() + fc::seconds(STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS);
             a.to_withdraw = o.vesting_shares.amount;

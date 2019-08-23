@@ -67,11 +67,11 @@ public:
 
    price get_reward_vesting_share_price() const
    {
-      share_type reward_vesting_shares = total_vesting_shares + pending_rewarded_vesting_shares;
-      share_type reward_vesting_smt = total_vesting_fund_smt + pending_rewarded_vesting_smt;
+      if ( total_vesting_fund_ballast == 0 || total_vesting_shares_ballast == 0 )
+         return initial_vesting_share_price();
 
-      if( reward_vesting_shares == 0 || reward_vesting_smt == 0 )
-          return initial_vesting_share_price();
+      share_type reward_vesting_shares = total_vesting_shares_ballast + total_vesting_shares + pending_rewarded_vesting_shares;
+      share_type reward_vesting_smt    = total_vesting_fund_ballast + total_vesting_fund_smt + pending_rewarded_vesting_smt;
 
       return price( asset( reward_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( reward_vesting_smt, liquid_symbol ) );
    }
