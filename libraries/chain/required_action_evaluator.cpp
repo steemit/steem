@@ -13,7 +13,6 @@ void example_required_evaluator::do_apply( const example_required_action& a ) {}
 
 #endif
 
-#ifdef STEEM_ENABLE_SMT
 void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
 {
    const smt_token_object& token = _db.get< smt_token_object, by_symbol >( a.symbol );
@@ -144,6 +143,5 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
 }
 
-#endif
 
 } } //steem::chain

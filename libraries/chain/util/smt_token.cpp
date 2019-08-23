@@ -3,8 +3,6 @@
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_util.hpp>
 
-#ifdef STEEM_ENABLE_SMT
-
 namespace steem { namespace chain { namespace util { namespace smt {
 
 const smt_token_object* find_token( const database& db, uint32_t nai )
@@ -347,4 +345,3 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
 } } } } // steem::chain::util::smt
 
-#endif

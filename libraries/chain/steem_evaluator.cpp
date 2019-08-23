@@ -700,7 +700,6 @@ struct comment_options_extension_visitor
    const comment_object& _c;
    database& _db;
 
-#ifdef STEEM_ENABLE_SMT
    void operator()( const allowed_vote_assets& va) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Specifying SMT Comment Options not available until SMT Hardfork." );
@@ -746,7 +745,6 @@ struct comment_options_extension_visitor
          c.allowed_vote_assets = allowed_vote_assets;
       });
    }
-#endif
 
    void operator()( const comment_payout_beneficiaries& cpb ) const
    {
@@ -1251,7 +1249,6 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       return;
    }
 
-#ifdef STEEM_ENABLE_SMT
    if ( o.vesting_shares.symbol.space() == asset_symbol_type::smt_nai_space )
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Withdraw vesting operation for SMTs is not enabled until the SMT hardfork." );
@@ -1298,7 +1295,6 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       }
    }
    else
-#endif
    {
       FC_ASSERT( o.vesting_shares.symbol == VESTS_SYMBOL, "Vesting shares must be a vesting symbol." );
       FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
@@ -3079,7 +3075,6 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
 }
 
-#ifdef STEEM_ENABLE_SMT
 void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_operation& op )
 {
    const account_object* a = nullptr; // Lazily initialized below because it may turn out unnecessary.
@@ -3147,7 +3142,6 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
       } // non-SMT token
    } // for( const auto& token : op.reward_tokens )
 }
-#endif
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {

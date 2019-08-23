@@ -18,7 +18,6 @@ namespace steem { namespace protocol {
    };
 #endif
 
-#ifdef STEEM_ENABLE_SMT
    struct smt_refund_action : public base_operation
    {
       account_name_type contributor;
@@ -96,18 +95,15 @@ namespace steem { namespace protocol {
 
       friend bool operator==( const smt_token_launch_action& lhs, const smt_token_launch_action& rhs );
    };
-#endif
 } } // steem::protocol
 
 #ifdef IS_TEST_NET
 FC_REFLECT( steem::protocol::example_required_action, (account) )
 #endif
 
-#ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::smt_refund_action, (contributor)(symbol)(contribution_id)(refund) )
 FC_REFLECT( steem::protocol::smt_contributor_payout_action, (contributor)(symbol)(contribution_id)(contribution)(payouts) )
 FC_REFLECT( steem::protocol::smt_founder_payout_action, (symbol)(account_payouts)(market_maker_steem)(market_maker_tokens)(rewards_fund) )
 FC_REFLECT( steem::protocol::smt_ico_launch_action, (control_account)(symbol) )
 FC_REFLECT( steem::protocol::smt_ico_evaluation_action, (control_account)(symbol) )
 FC_REFLECT( steem::protocol::smt_token_launch_action, (control_account)(symbol) )
-#endif

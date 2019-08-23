@@ -1,6 +1,6 @@
 #include <fc/macros.hpp>
 
-#if defined IS_TEST_NET && defined STEEM_ENABLE_SMT
+#if defined IS_TEST_NET
 
 FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 

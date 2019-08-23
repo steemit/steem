@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef STEEM_ENABLE_SMT
-
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -28,4 +26,3 @@ FC_REFLECT( steem::chain::rational_u64,
    (numerator)
    (denominator)
    )
-#endif

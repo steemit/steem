@@ -147,9 +147,7 @@ namespace steem { namespace chain {
 
          uint16_t downvote_pool_percent = 0;
 
-#ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
-#endif
    };
 
    typedef multi_index_container<
@@ -212,8 +210,6 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (sps_fund_percent)
              (sps_interval_ledger)
              (downvote_pool_percent)
-#ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
-#endif
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::dynamic_global_property_object, steem::chain::dynamic_global_property_index )

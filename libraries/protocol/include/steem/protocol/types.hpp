@@ -81,9 +81,7 @@ namespace steem {
       typedef uint16_t                    weight_type;
       typedef uint32_t                    contribution_id_type;
       typedef fixed_string<32>            custom_id_type;
-#ifdef STEEM_ENABLE_SMT
       typedef fixed_string<32>            unit_target_type;
-#endif
 
 
       struct public_key_type

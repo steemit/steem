@@ -136,7 +136,6 @@ struct operation_exec_info
    int64_t witness_set_properties_operation_exec_time          =   9500;
    int64_t witness_update_operation_exec_time                  =   9500;
 
-#ifdef STEEM_ENABLE_SMT
    int64_t claim_reward_balance2_operation_exec_time           = 0;
    int64_t smt_setup_operation_exec_time                       = 0;
    int64_t smt_setup_emissions_operation_exec_time             = 0;
@@ -144,7 +143,6 @@ struct operation_exec_info
    int64_t smt_set_runtime_parameters_operation_exec_time      = 0;
    int64_t smt_create_operation_exec_time                      = 0;
    int64_t smt_contribute_operation_exec_time                  = 0;
-#endif
 
    int64_t create_proposal_operation_exec_time                  =   31700;
    int64_t update_proposal_votes_operation_exec_time            =   12000;
@@ -223,7 +221,6 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( witness_set_properties_operation_exec_time )
    ( witness_update_operation_exec_time )
 
-#ifdef STEEM_ENABLE_SMT
    ( claim_reward_balance2_operation_exec_time )
    ( smt_setup_operation_exec_time )
    ( smt_setup_emissions_operation_exec_time )
@@ -231,7 +228,6 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( smt_set_runtime_parameters_operation_exec_time )
    ( smt_create_operation_exec_time )
    ( smt_contribute_operation_exec_time )
-#endif
 
    (create_proposal_operation_exec_time)
    (update_proposal_votes_operation_exec_time)
