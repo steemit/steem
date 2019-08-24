@@ -17,7 +17,6 @@ fc::variant_object get_config()
    result[ "IS_TEST_NET" ] = false;
 #endif
 
-   result[ "STEEM_ENABLE_SMT" ] = true;
    result["SMT_MAX_VOTABLE_ASSETS"] = SMT_MAX_VOTABLE_ASSETS;
    result["SMT_VESTING_WITHDRAW_INTERVAL_SECONDS"] = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
    result["SMT_UPVOTE_LOCKOUT"] = SMT_UPVOTE_LOCKOUT;

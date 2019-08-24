@@ -243,7 +243,6 @@ namespace steem { namespace protocol {
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(voter); }
    };
 
-#ifdef STEEM_ENABLE_SMT
    struct vote2_operation : public base_operation
    {
       account_name_type    voter;
@@ -258,7 +257,6 @@ namespace steem { namespace protocol {
       void validate()const;
       void get_required_posting_authorities( flat_set< account_name_type >& a )const { a.insert( voter ); }
    };
-#endif
 
    /**
     * @ingroup operations

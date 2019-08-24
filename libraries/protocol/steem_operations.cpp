@@ -239,14 +239,12 @@ namespace steem { namespace protocol {
       validate_permlink( permlink );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void vote2_operation::validate() const
    {
       validate_account_name( voter );
       validate_account_name( author );
       validate_permlink( permlink );
    }
-#endif
 
    void transfer_operation::validate() const
    { try {

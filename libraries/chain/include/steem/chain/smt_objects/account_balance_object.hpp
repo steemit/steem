@@ -54,7 +54,7 @@ public:
       vesting_withdraw_rate    = asset( 0, liquid_symbol.get_paired_symbol() );
    }
 
-   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+   void add_vesting( const asset& shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
       vesting_shares += shares;

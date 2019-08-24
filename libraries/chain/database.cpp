@@ -1668,9 +1668,9 @@ void database::process_vesting_withdrawals()
       const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
       share_type to_withdraw;
       if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
-         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
       else
-         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->vesting_withdraw_rate.amount ).value;
 
       auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
       auto converted_token = withdraw_token * token.get_vesting_share_price();
@@ -1681,11 +1681,11 @@ void database::process_vesting_withdrawals()
 
       modify( *iter, [&]( account_regular_balance_object& a )
       {
-         a.vesting   -= withdraw_token;
-         a.liquid    += converted_token;
-         a.withdrawn += to_withdraw;
+         a.vesting_shares  -= withdraw_token;
+         a.liquid          += converted_token;
+         a.withdrawn       += to_withdraw;
 
-         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         if ( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
          {
             a.vesting_withdraw_rate.amount = 0;
             a.next_vesting_withdrawal      = fc::time_point_sec::maximum();

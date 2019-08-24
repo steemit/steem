@@ -1257,7 +1257,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
 
       FC_ASSERT( bal_obj != nullptr, "Account does not have sufficient Token Power for withdrawal." );
-      FC_ASSERT( bal_obj->vesting - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
+      FC_ASSERT( bal_obj->vesting_shares - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
 
       if ( o.vesting_shares.amount == 0 )
       {
@@ -2251,7 +2251,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
-#ifdef STEEM_ENABLE_SMT
 template< typename VoteType >
 struct vote_context
 {
@@ -2644,7 +2643,6 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
       generic_vote_evaluator( ctx, voter, _db );
    }
 }
-#endif
 
 void custom_evaluator::do_apply( const custom_operation& o )
 {

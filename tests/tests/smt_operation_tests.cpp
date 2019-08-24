@@ -1422,13 +1422,13 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   op.vesting_shares = asset( balance_obj->vesting.amount / 3, symbol.get_paired_symbol() );
+   op.vesting_shares = asset( balance_obj->vesting_shares.amount / 3, symbol.get_paired_symbol() );
    tx.operations.push_back( op );
    tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( tx, alice_private_key );
    db->push_transaction( tx, 0 );
 
-   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_shares.amount.value == old_vesting_shares.amount.value );
    BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
    BOOST_REQUIRE( balance_obj->to_withdraw.value == op.vesting_shares.amount.value );
    BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
@@ -1438,13 +1438,13 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    tx.operations.clear();
    tx.signatures.clear();
 
-   op.vesting_shares = asset( balance_obj->vesting.amount * 2, symbol.get_paired_symbol() );
+   op.vesting_shares = asset( balance_obj->vesting_shares.amount * 2, symbol.get_paired_symbol() );
    tx.operations.push_back( op );
    tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( tx, alice_private_key );
    STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
-   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_shares.amount.value == old_vesting_shares.amount.value );
    BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEM_VESTING_WITHDRAW_INTERVALS * 3 ) ).value + 1 );
    BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == db->head_block_time() + SMT_VESTING_WITHDRAW_INTERVAL_SECONDS );
    validate_database();
@@ -1459,7 +1459,7 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    sign( tx, alice_private_key );
    db->push_transaction( tx, 0 );
 
-   BOOST_REQUIRE( balance_obj->vesting.amount.value == old_vesting_shares.amount.value );
+   BOOST_REQUIRE( balance_obj->vesting_shares.amount.value == old_vesting_shares.amount.value );
    BOOST_REQUIRE( balance_obj->vesting_withdraw_rate.amount.value == 0 );
    BOOST_REQUIRE( balance_obj->to_withdraw.value == 0 );
    BOOST_REQUIRE( balance_obj->next_vesting_withdrawal == fc::time_point_sec::maximum() );
@@ -4663,7 +4663,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
-      
+
 
       vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
       validate_database();
