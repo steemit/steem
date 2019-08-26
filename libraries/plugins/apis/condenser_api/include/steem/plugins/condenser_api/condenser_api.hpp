@@ -389,10 +389,6 @@ struct extended_dynamic_global_properties
       sps_fund_percent( o.sps_fund_percent ),
       sps_interval_ledger( legacy_asset::from_asset( o.sps_interval_ledger ) ),
       downvote_pool_percent( o.downvote_pool_percent )
-#ifdef STEEM_ENABLE_SMT
-      ,
-      smt_creation_fee( legacy_asset::from_asset( o.smt_creation_fee ) )
-#endif
    {}
 
    uint32_t          head_block_number = 0;
