@@ -1037,7 +1037,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
-         BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test decreasing vote rshares" );
@@ -1074,7 +1073,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
-         BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight (aka: removing a vote)" );
@@ -1098,7 +1096,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
-         BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test downvote overlap when downvote mana is low" );
@@ -1123,9 +1120,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             old_manabar.last_update_time = alice.voting_manabar.last_update_time;
             old_manabar.regenerate_mana( params, db->head_block_time() );
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
-            alice_weight = old_manabar.current_mana * 60 * 60 * 24;
-            auto max_vote_denom = db->get_dynamic_global_properties().target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
-            alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom;
+            alice_weight = old_manabar.current_mana;
+            auto max_vote_denom = db->get_dynamic_global_properties().target_votes_per_period;
+            alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom - 1;
 
             const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
             old_net_rshares = bob_comment.net_rshares.value;
@@ -1147,7 +1144,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             BOOST_REQUIRE( bob_comment.abs_rshares == old_abs_rshares + alice_weight - STEEM_VOTE_DUST_THRESHOLD );
             BOOST_REQUIRE( alice_bob_vote->rshares == -1 * ( alice_weight - STEEM_VOTE_DUST_THRESHOLD ) );
             BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
-            BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
             BOOST_REQUIRE( alice.downvote_manabar.current_mana == 0 );
             BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana - alice_weight + old_downvote_manabar.current_mana );
             validate_database();

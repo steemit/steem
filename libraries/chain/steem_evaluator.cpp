@@ -2238,19 +2238,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    }
 }
 
-void vote_evaluator::do_apply( const vote_operation& o )
-{ try {
-   FC_TODO( "Deprecate vote_operation in a future hardfork" );
-   if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
-   {
-      hf20_vote_evaluator( o, _db );
-   }
-   else
-   {
-      pre_hf20_vote_evaluator( o, _db );
-   }
-} FC_CAPTURE_AND_RETHROW( (o) ) }
-
 template< typename VoteType >
 struct vote_context
 {
@@ -2304,13 +2291,11 @@ void generic_vote_evaluator(
          {
             cvo.voter = ctx.voter_id;
             cvo.comment = ctx.comment.id;
-            cvo.vote_percent = ctx.op.weight;
             cvo.last_update = now;
          });
       else
          _db.modify( *itr, [&]( comment_vote_object& cvo )
          {
-            cvo.vote_percent = ctx.op.weight;
             cvo.last_update = now;
          });
 #endif
@@ -2351,11 +2336,11 @@ void generic_vote_evaluator(
    {
       max_abs_rshares = std::max(
                            max_abs_rshares,
-                           ( voter.downvote_manabar.current_mana * STEEM_100_PERCENT + ctx.votes_per_regen_period - 1 ) / ctx.votes_per_regen_period / ctx.dgpo.downvote_pool_percent
+                           ( voter.downvote_manabar.current_mana * STEEM_100_PERCENT + ctx.votes_per_regen_period - 1 ) / ( ctx.votes_per_regen_period * ctx.dgpo.downvote_pool_percent )
                         );
    }
 
-   FC_ASSERT( abs_rshares < max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
+   FC_ASSERT( abs_rshares <= max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
       ("m", max_abs_rshares)("t", ctx.symbol)("r", ctx.rshares) );
 
    if( ctx.dgpo.downvote_pool_percent && ctx.rshares < 0 )
@@ -2608,6 +2593,51 @@ void generic_vote_evaluator(
       });
    }
 }
+
+void vote_evaluator::do_apply( const vote_operation& o )
+{ try {
+   FC_TODO( "Deprecate vote_operation in a future hardfork" );
+   if( _db.has_hardfork( STEEM_SMT_HARDFORK ) )
+   {
+      const auto& comment = _db.get_comment( o.author, o.permlink );
+      const auto& voter   = _db.get_account( o.voter );
+      const auto& dgpo    = _db.get_dynamic_global_properties();
+
+      FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
+
+      if( o.weight > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
+
+      _db.modify( voter, [&]( account_object& a )
+      {
+         util::update_manabar( _db.get_dynamic_global_properties(), a, STEEM_VOTING_MANA_REGENERATION_SECONDS, true );
+      });
+
+      int16_t abs_weight = abs( o.weight );
+      int64_t rshares = ( uint128_t( voter.voting_manabar.current_mana * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * STEEM_100_PERCENT ) ).to_int64();
+
+      if( o.weight < 0 )
+      {
+         rshares = -1 * std::max(
+                     rshares,
+                     // The full version of this calculation would have STEEM_100_PERCENT in the numerator and denominator. They have been removed
+                     uint128_t( ( voter.downvote_manabar.current_mana * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * dgpo.downvote_pool_percent ) ).to_int64()
+                  );
+      }
+
+      idump( (rshares) );
+
+      vote_context< vote_operation > ctx( o, comment, dgpo, voter.id, rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
+      generic_vote_evaluator( ctx, voter, _db );
+   }
+   else if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+   {
+      hf20_vote_evaluator( o, _db );
+   }
+   else
+   {
+      pre_hf20_vote_evaluator( o, _db );
+   }
+} FC_CAPTURE_AND_RETHROW( (o) ) }
 
 void vote2_evaluator::do_apply( const vote2_operation& o )
 {
