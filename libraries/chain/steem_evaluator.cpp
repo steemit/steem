@@ -2275,6 +2275,7 @@ template< typename ContextType, typename AccountType >
 void generic_vote_evaluator(
    const ContextType& ctx,
    const AccountType& voter,
+   rshare_context& rshare_ctx,
    database& _db )
 {
    const auto& comment_vote_idx = _db.get_index< comment_vote_index, by_comment_voter_symbol >();
@@ -2496,19 +2497,18 @@ void generic_vote_evaluator(
          }
       });
 
-      _db.modify( ctx.comment, [&]( comment_object& c )
-      {
-         c.net_rshares += comment_rshares;
-         c.abs_rshares += abs_rshares;
-         if( comment_rshares > 0 )
-            c.vote_rshares += comment_rshares;
-         if( comment_rshares > 0 )
-            c.net_votes++;
-         else
-            c.net_votes--;
 
-         c.total_vote_weight += max_vote_weight;
-      });
+
+      rshare_ctx.net_rshares += comment_rshares;
+      rshare_ctx.abs_rshares += abs_rshares;
+      if( comment_rshares > 0 )
+         rshare_ctx.vote_rshares += comment_rshares;
+      if( comment_rshares > 0 )
+         rshare_ctx.net_votes++;
+      else
+         rshare_ctx.net_votes--;
+
+      rshare_ctx.total_vote_weight += max_vote_weight;
 
       FC_TODO( "Check if this needed anywhere. Possibly still used by Hivemind" );
       _db.modify( _db.get( ctx.comment.root_comment ), [&]( comment_object& c )
@@ -2555,28 +2555,25 @@ void generic_vote_evaluator(
          a.last_vote_time = _db.head_block_time();
       });
 
-      _db.modify( ctx.comment, [&]( comment_object& c )
-      {
-         c.net_rshares -= itr->rshares;
-         c.net_rshares += comment_rshares;
-         c.abs_rshares += abs_rshares;
+      rshare_ctx.net_rshares -= itr->rshares;
+      rshare_ctx.net_rshares += comment_rshares;
+      rshare_ctx.abs_rshares += abs_rshares;
 
-         /// TODO: figure out how to handle remove a vote (rshares == 0 )
-         if( comment_rshares > 0 && itr->rshares < 0 )
-            c.net_votes += 2;
-         else if( comment_rshares > 0 && itr->rshares == 0 )
-            c.net_votes += 1;
-         else if( comment_rshares == 0 && itr->rshares < 0 )
-            c.net_votes += 1;
-         else if( comment_rshares == 0 && itr->rshares > 0 )
-            c.net_votes -= 1;
-         else if( comment_rshares < 0 && itr->rshares == 0 )
-            c.net_votes -= 1;
-         else if( comment_rshares < 0 && itr->rshares > 0 )
-            c.net_votes -= 2;
+      /// TODO: figure out how to handle remove a vote (rshares == 0 )
+      if( comment_rshares > 0 && itr->rshares < 0 )
+         rshare_ctx.net_votes += 2;
+      else if( comment_rshares > 0 && itr->rshares == 0 )
+         rshare_ctx.net_votes += 1;
+      else if( comment_rshares == 0 && itr->rshares < 0 )
+         rshare_ctx.net_votes += 1;
+      else if( comment_rshares == 0 && itr->rshares > 0 )
+         rshare_ctx.net_votes -= 1;
+      else if( comment_rshares < 0 && itr->rshares == 0 )
+         rshare_ctx.net_votes -= 1;
+      else if( comment_rshares < 0 && itr->rshares > 0 )
+         rshare_ctx.net_votes -= 2;
 
-         c.total_vote_weight -= itr->weight;
-      });
+      rshare_ctx.total_vote_weight -= itr->weight;
 
       _db.modify( *itr, [&]( comment_vote_object& cv )
       {
@@ -2627,7 +2624,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
       idump( (rshares) );
 
       vote_context< vote_operation > ctx( o, comment, dgpo, voter.id, rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
-      generic_vote_evaluator( ctx, voter, _db );
+      rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
+      generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+
+      _db.modify( comment, [&]( comment_object& c )
+      {
+         c.net_rshares = rshare_ctx.net_rshares;
+         c.abs_rshares = rshare_ctx.abs_rshares;
+         c.vote_rshares = rshare_ctx.vote_rshares;
+         c.total_vote_weight = rshare_ctx.total_vote_weight;
+         c.net_votes = rshare_ctx.net_votes;
+         c.author_rewards = rshare_ctx.author_rewards;
+      });
    }
    else if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
    {
@@ -2661,7 +2669,18 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
    if( o.rshares > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
 
    vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
-   generic_vote_evaluator( ctx, voter, _db );
+   rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
+   generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+
+   _db.modify( comment, [&]( comment_object& c )
+   {
+      c.net_rshares = rshare_ctx.net_rshares;
+      c.abs_rshares = rshare_ctx.abs_rshares;
+      c.vote_rshares = rshare_ctx.vote_rshares;
+      c.total_vote_weight = rshare_ctx.total_vote_weight;
+      c.net_votes = rshare_ctx.net_votes;
+      c.author_rewards = rshare_ctx.author_rewards;
+   });
 
    for( auto& smt_rshare : o.smt_rshares )
    {
@@ -2670,7 +2689,19 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
       ctx.symbol = smt_rshare.first;
       ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
       ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
-      generic_vote_evaluator( ctx, voter, _db );
+
+      auto itr = comment.smt_rshares.find( smt_rshare.first );
+      if( itr != comment.smt_rshares.end() )
+         rshare_ctx = itr->second;
+      else
+         rshare_ctx = rshare_context();
+
+      generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+
+      _db.modify( comment, [&]( comment_object& c )
+      {
+         c.smt_rshares.insert_or_assign( smt_rshare.first, rshare_ctx );
+      });
    }
 }
 

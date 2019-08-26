@@ -41,6 +41,18 @@ namespace steem { namespace chain {
          }
    };
 
+   struct rshare_context
+   {
+      share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
+      share_type        abs_rshares; /// this is used to track the total abs(weight) of votes for the purpose of calculating cashout_time
+      share_type        vote_rshares; /// Total positive rshares from all votes. Used to calculate delta weights. Needed to handle vote changing and removal.
+
+      uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
+      int32_t           net_votes = 0;
+
+      share_type        author_rewards = 0;
+   };
+
    class comment_object : public object < comment_object_type, comment_object >
    {
       STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
@@ -48,8 +60,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
-            , allowed_vote_assets( a )
+            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a ), allowed_vote_assets( a ), smt_rshares( a )
          {
             c( *this );
          }
@@ -102,8 +113,12 @@ namespace steem { namespace chain {
 
          using t_beneficiaries = t_vector< beneficiary_route_type >;
          t_beneficiaries   beneficiaries;
+
          using t_votable_assets = t_flat_map< asset_symbol_type, votable_asset_options >;
          t_votable_assets  allowed_vote_assets;
+
+         using t_smt_rshares = t_flat_map< asset_symbol_type, rshare_context >;
+         t_smt_rshares     smt_rshares;
    };
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
@@ -284,6 +299,9 @@ template<> struct is_static_length< steem::chain::comment_vote_object > : public
 } // mira
 #endif
 
+FC_REFLECT( steem::chain::rshare_context,
+            (net_rshares)(abs_rshares)(vote_rshares)(total_vote_weight)(net_votes)(author_rewards) )
+
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
@@ -294,7 +312,7 @@ FC_REFLECT( steem::chain::comment_object,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-             (allowed_vote_assets)
+             (allowed_vote_assets)(smt_rshares)
           )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
