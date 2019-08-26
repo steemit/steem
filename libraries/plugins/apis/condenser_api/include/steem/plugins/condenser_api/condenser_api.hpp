@@ -448,6 +448,7 @@ struct extended_dynamic_global_properties
    legacy_asset      sps_interval_ledger;
 
    uint16_t          downvote_pool_percent = 0;
+FC_TODO( "Remove STEEM_ENABLE_SMT when merging to master" )
 #ifdef STEEM_ENABLE_SMT
    legacy_asset      smt_creation_fee;
 #endif
@@ -1245,7 +1246,8 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (sbd_interest_rate)(sbd_print_rate)
             (maximum_block_size)(required_actions_partition_percent)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)
             (vote_power_reserve_rate)(delegation_return_period)(reverse_auction_seconds)(available_account_subsidies)(sbd_stop_percent)(sbd_start_percent)
-            (next_maintenance_time)(last_budget_time)(content_reward_percent)(vesting_reward_percent)(sps_fund_percent)(sps_interval_ledger)
+            (next_maintenance_time)(last_budget_time)(content_reward_percent)(vesting_reward_percent)(sps_fund_percent)(sps_interval_ledger)(downvote_pool_percent)
+FC_TODO( "Remove STEEM_ENABLE_SMT when merging to master" )
 #ifdef STEEM_ENABLE_SMT
             (smt_creation_fee)
 #endif
