@@ -2319,8 +2319,6 @@ void generic_vote_evaluator(
       itr = comment_vote_idx.end();
    }
 
-   FC_ASSERT( ( now - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
-
    _db.modify( voter, [&]( AccountType& a )
    {
       util::update_manabar( _db.get_dynamic_global_properties(), a, ctx.mana_regen_period, true );
@@ -2341,6 +2339,7 @@ void generic_vote_evaluator(
                         );
    }
 
+   idump( (abs_rshares)(max_abs_rshares) );
    FC_ASSERT( abs_rshares <= max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
       ("m", max_abs_rshares)("t", ctx.symbol)("r", ctx.rshares) );
 
@@ -2430,7 +2429,7 @@ void generic_vote_evaluator(
       **/
       _db.create< comment_vote_object >( [&]( comment_vote_object& cv )
       {
-         cv.voter       = voter.id;
+         cv.voter       = ctx.voter_id;
          cv.comment     = ctx.comment.id;
          cv.rshares     = comment_rshares;
          cv.last_update = _db.head_block_time();
@@ -2496,8 +2495,6 @@ void generic_vote_evaluator(
             cv.weight = 0;
          }
       });
-
-
 
       rshare_ctx.net_rshares += comment_rshares;
       rshare_ctx.abs_rshares += abs_rshares;
@@ -2589,6 +2586,8 @@ void generic_vote_evaluator(
          c.children_abs_rshares += abs_rshares;
       });
    }
+
+   idump( (rshare_ctx) );
 }
 
 void vote_evaluator::do_apply( const vote_operation& o )
@@ -2601,6 +2600,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       const auto& dgpo    = _db.get_dynamic_global_properties();
 
       FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
+
+      FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
       if( o.weight > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
 
@@ -2666,6 +2667,8 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
 
    FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
 
+   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+
    if( o.rshares > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
 
    vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
@@ -2690,13 +2693,16 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
       ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
       ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
 
+      const auto& smt_balance = _db.get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( o.voter, smt_rshare.first ) );
+
       auto itr = comment.smt_rshares.find( smt_rshare.first );
       if( itr != comment.smt_rshares.end() )
          rshare_ctx = itr->second;
       else
          rshare_ctx = rshare_context();
 
-      generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+      generic_vote_evaluator( ctx, smt_balance, rshare_ctx, _db );
+      idump( (rshare_ctx) );
 
       _db.modify( comment, [&]( comment_object& c )
       {
