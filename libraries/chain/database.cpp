@@ -1283,6 +1283,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
                   cprops,
                   a,
                   db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+                  db.head_block_num() > STEEM_HF_21_STALL_BLOCK,
                   new_vesting.amount.value );
             });
          }
@@ -4294,6 +4295,7 @@ void database::clear_expired_delegations()
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
+      try{
       pre_push_virtual_operation( vop );
 
       modify( get_account( itr->delegator ), [&]( account_object& a )
@@ -4304,6 +4306,7 @@ void database::clear_expired_delegations()
                gpo,
                a,
                has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+               head_block_num() > STEEM_HF_21_STALL_BLOCK,
                itr->vesting_shares.amount.value );
          }
 
@@ -4314,7 +4317,7 @@ void database::clear_expired_delegations()
 
       remove( *itr );
       itr = delegations_by_exp.begin();
-   }
+   } FC_CAPTURE_AND_RETHROW( (vop) ) }
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type, class balance_operator_type >
