@@ -4294,6 +4294,7 @@ void database::clear_expired_delegations()
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
+      try{
       pre_push_virtual_operation( vop );
 
       modify( get_account( itr->delegator ), [&]( account_object& a )
@@ -4314,7 +4315,7 @@ void database::clear_expired_delegations()
 
       remove( *itr );
       itr = delegations_by_exp.begin();
-   }
+   } FC_CAPTURE_AND_RETHROW( (vop) ) }
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type, class balance_operator_type >
