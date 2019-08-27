@@ -117,7 +117,7 @@ int64_t get_effective_vesting_shares( const T& account )
 }
 
 template< typename PropType, typename AccountType >
-void update_manabar( const PropType& gpo, AccountType& account, bool downvote_mana = false, int64_t new_mana = 0 )
+void update_manabar( const PropType& gpo, AccountType& account, bool downvote_mana = false, bool check_overflow = true, int64_t new_mana = 0 )
 {
    auto effective_vests = util::get_effective_vesting_shares( account );
    try {
@@ -131,7 +131,23 @@ void update_manabar( const PropType& gpo, AccountType& account, bool downvote_ma
    try{
    if( downvote_mana )
    {
-      util::manabar_params params( ( effective_vests * gpo.downvote_pool_percent ) / STEEM_100_PERCENT, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      manabar_params params;
+      params.regen_time = STEEM_VOTING_MANA_REGENERATION_SECONDS;
+
+      if( check_overflow )
+      {
+         params.max_mana = ( ( uint128_t( effective_vests ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64();
+      }
+      else
+      {
+         FC_TODO( "Cleanup once we have verified the overflow has not permanently made it in to the chain" );
+         uint128_t numerator = effective_vests * gpo.downvote_pool_percent;
+         if( numerator.hi != 0 )
+            elog( "NOTIFYALERT! max mana overflow made it in to the chain" );
+
+         params.max_mana = ( effective_vests * gpo.downvote_pool_percent ) / STEEM_100_PERCENT;
+      }
+
       account.downvote_manabar.regenerate_mana( params, gpo.time );
       account.downvote_manabar.use_mana( ( -new_mana * gpo.downvote_pool_percent ) / STEEM_100_PERCENT );
    }

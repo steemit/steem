@@ -1283,6 +1283,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
                   cprops,
                   a,
                   db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+                  db.head_block_num() > STEEM_HF_21_STALL_BLOCK,
                   new_vesting.amount.value );
             });
          }
@@ -4305,6 +4306,7 @@ void database::clear_expired_delegations()
                gpo,
                a,
                has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+               head_block_num() > STEEM_HF_21_STALL_BLOCK,
                itr->vesting_shares.amount.value );
          }
 
