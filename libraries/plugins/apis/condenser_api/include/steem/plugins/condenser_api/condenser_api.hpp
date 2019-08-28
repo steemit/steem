@@ -371,6 +371,7 @@ struct extended_dynamic_global_properties
       sbd_interest_rate( o.sbd_interest_rate ),
       sbd_print_rate( o.sbd_print_rate ),
       maximum_block_size( o.maximum_block_size ),
+      required_actions_partition_percent( o.required_actions_partition_percent ),
       current_aslot( o.current_aslot ),
       recent_slots_filled( o.recent_slots_filled ),
       participation_count( o.participation_count ),
@@ -378,8 +379,16 @@ struct extended_dynamic_global_properties
       vote_power_reserve_rate( o.vote_power_reserve_rate ),
       delegation_return_period( o.delegation_return_period ),
       reverse_auction_seconds( o.reverse_auction_seconds ),
+      available_account_subsidies( o.available_account_subsidies ),
       sbd_stop_percent( o.sbd_stop_percent ),
-      sbd_start_percent( o.sbd_start_percent )
+      sbd_start_percent( o.sbd_start_percent ),
+      next_maintenance_time( o.next_maintenance_time ),
+      last_budget_time( o.last_budget_time ),
+      content_reward_percent( o.content_reward_percent ),
+      vesting_reward_percent( o.vesting_reward_percent ),
+      sps_fund_percent( o.sps_fund_percent ),
+      sps_interval_ledger( legacy_asset::from_asset( o.sps_interval_ledger ) ),
+      downvote_pool_percent( o.downvote_pool_percent )
    {}
 
    uint32_t          head_block_number = 0;
@@ -408,6 +417,7 @@ struct extended_dynamic_global_properties
    uint16_t          sbd_print_rate = STEEM_100_PERCENT;
 
    uint32_t          maximum_block_size = 0;
+   uint16_t          required_actions_partition_percent = 0;
    uint64_t          current_aslot = 0;
    fc::uint128_t     recent_slots_filled;
    uint8_t           participation_count = 0;
@@ -419,8 +429,21 @@ struct extended_dynamic_global_properties
 
    uint64_t          reverse_auction_seconds = 0;
 
+   int64_t           available_account_subsidies = 0;
+
    uint16_t          sbd_stop_percent = 0;
    uint16_t          sbd_start_percent = 0;
+
+   time_point_sec    next_maintenance_time;
+   time_point_sec    last_budget_time;
+
+   uint16_t          content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF16;
+   uint16_t          vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
+   uint16_t          sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
+
+   legacy_asset      sps_interval_ledger;
+
+   uint16_t          downvote_pool_percent = 0;
 };
 
 struct api_witness_object
@@ -1213,8 +1236,10 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (total_vesting_fund_steem)(total_vesting_shares)
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)
-            (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(vote_power_reserve_rate)
-            (delegation_return_period)(reverse_auction_seconds)(sbd_stop_percent)(sbd_start_percent) )
+            (maximum_block_size)(required_actions_partition_percent)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)
+            (vote_power_reserve_rate)(delegation_return_period)(reverse_auction_seconds)(available_account_subsidies)(sbd_stop_percent)(sbd_start_percent)
+            (next_maintenance_time)(last_budget_time)(content_reward_percent)(vesting_reward_percent)(sps_fund_percent)(sps_interval_ledger)(downvote_pool_percent)
+          )
 
 FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
              (id)

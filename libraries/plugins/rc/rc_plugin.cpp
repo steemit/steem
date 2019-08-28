@@ -239,6 +239,7 @@ void use_account_rcs(
 #endif
    )
 {
+
    if( account_name == account_name_type() )
    {
       if( db.is_producing() )
@@ -261,6 +262,8 @@ void use_account_rcs(
    manabar_params mbparams;
    mbparams.max_mana = get_maximum_rc( account, rc_account );
    mbparams.regen_time = STEEM_RC_REGEN_TIME;
+
+   try{
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
@@ -305,10 +308,11 @@ void use_account_rcs(
 
       rca.rc_manabar.use_mana( rc, min_mana );
    } );
+   }FC_CAPTURE_AND_RETHROW( (account)(rc_account)(mbparams.max_mana) )
 }
 
 void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& note )
-{
+{ try {
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    if( before_first_block() )
       return;
@@ -357,7 +361,7 @@ void rc_plugin_impl::on_post_apply_transaction( const transaction_notification& 
    }
    if( export_data )
       export_data->tx_info.push_back( tx_info );
-}
+} FC_CAPTURE_AND_RETHROW( (note.transaction) ) }
 
 struct block_extensions_count_resources_visitor
 {
@@ -383,7 +387,7 @@ struct block_extensions_count_resources_visitor
 };
 
 void rc_plugin_impl::on_post_apply_block( const block_notification& note )
-{
+{ try{
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    if( before_first_block() )
    {
@@ -512,7 +516,7 @@ void rc_plugin_impl::on_post_apply_block( const block_notification& note )
       steem::plugins::block_data_export::find_export_data< exp_rc_data >( STEEM_RC_PLUGIN_NAME );
    if( export_data )
       export_data->block_info = block_info;
-}
+} FC_CAPTURE_AND_RETHROW( (note.block) ) }
 
 void rc_plugin_impl::on_first_block()
 {
@@ -617,6 +621,8 @@ struct pre_apply_operation_visitor
       mbparams.max_mana = get_maximum_rc( account, rc_account );
       mbparams.regen_time = STEEM_RC_REGEN_TIME;
 
+      try {
+
       if( mbparams.max_mana != rc_account.last_max_rc )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
@@ -636,6 +642,7 @@ struct pre_apply_operation_visitor
       {
          rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
       } );
+      } FC_CAPTURE_AND_RETHROW( (account)(rc_account)(mbparams.max_mana) )
    }
 
    template< bool account_may_not_exist = false >
@@ -654,8 +661,9 @@ struct pre_apply_operation_visitor
 
       const rc_account_object* rc_account = _db.find< rc_account_object, by_name >( name );
       FC_ASSERT( rc_account != nullptr, "Unexpectedly, rc_account ${a} does not exist", ("a", name) );
-
+      try{
       regenerate( *account, *rc_account );
+      } FC_CAPTURE_AND_RETHROW( (*account)(*rc_account) )
    }
 
    void operator()( const account_create_with_delegation_operation& op )const
@@ -971,7 +979,7 @@ typedef post_apply_operation_visitor post_apply_optional_action_visitor;
 
 
 void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note )
-{
+{ try {
    if( before_first_block() )
       return;
 
@@ -987,6 +995,7 @@ void rc_plugin_impl::on_pre_apply_operation( const operation_notification& note 
 
    // ilog( "Calling pre-vtor on ${op}", ("op", note.op) );
    note.op.visit( vtor );
+   } FC_CAPTURE_AND_RETHROW( (note.op) )
 }
 
 void update_modified_accounts( database& db, const std::vector< account_regen_info >& modified_accounts )
@@ -1009,7 +1018,7 @@ void update_modified_accounts( database& db, const std::vector< account_regen_in
 }
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
-{
+{ try {
    if( before_first_block() )
       return;
 
@@ -1023,7 +1032,7 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
    note.op.visit( vtor );
 
    update_modified_accounts( _db, modified_accounts );
-}
+} FC_CAPTURE_AND_RETHROW( (note.op) ) }
 
 void rc_plugin_impl::on_pre_apply_optional_action( const optional_action_notification& note )
 {
