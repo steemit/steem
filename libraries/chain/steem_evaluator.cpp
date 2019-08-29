@@ -2021,6 +2021,8 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    int64_t abs_rshares = used_mana.to_int64();
 
+   idump( (o)(abs_rshares) );
+
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
 
@@ -2326,8 +2328,6 @@ void generic_vote_evaluator(
 
    FC_ASSERT( voter.voting_manabar.current_mana >= 0, "Account does not have enough mana to vote." );
 
-   idump( (ctx.votes_per_regen_period)(voter.voting_manabar.current_mana) );
-
    int64_t max_abs_rshares = std::max( int64_t(0), ( voter.voting_manabar.current_mana + ctx.votes_per_regen_period - 1 ) / ctx.votes_per_regen_period );
    int64_t abs_rshares = abs( ctx.rshares );
 
@@ -2339,7 +2339,6 @@ void generic_vote_evaluator(
                         );
    }
 
-   idump( (abs_rshares)(max_abs_rshares) );
    FC_ASSERT( abs_rshares <= max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
       ("m", max_abs_rshares)("t", ctx.symbol)("r", ctx.rshares) );
 
@@ -2375,10 +2374,8 @@ void generic_vote_evaluator(
 
       _db.modify( voter, [&]( AccountType& a )
       {
-         idump( (consumed_rshares) );
          if( ctx.dgpo.downvote_pool_percent > 0 && ctx.rshares < 0 )
          {
-            idump( (a.downvote_manabar.current_mana)(a.voting_manabar.current_mana) );
             if( consumed_rshares > a.downvote_manabar.current_mana )
             {
                /* used mana is always less than downvote_mana + voting_mana because the amount used
@@ -2388,7 +2385,7 @@ void generic_vote_evaluator(
                 * required when using voting mana on its own as an upvote.
                 */
                auto remainder = consumed_rshares - a.downvote_manabar.current_mana;
-               idump( (remainder) );
+
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
@@ -2399,7 +2396,6 @@ void generic_vote_evaluator(
          }
          else
          {
-            idump( (a.voting_manabar.current_mana) );
             a.voting_manabar.use_mana( consumed_rshares );
          }
 
@@ -2408,6 +2404,15 @@ void generic_vote_evaluator(
 
       auto old_vote_rshares = ctx.comment.vote_rshares;
       uint64_t max_vote_weight = 0;
+
+      rshare_ctx.net_rshares += comment_rshares;
+      rshare_ctx.abs_rshares += abs_rshares;
+      if( comment_rshares > 0 )
+         rshare_ctx.vote_rshares += comment_rshares;
+      if( comment_rshares > 0 )
+         rshare_ctx.net_votes++;
+      else
+         rshare_ctx.net_votes--;
 
       /** this verifies uniqueness of voter
        *
@@ -2469,14 +2474,14 @@ void generic_vote_evaluator(
                const auto& reward_fund = _db.get_reward_fund( ctx.comment );
                auto curve = reward_fund.curation_reward_curve;
                uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
-               uint64_t new_weight = util::evaluate_reward_curve( ctx.comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
+               uint64_t new_weight = util::evaluate_reward_curve( rshare_ctx.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
                cv.weight = new_weight - old_weight;
             }
             else
             {
                const auto& smt = _db.get< smt_token_object, by_symbol >( ctx.symbol );
                uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, smt.curation_reward_curve, smt.content_constant ).to_uint64();
-               uint64_t new_weight = util::evaluate_reward_curve( ctx.comment.vote_rshares.value, smt.curation_reward_curve, smt.content_constant ).to_uint64();
+               uint64_t new_weight = util::evaluate_reward_curve( rshare_ctx.vote_rshares.value, smt.curation_reward_curve, smt.content_constant ).to_uint64();
                cv.weight = new_weight - old_weight;
             }
 
@@ -2495,15 +2500,6 @@ void generic_vote_evaluator(
             cv.weight = 0;
          }
       });
-
-      rshare_ctx.net_rshares += comment_rshares;
-      rshare_ctx.abs_rshares += abs_rshares;
-      if( comment_rshares > 0 )
-         rshare_ctx.vote_rshares += comment_rshares;
-      if( comment_rshares > 0 )
-         rshare_ctx.net_votes++;
-      else
-         rshare_ctx.net_votes--;
 
       rshare_ctx.total_vote_weight += max_vote_weight;
 
@@ -2586,8 +2582,6 @@ void generic_vote_evaluator(
          c.children_abs_rshares += abs_rshares;
       });
    }
-
-   idump( (rshare_ctx) );
 }
 
 void vote_evaluator::do_apply( const vote_operation& o )
@@ -2611,18 +2605,17 @@ void vote_evaluator::do_apply( const vote_operation& o )
       });
 
       int16_t abs_weight = abs( o.weight );
-      int64_t rshares = ( uint128_t( voter.voting_manabar.current_mana * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * STEEM_100_PERCENT ) ).to_int64();
+      int64_t rshares = ( ( uint128_t( voter.voting_manabar.current_mana ) * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * STEEM_100_PERCENT ) ).to_int64();
 
       if( o.weight < 0 )
       {
          rshares = -1 * std::max(
                      rshares,
                      // The full version of this calculation would have STEEM_100_PERCENT in the numerator and denominator. They have been removed
-                     uint128_t( ( voter.downvote_manabar.current_mana * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * dgpo.downvote_pool_percent ) ).to_int64()
+                     ( ( uint128_t( voter.downvote_manabar.current_mana ) * abs_weight + dgpo.target_votes_per_period - 1 ) / ( dgpo.target_votes_per_period * dgpo.downvote_pool_percent ) ).to_int64()
                   );
       }
 
-      idump( (rshares) );
 
       vote_context< vote_operation > ctx( o, comment, dgpo, voter.id, rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
       rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
@@ -2674,6 +2667,8 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
    vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
    rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
    generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+
+   idump( (rshare_ctx) );
 
    _db.modify( comment, [&]( comment_object& c )
    {
