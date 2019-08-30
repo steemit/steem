@@ -690,13 +690,13 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    FC_ASSERT( vested_symbol.space() == asset_symbol_type::smt_nai_space );
    FC_ASSERT( vested_symbol.is_vesting() );
 
-#pragma message( "TODO: Update the code below when delegation is modified to support SMTs." )
-   const account_regular_balance_object* bo = find< account_regular_balance_object, by_owner_liquid_symbol >(
-      boost::make_tuple( account.name, vested_symbol.get_paired_symbol() ) );
-   if( bo == nullptr )
+   auto key = boost::make_tuple( account.name, vested_symbol.get_paired_symbol() );
+   const auto* balance_obj = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+
+   if( balance_obj == nullptr )
       return asset( 0, vested_symbol );
 
-   return bo->vesting;
+   return balance_obj->vesting_shares - balance_obj->delegated_vesting_shares + balance_obj->received_vesting_shares;
 }
 
 uint32_t database::witness_participation_rate()const
@@ -1667,9 +1667,9 @@ void database::process_vesting_withdrawals()
       const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
       share_type to_withdraw;
       if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
-         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
       else
-         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->vesting_withdraw_rate.amount ).value;
 
       auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
       auto converted_token = withdraw_token * token.get_vesting_share_price();
@@ -1680,11 +1680,11 @@ void database::process_vesting_withdrawals()
 
       modify( *iter, [&]( account_regular_balance_object& a )
       {
-         a.vesting   -= withdraw_token;
-         a.liquid    += converted_token;
-         a.withdrawn += to_withdraw;
+         a.vesting_shares   -= withdraw_token;
+         a.liquid           += converted_token;
+         a.withdrawn        += to_withdraw;
 
-         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         if ( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
          {
             a.vesting_withdraw_rate.amount = 0;
             a.next_vesting_withdrawal      = fc::time_point_sec::maximum();
@@ -4554,14 +4554,14 @@ struct smt_regular_balance_operator
    void add_to_balance( account_regular_balance_object& smt_balance )
    {
       if( is_vesting )
-         smt_balance.vesting += delta;
+         smt_balance.vesting_shares += delta;
       else
          smt_balance.liquid += delta;
    }
    int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero )
    {
-      asset result = is_vesting ? bo->vesting + delta : bo->liquid + delta;
-      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting.amount.value) == 0;
+      asset result = is_vesting ? bo->vesting_shares + delta : bo->liquid + delta;
+      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting_shares.amount.value) == 0;
       return result.amount.value;
    }
 
@@ -4811,7 +4811,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
          }
          else
          {
-            return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+            return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
          }
       }
    }
@@ -4830,7 +4830,7 @@ asset database::get_balance( const account_name_type& name, asset_symbol_type sy
       }
       else
       {
-         return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+         return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
       }
    }
    return get_balance( get_account( name ), symbol );
@@ -5550,14 +5550,14 @@ void database::validate_smt_invariants()const
       add_from_balance_index( balance_idx, [ &theMap ] ( const account_regular_balance_object& regular )
       {
          asset zero_liquid = asset( 0, regular.liquid.symbol );
-         asset zero_vesting = asset( 0, regular.vesting.symbol );
+         asset zero_vesting = asset( 0, regular.vesting_shares.symbol );
          auto insertInfo = theMap.emplace( regular.liquid.symbol,
-            TCombinedBalance( { regular.liquid, regular.vesting, zero_liquid, zero_vesting, zero_liquid } ) );
+            TCombinedBalance( { regular.liquid, regular.vesting_shares, zero_liquid, zero_vesting, zero_liquid } ) );
          if( insertInfo.second == false )
             {
             TCombinedBalance& existing_balance = insertInfo.first->second;
             existing_balance.liquid += regular.liquid;
-            existing_balance.vesting += regular.vesting;
+            existing_balance.vesting += regular.vesting_shares;
             }
       });
 

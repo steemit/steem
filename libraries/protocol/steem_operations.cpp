@@ -753,9 +753,9 @@ namespace steem { namespace protocol {
    {
       validate_account_name( delegator );
       validate_account_name( delegatee );
-      FC_ASSERT( delegator != delegatee, "You cannot delegate VESTS to yourself" );
-      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL ), "Delegation must be VESTS" );
-      FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
+      FC_ASSERT( delegator != delegatee,             "You cannot delegate vesting shares to yourself." );
+      FC_ASSERT( vesting_shares.symbol.is_vesting(), "Delegation must be a vesting type." );
+      FC_ASSERT( vesting_shares.amount >= 0,         "Delegation cannot be negative." );
    }
 
 } } // steem::protocol

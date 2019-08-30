@@ -1257,7 +1257,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
 
       FC_ASSERT( bal_obj != nullptr, "Account does not have sufficient Token Power for withdrawal." );
-      FC_ASSERT( bal_obj->vesting - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
+      FC_ASSERT( bal_obj->vesting_shares - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
 
       if ( o.vesting_shares.amount == 0 )
       {
@@ -3145,11 +3145,9 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
-#pragma message( "TODO: Update get_effective_vesting_shares when modifying this operation to support SMTs." )
-
    const auto& delegator = _db.get_account( op.delegator );
    const auto& delegatee = _db.get_account( op.delegatee );
-   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol ) );
 
    const auto& gpo = _db.get_dynamic_global_properties();
 

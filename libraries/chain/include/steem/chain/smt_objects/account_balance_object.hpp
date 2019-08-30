@@ -1,6 +1,8 @@
 #pragma once
 
 #include <steem/chain/steem_object_types.hpp>
+#include <steem/chain/util/manabar.hpp>
+
 #include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace chain {
@@ -24,8 +26,8 @@ public:
    id_type             id;
    account_name_type   owner;
    asset               liquid;
-   asset               vesting;
 
+   asset               vesting_shares;
    asset               delegated_vesting_shares;
    asset               received_vesting_shares;
 
@@ -33,6 +35,9 @@ public:
    time_point_sec      next_vesting_withdrawal = fc::time_point_sec::maximum();
    share_type          withdrawn               = 0;
    share_type          to_withdraw             = 0;
+
+   util::manabar       voting_manabar;
+   util::manabar       downvote_manabar;
 
    asset_symbol_type get_liquid_symbol() const
    {
@@ -42,7 +47,7 @@ public:
    void initialize_assets( asset_symbol_type liquid_symbol )
    {
       liquid                   = asset( 0, liquid_symbol );
-      vesting                  = asset( 0, liquid_symbol.get_paired_symbol() );
+      vesting_shares           = asset( 0, liquid_symbol.get_paired_symbol() );
       delegated_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
       received_vesting_shares  = asset( 0, liquid_symbol.get_paired_symbol() );
       vesting_withdraw_rate    = asset( 0, liquid_symbol.get_paired_symbol() );
@@ -51,16 +56,16 @@ public:
    void add_vesting( const asset& vesting_shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
-      vesting += vesting_shares;
+      this->vesting_shares += vesting_shares;
    }
 
    bool validate() const
    {
       return
-         liquid.symbol  == vesting.symbol.get_paired_symbol() &&
-         vesting.symbol == delegated_vesting_shares.symbol &&
-         vesting.symbol == received_vesting_shares.symbol &&
-         vesting.symbol == vesting_withdraw_rate.symbol;
+         liquid.symbol         == vesting_shares.symbol.get_paired_symbol() &&
+         vesting_shares.symbol == delegated_vesting_shares.symbol &&
+         vesting_shares.symbol == received_vesting_shares.symbol &&
+         vesting_shares.symbol == vesting_withdraw_rate.symbol;
    }
 };
 
@@ -160,13 +165,15 @@ FC_REFLECT( steem::chain::account_regular_balance_object,
    (id)
    (owner)
    (liquid)
-   (vesting)
+   (vesting_shares)
    (delegated_vesting_shares)
    (received_vesting_shares)
    (vesting_withdraw_rate)
    (next_vesting_withdrawal)
    (withdrawn)
    (to_withdraw)
+   (voting_manabar)
+   (downvote_manabar)
 )
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,
