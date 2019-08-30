@@ -3117,7 +3117,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
                elog( "NOTIFYALERT! available downvote shares overflow made it in to the chain" );
 
             available_downvote_shares = asset(
-               ( numerator.to_int64() ) / gpo.downvote_pool_percent
+               ( numerator.lo ) / gpo.downvote_pool_percent
                + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
          }
       }
