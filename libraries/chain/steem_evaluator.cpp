@@ -1932,7 +1932,11 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
       }
       else
       {
-         used_mana = ( std::max( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
+         uint128_t numerator = voter.downvote_manabar.current_mana * STEEM_100_PERCENT;
+         if( numerator.hi != 0 )
+            elog( "NOTIFYALERT! used mana overflow made it in to the chain" );
+
+         used_mana = ( std::max( ( numerator / dgpo.downvote_pool_percent ),
                                 uint128_t( voter.voting_manabar.current_mana ) )
                   * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
       }
@@ -3108,8 +3112,12 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          }
          else
          {
+            uint128_t numerator = delegator.downvote_manabar.current_mana * STEEM_100_PERCENT;
+            if( numerator.hi != 0 )
+               elog( "NOTIFYALERT! available downvote shares overflow made it in to the chain" );
+
             available_downvote_shares = asset(
-               ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
+               ( numerator.to_int64() ) / gpo.downvote_pool_percent
                + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
          }
       }
