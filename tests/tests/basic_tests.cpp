@@ -32,6 +32,8 @@
 #include <steem/protocol/steem_operations.hpp>
 #include <steem/chain/account_object.hpp>
 
+#include <steem/chain/util/reward.hpp>
+
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>
 #include "../db_fixture/database_fixture.hpp"
@@ -355,6 +357,77 @@ BOOST_AUTO_TEST_CASE( adjust_balance_test )
    db->adjust_balance( "alice", asset( -25000, SBD_SYMBOL ) );
    db->adjust_balance( "alice", asset( -25000, SBD_SYMBOL ) );
    BOOST_REQUIRE( db->get_balance( "alice", SBD_SYMBOL ) == asset( 0, SBD_SYMBOL ) );
+}
+
+uint8_t find_msb( const uint128_t& u )
+{
+   uint64_t x;
+   uint8_t places;
+   x      = (u.lo ? u.lo : 1);
+   places = (u.hi ?   64 : 0);
+   x      = (u.hi ? u.hi : x);
+   return uint8_t( boost::multiprecision::detail::find_msb(x) + places );
+}
+
+uint64_t approx_sqrt( const uint128_t& x )
+{
+   if( (x.lo == 0) && (x.hi == 0) )
+      return 0;
+
+   uint8_t msb_x = find_msb(x);
+   uint8_t msb_z = msb_x >> 1;
+
+   uint128_t msb_x_bit = uint128_t(1) << msb_x;
+   uint64_t  msb_z_bit = uint64_t (1) << msb_z;
+
+   uint128_t mantissa_mask = msb_x_bit - 1;
+   uint128_t mantissa_x = x & mantissa_mask;
+   uint64_t mantissa_z_hi = (msb_x & 1) ? msb_z_bit : 0;
+   uint64_t mantissa_z_lo = (mantissa_x >> (msb_x - msb_z)).lo;
+   uint64_t mantissa_z = (mantissa_z_hi | mantissa_z_lo) >> 1;
+   uint64_t result = msb_z_bit | mantissa_z;
+
+   return result;
+}
+
+BOOST_AUTO_TEST_CASE( curation_weight_test )
+{
+   fc::uint128_t rshares = 856158;
+   fc::uint128_t s = 2000000000000ull;
+   fc::uint128_t sqrt = approx_sqrt( rshares + 2 * s );
+   uint64_t result = ( rshares / sqrt ).to_uint64();
+
+   BOOST_REQUIRE( sqrt.to_uint64() == 2002250 );
+   BOOST_REQUIRE( result == 0 );
+
+   rshares = 0;
+   sqrt = approx_sqrt( rshares + 2 * s );
+   result = ( rshares / sqrt ).to_uint64();
+
+   BOOST_REQUIRE( sqrt.to_uint64() == 2002250 );
+   BOOST_REQUIRE( result == 0 );
+
+   result = ( uint128_t( 0 ) - uint128_t( 0 ) ).to_uint64();
+
+   BOOST_REQUIRE( result == 0 );
+   rshares = 3351842535167ull;
+
+   for( int64_t i = 856158; i >= 0; --i )
+   {
+      uint64_t old_weight = util::evaluate_reward_curve( rshares - i, protocol::convergent_square_root, s ).to_uint64();
+      uint64_t new_weight = util::evaluate_reward_curve( rshares, protocol::convergent_square_root, s ).to_uint64();
+
+      BOOST_REQUIRE( old_weight <= new_weight );
+
+      uint128_t w( new_weight - old_weight );
+
+      w *= 300;
+      w /= 300;
+      BOOST_REQUIRE( w.to_uint64() == new_weight - old_weight );
+   }
+
+   //idump( (delta)(old_weight)(new_weight) );
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
