@@ -2088,6 +2088,12 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
             w *= delta_t;
             w /= dgpo.reverse_auction_seconds;
             cv.weight = w.to_uint64();
+
+            if( voter.name == "lushburg" && comment.author == "kostybrat" && to_string( comment.permlink ) == "mushroom-butterfly" )
+            {
+               ilog( "NOTIFYALERT" );
+               idump( (reward_fund)(curve)(old_vote_rshares.value)(comment.vote_rshares.value)(old_weight)(new_weight)(max_vote_weight)(delta_t)(dgpo.reverse_auction_seconds)(cv.weight) );
+            }
          }
          else
          {
