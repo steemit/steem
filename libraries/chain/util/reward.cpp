@@ -100,7 +100,9 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
       case protocol::convergent_square_root:
          {
             const uint128_t& s = var1;
-            result = rshares / approx_sqrt( rshares + 2 * s );
+            uint128_t sqrt = approx_sqrt( rshares + 2 * s );
+            if( rshares < sqrt ) result = 0;
+            else result = rshares / approx_sqrt( rshares + 2 * s );
          }
          break;
    }
