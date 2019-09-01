@@ -862,6 +862,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
          auto itr = vote_idx.find( boost::make_tuple( alice_comment.id, alice.id ) );
+         int64_t votes_per_period = db->get_dynamic_global_properties().target_votes_per_period;
          int64_t max_vote_denom = ( db->get_dynamic_global_properties().target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS ) / (60*60*24);
 
          BOOST_REQUIRE( alice.last_vote_time == db->head_block_time() );
@@ -1019,6 +1020,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
          old_manabar.regenerate_mana( params, db->head_block_time() );
 
+         new_rshares = ( ( uint128_t( old_manabar.current_mana ) * 25 * STEEM_1_PERCENT + votes_per_period ) / ( votes_per_period * STEEM_100_PERCENT ) ).to_int64() - STEEM_VOTE_DUST_THRESHOLD;
+
          op.voter = "alice";
          op.weight = STEEM_1_PERCENT * 25;
          op.author = "bob";
@@ -1029,8 +1032,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          sign( tx, alice_private_key );
          db->push_transaction( tx, 0 );
          alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id ) );
-
-         new_rshares = old_manabar.current_mana - db->get_account( "alice" ).voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD;
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -1122,7 +1123,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
             alice_weight = old_manabar.current_mana;
             auto max_vote_denom = db->get_dynamic_global_properties().target_votes_per_period;
-            alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom - 1;
+            alice_weight = ( alice_weight + max_vote_denom - 1 ) / max_vote_denom;
 
             const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
             old_net_rshares = bob_comment.net_rshares.value;
@@ -1198,6 +1199,123 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             BOOST_REQUIRE( dave_bob_vote.rshares = new_rshares );
          }
          validate_database();
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when increasing vote" );
+         {
+            comment_op.author = "dave";
+            op.voter = "sam";
+            op.author = "dave";
+            op.weight = 75 * STEEM_1_PERCENT;
+            tx.clear();
+            tx.operations.push_back( comment_op );
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            sign( tx, dave_private_key );
+            db->push_transaction( tx, 0 );
+
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            auto old_rshares = db->get< comment_vote_object, by_voter_comment_symbol >( boost::make_tuple( sam.id, db->get_comment( op.author, op.permlink ).id, STEEM_SYMBOL ) ).rshares;
+
+            op.weight = STEEM_100_PERCENT;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            new_rshares = ( ( uint128_t( old_manabar.current_mana ) * op.weight + votes_per_period - 1 ) / ( votes_per_period * STEEM_100_PERCENT ) ).to_int64() - STEEM_VOTE_DUST_THRESHOLD;
+            auto delta = new_rshares - old_rshares;
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana - delta );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when decreasing vote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.weight = 50 * STEEM_1_PERCENT;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when changing to downvote" );
+         {
+            generate_block();
+            //const auto& gpo = db->get_dynamic_global_properties();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.weight = -50 * STEEM_1_PERCENT;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            new_rshares = ( ( uint128_t( old_manabar.current_mana ) * 50 * STEEM_1_PERCENT + votes_per_period - 1 ) / ( votes_per_period * STEEM_100_PERCENT ) ).to_int64();
+            //new_rshares = ( ( uint128_t( old_downvote_manabar.current_mana ) * 50 * STEEM_1_PERCENT + votes_per_period - 1 ) / ( votes_per_period * gpo.downvote_pool_percent ) ).to_int64();
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana - new_rshares );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when increasing downvote" );
+         {
+            generate_block();
+            //const auto& gpo = db->get_dynamic_global_properties();
+            const auto& sam = db->get_account( "sam" );
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            auto old_rshares = db->get< comment_vote_object, by_voter_comment_symbol >( boost::make_tuple( sam.id, db->get_comment( op.author, op.permlink ).id, STEEM_SYMBOL ) ).rshares;
+
+            op.weight = -1 * STEEM_100_PERCENT;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            new_rshares = ( ( uint128_t( old_manabar.current_mana ) * 50 * STEEM_1_PERCENT + votes_per_period - 1 ) / ( votes_per_period * STEEM_100_PERCENT ) ).to_int64();
+            //new_rshares = ( ( uint128_t( old_downvote_manabar.current_mana ) * STEEM_100_PERCENT + votes_per_period - 1 ) / ( votes_per_period * gpo.downvote_pool_percent ) ).to_int64() - STEEM_VOTE_DUST_THRESHOLD;
+            auto delta = new_rshares - std::abs( old_rshares );
+
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana + delta );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when decreasing downvote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.weight = -25 * STEEM_1_PERCENT;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana );
+         }
       }
    }
    FC_LOG_AND_RETHROW()

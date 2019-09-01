@@ -2021,8 +2021,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    int64_t abs_rshares = used_mana.to_int64();
 
-   idump( (o)(abs_rshares) );
-
    abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
    abs_rshares = std::max( int64_t(0), abs_rshares );
 
@@ -2335,11 +2333,11 @@ void generic_vote_evaluator(
    {
       max_abs_rshares = std::max(
                            max_abs_rshares,
-                           ( voter.downvote_manabar.current_mana * STEEM_100_PERCENT + ctx.votes_per_regen_period - 1 ) / ( ctx.votes_per_regen_period * ctx.dgpo.downvote_pool_percent )
+                           ( ( fc::uint128_t ( voter.downvote_manabar.current_mana ) * STEEM_100_PERCENT + ctx.votes_per_regen_period - 1 ) / ( ctx.votes_per_regen_period * ctx.dgpo.downvote_pool_percent ) ).to_int64()
                         );
    }
 
-   FC_ASSERT( abs_rshares <= max_abs_rshares, "Account cannot vote with more than ${m} rshares in a single vote with token ${t}. Attempted: ${r}",
+   FC_ASSERT( abs_rshares <= max_abs_rshares, "Account cannot vote with more than ${m} abs rshares in a single vote with token ${t}. Attempted: ${r}",
       ("m", max_abs_rshares)("t", ctx.symbol)("r", ctx.rshares) );
 
    if( ctx.dgpo.downvote_pool_percent && ctx.rshares < 0 )
@@ -2516,12 +2514,16 @@ void generic_vote_evaluator(
       int64_t comment_rshares = ctx.rshares < 0 ? -abs_rshares : abs_rshares;
       FC_ASSERT( itr->rshares != comment_rshares, "Your current vote on this comment is identical to the new vote." );
 
+      // If they have the same sign
+      if( ( itr->rshares ^ ctx.rshares ) >= 0 )
+      {
+         consumed_rshares = std::max( int64_t(0), abs_rshares - abs( itr->rshares ) );
+      }
+
       _db.modify( voter, [&]( AccountType& a )
       {
-         idump( (consumed_rshares) );
          if( ctx.dgpo.downvote_pool_percent > 0 && comment_rshares < 0 )
          {
-            idump( (a.downvote_manabar.current_mana)(a.voting_manabar.current_mana) );
             if( consumed_rshares > a.downvote_manabar.current_mana )
             {
                /* used mana is always less than downvote_mana + voting_mana because the amount used
@@ -2531,7 +2533,6 @@ void generic_vote_evaluator(
                 * required when using voting mana on its own as an upvote.
                 */
                auto remainder = consumed_rshares - a.downvote_manabar.current_mana;
-               idump( (remainder) );
                a.downvote_manabar.use_mana( a.downvote_manabar.current_mana );
                a.voting_manabar.use_mana( remainder );
             }
@@ -2668,8 +2669,6 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
    rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
    generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
 
-   idump( (rshare_ctx) );
-
    _db.modify( comment, [&]( comment_object& c )
    {
       c.net_rshares = rshare_ctx.net_rshares;
@@ -2697,7 +2696,6 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
          rshare_ctx = rshare_context();
 
       generic_vote_evaluator( ctx, smt_balance, rshare_ctx, _db );
-      idump( (rshare_ctx) );
 
       _db.modify( comment, [&]( comment_object& c )
       {

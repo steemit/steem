@@ -4816,8 +4816,6 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
          itr = vote_idx.find( boost::make_tuple( alice_comment.id, alice.id, alice_symbol ) );
 
-         idump( (old_smt_manabar.current_mana)(op.smt_rshares[alice_symbol])(alice_smt.voting_manabar.current_mana) );
-
          BOOST_REQUIRE( old_smt_manabar.current_mana - op.smt_rshares[ alice_symbol ] == alice_smt.voting_manabar.current_mana );
          BOOST_REQUIRE( alice_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( itr != vote_idx.end() );
@@ -4934,8 +4932,6 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             BOOST_REQUIRE( itr != vote_idx.end() );
 
             itr = vote_idx.find( boost::make_tuple( new_alice_comment.id, new_bob.id, alice_symbol ) );
-            idump( (new_alice_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value) );
-            idump( (old_smt_abs_rshares)(old_smt_manabar.current_mana)(new_bob_smt.voting_manabar.current_mana) );
             BOOST_REQUIRE( new_alice_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == old_smt_abs_rshares + ( old_smt_manabar.current_mana - new_bob_smt.voting_manabar.current_mana ) - STEEM_VOTE_DUST_THRESHOLD );
             BOOST_REQUIRE( itr != vote_idx.end() );
 
@@ -5114,18 +5110,10 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            old_downvote_manabar = db->get_account( "alice" ).downvote_manabar;
-            params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) ) / 4;
-            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
-
             const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
             old_smt_manabar = alice_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
-
-            old_smt_downvote_manabar = alice_smt.downvote_manabar;
-            params.max_mana = util::get_effective_vesting_shares( alice_smt ) / 4;
-            old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
             op.rshares = old_manabar.current_mana / 50 / 3;
             op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50 / 3;
@@ -5355,6 +5343,158 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
                BOOST_REQUIRE( dave_bob_vote.rshares = new_smt_rshares );
             }
             validate_database();
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when increasing vote" );
+         {
+            comment_op.author = "dave";
+            comment_opts.author = "dave";
+            op.voter = "sam";
+            op.author = "dave";
+            op.rshares = db->get_account( "sam" ).voting_manabar.current_mana * 3 / 50 / 4;
+            op.smt_rshares[ alice_symbol ] = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) ).voting_manabar.current_mana * 3 / 50 / 4;
+            tx.clear();
+            tx.operations.push_back( comment_op );
+            tx.operations.push_back( comment_opts );
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            sign( tx, dave_private_key );
+            db->push_transaction( tx, 0 );
+
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            old_smt_manabar = sam_smt.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt );
+            old_smt_manabar.regenerate_mana( params, db->head_block_time() );
+
+            auto delta = sam.voting_manabar.current_mana / 50 - op.rshares;
+            auto smt_delta = sam_smt.voting_manabar.current_mana / 50 - op.smt_rshares[ alice_symbol ];
+
+            op.rshares += delta;
+            op.smt_rshares[ alice_symbol ] += smt_delta;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana - delta );
+            BOOST_REQUIRE( sam_smt.voting_manabar.current_mana == old_smt_manabar.current_mana - smt_delta );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when decreasing vote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            old_smt_manabar = sam_smt.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt );
+            old_smt_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.rshares = sam.voting_manabar.current_mana / 50 / 2;
+            op.smt_rshares[ alice_symbol ] = sam_smt.voting_manabar.current_mana / 50 / 2;
+
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
+            BOOST_REQUIRE( sam_smt.voting_manabar.current_mana == old_smt_manabar.current_mana );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when changing to downvote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_manabar = sam.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam );
+            old_manabar.regenerate_mana( params, db->head_block_time() );
+
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            old_smt_manabar = sam_smt.voting_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt );
+            old_smt_manabar.regenerate_mana( params, db->head_block_time() );
+
+            old_smt_downvote_manabar = sam_smt.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
+            old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.rshares = -1 * sam.downvote_manabar.current_mana * 4 / 50 / 2;
+            op.smt_rshares[ alice_symbol ] = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 / 2;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana + op.rshares );
+            BOOST_REQUIRE( sam_smt.voting_manabar.current_mana == old_smt_manabar.current_mana );
+            BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana + op.smt_rshares[ alice_symbol ] );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when increasing downvote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            old_smt_downvote_manabar = sam_smt.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
+            old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            auto delta = -1 * sam.downvote_manabar.current_mana * 4 / 50 - op.rshares;
+            auto smt_delta = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 - op.smt_rshares[ alice_symbol ];
+
+            op.rshares += delta;
+            op.smt_rshares[ alice_symbol ] += smt_delta;
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana + delta );
+            BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana + smt_delta );
+         }
+
+         BOOST_TEST_MESSAGE( "--- Test mana charge when decreasing downvote" );
+         {
+            generate_block();
+            const auto& sam = db->get_account( "sam" );
+            old_downvote_manabar = sam.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
+            old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            old_smt_downvote_manabar = sam_smt.downvote_manabar;
+            params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
+            old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
+
+            op.rshares = sam.downvote_manabar.current_mana * 4 / 50 / 8;
+            op.smt_rshares[ alice_symbol ] = sam_smt.downvote_manabar.current_mana * 4 / 50 / 8;
+
+            tx.clear();
+            tx.operations.push_back( op );
+            sign( tx, sam_private_key );
+            db->push_transaction( tx, 0 );
+
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana );
+            BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana );
          }
       }
    }
