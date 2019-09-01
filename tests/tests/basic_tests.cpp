@@ -393,7 +393,7 @@ uint64_t approx_sqrt( const uint128_t& x )
 BOOST_AUTO_TEST_CASE( curation_weight_test )
 {
    fc::uint128_t rshares = 856158;
-   fc::uint128_t s = 2000000000000ull;
+   fc::uint128_t s = uint128_t( 0, 2000000000000ull );
    fc::uint128_t sqrt = approx_sqrt( rshares + 2 * s );
    uint64_t result = ( rshares / sqrt ).to_uint64();
 
@@ -410,7 +410,7 @@ BOOST_AUTO_TEST_CASE( curation_weight_test )
    result = ( uint128_t( 0 ) - uint128_t( 0 ) ).to_uint64();
 
    BOOST_REQUIRE( result == 0 );
-   rshares = 3351842535167ull;
+   rshares = uint128_t( 0, 3351842535167ull );
 
    for( int64_t i = 856158; i >= 0; --i )
    {
