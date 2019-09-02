@@ -1829,7 +1829,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
          }
 
          for( auto& item : proxy_set )
-         {
+         { try {
             uint128_t weight( item->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
@@ -1852,12 +1852,12 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                #endif
                post_push_virtual_operation( vop );
             }
-         }
+         } FC_CAPTURE_AND_RETHROW( (*item) ) }
       }
       max_rewards -= unclaimed_rewards;
 
       return unclaimed_rewards;
-   } FC_CAPTURE_AND_RETHROW()
+   } FC_CAPTURE_AND_RETHROW( (max_rewards) )
 }
 
 void fill_comment_reward_context_local_state( util::comment_reward_context& ctx, const comment_object& comment )
@@ -2029,7 +2029,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       }
 
       return claimed_reward;
-   } FC_CAPTURE_AND_RETHROW( (comment) )
+   } FC_CAPTURE_AND_RETHROW( (comment)(ctx) )
 }
 
 void database::process_comment_cashout()

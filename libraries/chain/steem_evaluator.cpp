@@ -2077,17 +2077,25 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
             auto curve = reward_fund.curation_reward_curve;
             uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
             uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
-            cv.weight = new_weight - old_weight;
 
-            max_vote_weight = cv.weight;
+            if( old_weight >= new_weight ) // old_weight > new_weight should never happen
+            {
+               cv.weight = 0;
+            }
+            else
+            {
+               cv.weight = new_weight - old_weight;
 
-            /// discount weight by time
-            uint128_t w(max_vote_weight);
-            uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
+               max_vote_weight = cv.weight;
 
-            w *= delta_t;
-            w /= dgpo.reverse_auction_seconds;
-            cv.weight = w.to_uint64();
+               /// discount weight by time
+               uint128_t w(max_vote_weight);
+               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
+
+               w *= delta_t;
+               w /= dgpo.reverse_auction_seconds;
+               cv.weight = w.to_uint64();
+            }
          }
          else
          {
