@@ -120,7 +120,7 @@ if [[ $finished == 0 ]]; then
     if [[ $? -ne 0 ]]; then
       echo notifysteemdsync steemdsync: unable to pull latest block_log from S3, will sync from scratch.
     else
-      ARGS+=" --replay-blockchain --force-validate"
+      ARGS+=" --replay-blockchain --force-validate --memory-replay"
     fi
     touch /tmp/isnewsync
   fi
