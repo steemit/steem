@@ -82,6 +82,7 @@ RUN \
     fi && \
     cd tests && \
     ctest -j$(nproc) --output-on-failure && \
+    ./chain_test -t basic_tests/curation_weight_test && \
     cd .. && \
     ./libraries/mira/test/mira_test && \
     ./programs/util/test_fixed_string && \
