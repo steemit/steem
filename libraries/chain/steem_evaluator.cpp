@@ -2248,8 +2248,8 @@ struct vote_context
       account_id_type v_id,
       int64_t r,
       asset_symbol_type s,
-      uint32_t mrp,
-      uint32_t vprp
+      int32_t mrp,
+      int32_t vprp
    ) :
       op( o ),
       comment( c ),
@@ -2261,14 +2261,26 @@ struct vote_context
       votes_per_regen_period( vprp )
    {}
 
+   vote_context(
+      const VoteType& o,
+      const comment_object& c,
+      const dynamic_global_property_object& d,
+      account_id_type v_id
+   ) :
+      op( o ),
+      comment( c ),
+      dgpo( d ),
+      voter_id( v_id )
+   {}
+
    const VoteType&                        op;
    const comment_object&                  comment;
    const dynamic_global_property_object&  dgpo;
    account_id_type                        voter_id;
-   int64_t                                rshares;
+   int64_t                                rshares = 0;
    asset_symbol_type                      symbol;
-   int32_t                                mana_regen_period;
-   int32_t                                votes_per_regen_period;
+   int32_t                                mana_regen_period = 0;
+   int32_t                                votes_per_regen_period = 0;
 };
 
 template< typename ContextType, typename AccountType >
@@ -2652,55 +2664,71 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
    const auto& voter   = _db.get_account( o.voter );
    const auto& dgpo    = _db.get_dynamic_global_properties();
 
-   for( auto& smt_rshare : o.smt_rshares )
-   {
-      auto smt = root.allowed_vote_assets.find( smt_rshare.first );
-      FC_ASSERT( smt != root.allowed_vote_assets.end(), "SMT ${s} is not an allowed voting asset on comment ${a}/${p}",
-         ("s", smt_rshare.first)("a", o.author)("p", o.permlink) );
-   }
-
    FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
 
-   FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+   vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id );
+   rshare_context rshare_ctx;
 
-   if( o.rshares > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
-
-   vote_context< vote2_operation > ctx( o, comment, dgpo, voter.id, o.rshares, STEEM_SYMBOL, STEEM_VOTING_MANA_REGENERATION_SECONDS, dgpo.target_votes_per_period );
-   rshare_context rshare_ctx { comment.net_rshares, comment.abs_rshares, comment.vote_rshares, comment.total_vote_weight, comment.net_votes, comment.author_rewards };
-   generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
-
-   _db.modify( comment, [&]( comment_object& c )
+   for( auto& symbol_rshare : o.rshares )
    {
-      c.net_rshares = rshare_ctx.net_rshares;
-      c.abs_rshares = rshare_ctx.abs_rshares;
-      c.vote_rshares = rshare_ctx.vote_rshares;
-      c.total_vote_weight = rshare_ctx.total_vote_weight;
-      c.net_votes = rshare_ctx.net_votes;
-      c.author_rewards = rshare_ctx.author_rewards;
-   });
+      ctx.rshares = symbol_rshare.second;
+      ctx.symbol = symbol_rshare.first;
 
-   for( auto& smt_rshare : o.smt_rshares )
-   {
-      const auto& smt = _db.get< smt_token_object, by_symbol >( smt_rshare.first );
-      ctx.rshares = smt_rshare.second;
-      ctx.symbol = smt_rshare.first;
-      ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
-      ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
-
-      const auto& smt_balance = _db.get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( o.voter, smt_rshare.first ) );
-
-      auto itr = comment.smt_rshares.find( smt_rshare.first );
-      if( itr != comment.smt_rshares.end() )
-         rshare_ctx = itr->second;
-      else
-         rshare_ctx = rshare_context();
-
-      generic_vote_evaluator( ctx, smt_balance, rshare_ctx, _db );
-
-      _db.modify( comment, [&]( comment_object& c )
+      if( symbol_rshare.first == STEEM_SYMBOL )
       {
-         c.smt_rshares.insert_or_assign( smt_rshare.first, rshare_ctx );
-      });
+         if( symbol_rshare.second > 0 ) FC_ASSERT( comment.allow_votes, "Votes are not allowed on the comment." );
+
+         FC_ASSERT( ( _db.head_block_time() - voter.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+
+         ctx.mana_regen_period = STEEM_VOTING_MANA_REGENERATION_SECONDS;
+         ctx.votes_per_regen_period = dgpo.target_votes_per_period;
+
+         rshare_ctx.net_rshares = comment.net_rshares;
+         rshare_ctx.abs_rshares = comment.abs_rshares;
+         rshare_ctx.vote_rshares = comment.vote_rshares;
+         rshare_ctx.total_vote_weight = comment.total_vote_weight;
+         rshare_ctx.net_votes = comment.net_votes;
+         rshare_ctx.author_rewards = comment.author_rewards;
+
+         generic_vote_evaluator( ctx, voter, rshare_ctx, _db );
+
+         _db.modify( comment, [&]( comment_object& c )
+         {
+            c.net_rshares = rshare_ctx.net_rshares;
+            c.abs_rshares = rshare_ctx.abs_rshares;
+            c.vote_rshares = rshare_ctx.vote_rshares;
+            c.total_vote_weight = rshare_ctx.total_vote_weight;
+            c.net_votes = rshare_ctx.net_votes;
+            c.author_rewards = rshare_ctx.author_rewards;
+         });
+      }
+      else
+      {
+         auto votable_smt = root.allowed_vote_assets.find( symbol_rshare.first );
+         FC_ASSERT( votable_smt != root.allowed_vote_assets.end(), "SMT ${s} is not an allowed voting asset on comment ${a}/${p}",
+            ("s", symbol_rshare.first)("a", o.author)("p", o.permlink) );
+
+         const auto& smt = _db.get< smt_token_object, by_symbol >( symbol_rshare.first );
+         ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
+         ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
+
+         const auto& smt_balance = _db.get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( o.voter, symbol_rshare.first ) );
+
+         FC_ASSERT( ( _db.head_block_time() - smt_balance.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
+
+         auto itr = comment.smt_rshares.find( symbol_rshare.first );
+         if( itr != comment.smt_rshares.end() )
+            rshare_ctx = itr->second;
+         else
+            rshare_ctx = rshare_context();
+
+         generic_vote_evaluator( ctx, smt_balance, rshare_ctx, _db );
+
+         _db.modify( comment, [&]( comment_object& c )
+         {
+            c.smt_rshares.insert_or_assign( symbol_rshare.first, rshare_ctx );
+         });
+      }
    }
 }
 

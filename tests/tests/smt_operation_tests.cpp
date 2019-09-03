@@ -4736,7 +4736,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          op.voter = "alice";
          op.author = "bob";
          op.permlink = "foo";
-         op.rshares = alice.vesting_shares.amount.value / 50;
+         op.rshares[ STEEM_SYMBOL ] = alice.vesting_shares.amount.value / 50;
          tx.operations.push_back( op );
          sign( tx, alice_private_key );
 
@@ -4747,7 +4747,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
          BOOST_TEST_MESSAGE( "--- Testing voting with 0 rshares" );
 
-         op.rshares = 0;
+         op.rshares[ STEEM_SYMBOL ] = 0;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
@@ -4761,9 +4761,9 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          BOOST_TEST_MESSAGE( "--- Testing voting with a non-existent SMT" );
 
          SMT_SYMBOL( sam, 3, db );
-         op.rshares = alice.vesting_shares.amount.value / 50;
+         op.rshares[ STEEM_SYMBOL ] = alice.vesting_shares.amount.value / 50;
          op.author = "alice";
-         op.smt_rshares[ sam_symbol ] = 1;
+         op.rshares[ sam_symbol ] = 1;
          tx.clear();
          tx.operations.push_back( op );
          sign( tx, alice_private_key );
@@ -4774,8 +4774,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
 
          BOOST_TEST_MESSAGE( "--- Test voting with a non-votable asset" );
-         op.smt_rshares.clear();
-         op.smt_rshares[ bob_symbol ] = 1;
+         op.rshares.clear();
+         op.rshares[ bob_symbol ] = 1;
          tx.clear();
          tx.operations.push_back( op );
          sign( tx, alice_private_key );
@@ -4795,8 +4795,9 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          params.max_mana = util::get_effective_vesting_shares( alice_smt );
          old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-         op.smt_rshares.clear();
-         op.smt_rshares[ alice_symbol ] = alice_smt.vesting_shares.amount.value / 50;
+         op.rshares.clear();
+         op.rshares[ STEEM_SYMBOL ] = alice.vesting_shares.amount.value / 50;
+         op.rshares[ alice_symbol ] = alice_smt.vesting_shares.amount.value / 50;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
@@ -4808,18 +4809,18 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          auto itr = vote_idx.find( boost::make_tuple( alice_comment.id, alice.id, STEEM_SYMBOL ) );
 
          BOOST_REQUIRE( alice.last_vote_time == db->head_block_time() );
-         BOOST_REQUIRE( old_manabar.current_mana - op.rshares == alice.voting_manabar.current_mana );
-         BOOST_REQUIRE( alice_comment.net_rshares.value == op.rshares - STEEM_VOTE_DUST_THRESHOLD );
+         BOOST_REQUIRE( old_manabar.current_mana - op.rshares[ STEEM_SYMBOL ] == alice.voting_manabar.current_mana );
+         BOOST_REQUIRE( alice_comment.net_rshares.value == op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( alice_comment.cashout_time == alice_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( itr->rshares == op.rshares - STEEM_VOTE_DUST_THRESHOLD );
+         BOOST_REQUIRE( itr->rshares == op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( itr != vote_idx.end() );
 
          itr = vote_idx.find( boost::make_tuple( alice_comment.id, alice.id, alice_symbol ) );
 
-         BOOST_REQUIRE( old_smt_manabar.current_mana - op.smt_rshares[ alice_symbol ] == alice_smt.voting_manabar.current_mana );
-         BOOST_REQUIRE( alice_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
+         BOOST_REQUIRE( old_smt_manabar.current_mana - op.rshares[ alice_symbol ] == alice_smt.voting_manabar.current_mana );
+         BOOST_REQUIRE( alice_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
          BOOST_REQUIRE( itr != vote_idx.end() );
-         BOOST_REQUIRE( itr->rshares == op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
+         BOOST_REQUIRE( itr->rshares == op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
 
          validate_database();
 
@@ -4851,26 +4852,26 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             sign( tx, bob_private_key );
             db->push_transaction( tx, 0 );
 
-            op.rshares = old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
             op.voter = "alice";
             op.author = "bob";
             op.permlink = "foo";
 
-            op.rshares += 10;
+            op.rshares[ STEEM_SYMBOL ] += 10;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, alice_private_key );
             BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
-            op.rshares -= 10;
-            op.smt_rshares[ alice_symbol ] += 10;
+            op.rshares[ STEEM_SYMBOL ] -= 10;
+            op.rshares[ alice_symbol ] += 10;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, alice_private_key );
             BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
-            op.smt_rshares[ alice_symbol ] -= 10;
+            op.rshares[ alice_symbol ] -= 10;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, alice_private_key );
@@ -4879,14 +4880,14 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             const auto& bob_comment = db->get_comment( "bob", string( "foo" ) );
             itr = vote_idx.find( boost::make_tuple( bob_comment.id, alice.id, STEEM_SYMBOL ) );
 
-            BOOST_REQUIRE( bob_comment.net_rshares.value == op.rshares - STEEM_VOTE_DUST_THRESHOLD );
+            BOOST_REQUIRE( bob_comment.net_rshares.value == op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD );
             BOOST_REQUIRE( bob_comment.cashout_time == bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-            BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana - op.rshares );
+            BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana - op.rshares[ STEEM_SYMBOL ] );
             BOOST_REQUIRE( itr != vote_idx.end() );
 
             itr = vote_idx.find( boost::make_tuple( bob_comment.id, alice.id, alice_symbol ) );
-            BOOST_REQUIRE( bob_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
-            BOOST_REQUIRE( alice_smt.voting_manabar.current_mana == old_smt_manabar.current_mana - op.smt_rshares[ alice_symbol ] );
+            BOOST_REQUIRE( bob_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value == op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD );
+            BOOST_REQUIRE( alice_smt.voting_manabar.current_mana == old_smt_manabar.current_mana - op.rshares[ alice_symbol ] );
             BOOST_REQUIRE( itr != vote_idx.end() );
 
             validate_database();
@@ -4913,8 +4914,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             const auto& new_bob_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
             const auto& new_alice_comment = db->get_comment( "alice", string( "foo" ) );
 
-            op.rshares = old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
             op.voter = "bob";
             op.author = "alice";
             op.permlink = "foo";
@@ -4960,8 +4961,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             old_smt_manabar = sam_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = -1 * old_manabar.current_mana / 50 / 2;
-            op.smt_rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50 / 2;
+            op.rshares[ STEEM_SYMBOL ] = -1 * old_manabar.current_mana / 50 / 2;
+            op.rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50 / 2;
             op.voter = "sam";
             op.author = "bob";
             op.permlink = "foo";
@@ -5018,8 +5019,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             sign( tx, sam_private_key );
             db->push_transaction( tx, 0 );
 
-            op.rshares = old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
             op.voter = "alice";
             op.author = "sam";
             op.permlink = "foo";
@@ -5061,8 +5062,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
             op.voter = "alice";
-            op.rshares = old_manabar.current_mana / 50 / 2;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50 / 2;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50 / 2;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50 / 2;
             op.author = "bob";
             op.permlink = "foo";
             tx.operations.clear();
@@ -5072,8 +5073,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             db->push_transaction( tx, 0 );
             alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id, STEEM_SYMBOL ) );
 
-            int64_t new_rshares = op.rshares - STEEM_VOTE_DUST_THRESHOLD;
-            int64_t new_smt_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_rshares = op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_smt_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
 
             BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
             BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -5098,11 +5099,11 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
             const auto& new_alice = db->get_account( "alice" );
             const auto& new_bob_comment = db->get_comment( "bob", string( "foo" ) );
-            int64_t old_vote_rshares = op.rshares - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t old_vote_rshares = op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD;
             auto old_net_rshares = new_bob_comment.net_rshares.value;
             auto old_abs_rshares = new_bob_comment.abs_rshares.value;
 
-            int64_t old_smt_vote_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t old_smt_vote_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
             auto old_smt_net_rshares = new_bob_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value;
             auto old_smt_abs_rshares = new_bob_comment.smt_rshares.find( alice_symbol )->second.abs_rshares.value;
 
@@ -5115,8 +5116,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = old_manabar.current_mana / 50 / 3;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50 / 3;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50 / 3;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50 / 3;
             tx.operations.clear();
             tx.signatures.clear();
             tx.operations.push_back( op );
@@ -5124,8 +5125,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             db->push_transaction( tx, 0 );
             auto alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id, STEEM_SYMBOL ) );
 
-            int64_t new_rshares = op.rshares - STEEM_VOTE_DUST_THRESHOLD;
-            int64_t new_smt_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_rshares = op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_smt_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
 
             BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
             BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
@@ -5150,14 +5151,14 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             const auto& new_bob_comment = db->get_comment( "bob", string( "foo" ) );
             auto old_net_rshares = new_bob_comment.net_rshares.value;
             auto old_abs_rshares = new_bob_comment.abs_rshares.value;
-            int64_t old_vote_rshares = op.rshares - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t old_vote_rshares = op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD;
 
             auto old_smt_net_rshares = new_bob_comment.smt_rshares.find( alice_symbol )->second.net_rshares.value;
             auto old_smt_abs_rshares = new_bob_comment.smt_rshares.find( alice_symbol )->second.abs_rshares.value;
-            int64_t old_smt_vote_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t old_smt_vote_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
 
-            op.rshares = 0;
-            op.smt_rshares[ alice_symbol ] = 0;
+            op.rshares[ STEEM_SYMBOL ] = 0;
+            op.rshares[ alice_symbol ] = 0;
             tx.operations.clear();
             tx.signatures.clear();
             tx.operations.push_back( op );
@@ -5168,13 +5169,13 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares );
             BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares );
             BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-            BOOST_REQUIRE( alice_bob_vote->rshares == op.rshares );
+            BOOST_REQUIRE( alice_bob_vote->rshares == op.rshares[ STEEM_SYMBOL ] );
             BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
 
             alice_bob_vote = vote_idx.find( boost::make_tuple( new_bob_comment.id, new_alice.id, alice_symbol ) );
             BOOST_REQUIRE( new_bob_comment.smt_rshares.find( alice_symbol )->second.net_rshares == old_smt_net_rshares - old_smt_vote_rshares );
             BOOST_REQUIRE( new_bob_comment.smt_rshares.find( alice_symbol )->second.abs_rshares == old_smt_abs_rshares );
-            BOOST_REQUIRE( alice_bob_vote->rshares == op.smt_rshares[ alice_symbol ] );
+            BOOST_REQUIRE( alice_bob_vote->rshares == op.rshares[ alice_symbol ] );
             BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
 
             validate_database();
@@ -5228,8 +5229,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( alice_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = -1 * old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = -1 * old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50;
             tx.operations.clear();
             tx.signatures.clear();
             tx.operations.push_back( op );
@@ -5237,15 +5238,15 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             db->push_transaction( tx, 0 );
             auto alice_bob_vote = vote_idx.find( boost::make_tuple( bob_comment.id, new_alice.id, STEEM_SYMBOL ) );
 
-            int64_t new_rshares = op.rshares + STEEM_VOTE_DUST_THRESHOLD;
-            int64_t new_smt_rshares = op.smt_rshares[ alice_symbol ] + STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_rshares = op.rshares[ STEEM_SYMBOL ] + STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_smt_rshares = op.rshares[ alice_symbol ] + STEEM_VOTE_DUST_THRESHOLD;
 
             BOOST_REQUIRE( bob_comment.net_rshares == old_net_rshares + new_rshares );
             BOOST_REQUIRE( bob_comment.abs_rshares == old_abs_rshares - new_rshares );
             BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
             BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
             BOOST_REQUIRE( alice.downvote_manabar.current_mana == 0 );
-            BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana + op.rshares + old_downvote_manabar.current_mana );
+            BOOST_REQUIRE( alice.voting_manabar.current_mana == old_manabar.current_mana + op.rshares[ STEEM_SYMBOL ] + old_downvote_manabar.current_mana );
 
             alice_bob_vote = vote_idx.find( boost::make_tuple( bob_comment.id, new_alice.id, alice_symbol ) );
 
@@ -5254,7 +5255,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             BOOST_REQUIRE( alice_bob_vote->rshares == new_smt_rshares );
             BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
             BOOST_REQUIRE( alice_smt.downvote_manabar.current_mana == 0 );
-            BOOST_REQUIRE( alice_smt.voting_manabar.current_mana == old_smt_manabar.current_mana + op.smt_rshares[ alice_symbol ] + old_smt_downvote_manabar.current_mana );
+            BOOST_REQUIRE( alice_smt.voting_manabar.current_mana == old_smt_manabar.current_mana + op.rshares[ alice_symbol ] + old_smt_downvote_manabar.current_mana );
 
             validate_database();
          }
@@ -5275,18 +5276,18 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
             op.voter = "dave";
-            op.rshares = old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = old_smt_manabar.current_mana / 50;
             tx.operations.clear();
             tx.signatures.clear();
             tx.operations.push_back( op );
             sign( tx, dave_private_key );
             db->push_transaction( tx, 0 );
 
-            int64_t new_rshares = op.rshares - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_rshares = op.rshares[ STEEM_SYMBOL ] - STEEM_VOTE_DUST_THRESHOLD;
             new_rshares = ( new_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
 
-            int64_t new_smt_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_smt_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
             new_smt_rshares = ( new_smt_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
 
             account_id_type dave_id = db->get_account( "dave" ).id;
@@ -5316,18 +5317,18 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( dave_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = -1 * old_manabar.current_mana / 50;
-            op.smt_rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50;
+            op.rshares[ STEEM_SYMBOL ] = -1 * old_manabar.current_mana / 50;
+            op.rshares[ alice_symbol ] = -1 * old_smt_manabar.current_mana / 50;
             tx.operations.clear();
             tx.signatures.clear();
             tx.operations.push_back( op );
             sign( tx, dave_private_key );
             db->push_transaction( tx, 0 );
 
-            int64_t new_rshares = op.rshares + STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_rshares = op.rshares[ STEEM_SYMBOL ] + STEEM_VOTE_DUST_THRESHOLD;
             new_rshares = ( new_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
 
-            int64_t new_smt_rshares = op.smt_rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
+            int64_t new_smt_rshares = op.rshares[ alice_symbol ] - STEEM_VOTE_DUST_THRESHOLD;
             new_smt_rshares = ( new_smt_rshares * ( STEEM_UPVOTE_LOCKOUT_SECONDS - STEEM_BLOCK_INTERVAL ) ) / STEEM_UPVOTE_LOCKOUT_SECONDS;
 
             account_id_type dave_id = db->get_account( "dave" ).id;
@@ -5351,8 +5352,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             comment_opts.author = "dave";
             op.voter = "sam";
             op.author = "dave";
-            op.rshares = db->get_account( "sam" ).voting_manabar.current_mana * 3 / 50 / 4;
-            op.smt_rshares[ alice_symbol ] = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) ).voting_manabar.current_mana * 3 / 50 / 4;
+            op.rshares[ STEEM_SYMBOL ] = db->get_account( "sam" ).voting_manabar.current_mana * 3 / 50 / 4;
+            op.rshares[ alice_symbol ] = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) ).voting_manabar.current_mana * 3 / 50 / 4;
             tx.clear();
             tx.operations.push_back( comment_op );
             tx.operations.push_back( comment_opts );
@@ -5372,11 +5373,11 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-            auto delta = sam.voting_manabar.current_mana / 50 - op.rshares;
-            auto smt_delta = sam_smt.voting_manabar.current_mana / 50 - op.smt_rshares[ alice_symbol ];
+            auto delta = sam.voting_manabar.current_mana / 50 - op.rshares[ STEEM_SYMBOL ];
+            auto smt_delta = sam_smt.voting_manabar.current_mana / 50 - op.rshares[ alice_symbol ];
 
-            op.rshares += delta;
-            op.smt_rshares[ alice_symbol ] += smt_delta;
+            op.rshares[ STEEM_SYMBOL ] += delta;
+            op.rshares[ alice_symbol ] += smt_delta;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, sam_private_key );
@@ -5399,8 +5400,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = sam.voting_manabar.current_mana / 50 / 2;
-            op.smt_rshares[ alice_symbol ] = sam_smt.voting_manabar.current_mana / 50 / 2;
+            op.rshares[ STEEM_SYMBOL ] = sam.voting_manabar.current_mana / 50 / 2;
+            op.rshares[ alice_symbol ] = sam_smt.voting_manabar.current_mana / 50 / 2;
 
             tx.clear();
             tx.operations.push_back( op );
@@ -5432,17 +5433,17 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = -1 * sam.downvote_manabar.current_mana * 4 / 50 / 2;
-            op.smt_rshares[ alice_symbol ] = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 / 2;
+            op.rshares[ STEEM_SYMBOL ] = -1 * sam.downvote_manabar.current_mana * 4 / 50 / 2;
+            op.rshares[ alice_symbol ] = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 / 2;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, sam_private_key );
             db->push_transaction( tx, 0 );
 
             BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
-            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana + op.rshares );
+            BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana + op.rshares[ STEEM_SYMBOL ] );
             BOOST_REQUIRE( sam_smt.voting_manabar.current_mana == old_smt_manabar.current_mana );
-            BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana + op.smt_rshares[ alice_symbol ] );
+            BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana + op.rshares[ alice_symbol ] );
          }
 
          BOOST_TEST_MESSAGE( "--- Test mana charge when increasing downvote" );
@@ -5458,11 +5459,11 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            auto delta = -1 * sam.downvote_manabar.current_mana * 4 / 50 - op.rshares;
-            auto smt_delta = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 - op.smt_rshares[ alice_symbol ];
+            auto delta = -1 * sam.downvote_manabar.current_mana * 4 / 50 - op.rshares[ STEEM_SYMBOL ];
+            auto smt_delta = -1 * sam_smt.downvote_manabar.current_mana * 4 / 50 - op.rshares[ alice_symbol ];
 
-            op.rshares += delta;
-            op.smt_rshares[ alice_symbol ] += smt_delta;
+            op.rshares[ STEEM_SYMBOL ] += delta;
+            op.rshares[ alice_symbol ] += smt_delta;
             tx.clear();
             tx.operations.push_back( op );
             sign( tx, sam_private_key );
@@ -5485,8 +5486,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            op.rshares = sam.downvote_manabar.current_mana * 4 / 50 / 8;
-            op.smt_rshares[ alice_symbol ] = sam_smt.downvote_manabar.current_mana * 4 / 50 / 8;
+            op.rshares[ STEEM_SYMBOL ] = sam.downvote_manabar.current_mana * 4 / 50 / 8;
+            op.rshares[ alice_symbol ] = sam_smt.downvote_manabar.current_mana * 4 / 50 / 8;
 
             tx.clear();
             tx.operations.push_back( op );

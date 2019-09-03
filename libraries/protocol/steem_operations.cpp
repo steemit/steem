@@ -244,6 +244,8 @@ namespace steem { namespace protocol {
       validate_account_name( voter );
       validate_account_name( author );
       validate_permlink( permlink );
+      FC_ASSERT( rshares.size() > 0, "Must specify some rshares to vote with" );
+      FC_ASSERT( rshares.size() <= SMT_MAX_VOTABLE_ASSETS + 1, "Cannot vote with more than ${n} SMTs and STEEM", ("n", SMT_MAX_VOTABLE_ASSETS) );
    }
 
    void transfer_operation::validate() const

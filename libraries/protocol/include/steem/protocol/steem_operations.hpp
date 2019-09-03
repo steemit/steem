@@ -248,9 +248,8 @@ namespace steem { namespace protocol {
       account_name_type    voter;
       account_name_type    author;
       string               permlink;
-      int64_t              rshares = 0;
 
-      flat_map< asset_symbol_type, int64_t > smt_rshares;
+      flat_map< asset_symbol_type, int64_t > rshares;
 
       extensions_type      extensions;
 
@@ -1132,7 +1131,7 @@ FC_REFLECT( steem::protocol::account_witness_vote_operation, (account)(witness)(
 FC_REFLECT( steem::protocol::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steem::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
 FC_REFLECT( steem::protocol::vote_operation, (voter)(author)(permlink)(weight) )
-FC_REFLECT( steem::protocol::vote2_operation, (voter)(author)(permlink)(rshares)(smt_rshares)(extensions) )
+FC_REFLECT( steem::protocol::vote2_operation, (voter)(author)(permlink)(rshares)(extensions) )
 FC_REFLECT( steem::protocol::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steem::protocol::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steem::protocol::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )
