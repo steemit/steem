@@ -1159,7 +1159,7 @@ BOOST_AUTO_TEST_CASE( smt_vesting_withdrawals )
    const auto& token = db->get< smt_token_object, by_symbol >( symbol );
 
    auto key = boost::make_tuple( "alice", symbol );
-   const auto* balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+   const auto* balance_obj = db->find< account_regular_balance_object, by_name_liquid_symbol >( key );
    BOOST_REQUIRE( balance_obj != nullptr );
 
    BOOST_TEST_MESSAGE( " -- Setting up withdrawal" );

@@ -1409,7 +1409,7 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    db->push_transaction( tx, 0 );
 
    auto key = boost::make_tuple( "alice", symbol );
-   const auto* balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+   const auto* balance_obj = db->find< account_regular_balance_object, by_name_liquid_symbol >( key );
 
    BOOST_REQUIRE( balance_obj != nullptr );
    BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ).amount.value == old_vesting_shares.amount.value );

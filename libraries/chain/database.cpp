@@ -691,7 +691,7 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    FC_ASSERT( vested_symbol.is_vesting() );
 
    auto key = boost::make_tuple( account.name, vested_symbol.get_paired_symbol() );
-   const auto* balance_obj = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+   const auto* balance_obj = find< account_regular_balance_object, by_name_liquid_symbol >( key );
 
    if( balance_obj == nullptr )
       return asset( 0, vested_symbol );
@@ -1674,7 +1674,7 @@ void database::process_vesting_withdrawals()
       auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
       auto converted_token = withdraw_token * token.get_vesting_share_price();
 
-      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, withdraw_token, converted_token );
+      operation vop = fill_vesting_withdraw_operation( iter->name, iter->name, withdraw_token, converted_token );
 
       pre_push_virtual_operation( vop );
 
@@ -4394,7 +4394,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
    balance_operator_type balance_operator )
 {
    asset_symbol_type liquid_symbol = delta.symbol.is_vesting() ? delta.symbol.get_paired_symbol() : delta.symbol;
-   const smt_balance_object_type* bo = find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
+   const smt_balance_object_type* bo = find< smt_balance_object_type, by_name_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -4410,7 +4410,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
          smt_balance.initialize_assets( liquid_symbol );
-         smt_balance.owner = name;
+         smt_balance.name = name;
          balance_operator.add_to_balance( smt_balance );
          smt_balance.validate();
       } );
@@ -4804,7 +4804,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       {
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "Invalid symbol: ${s}", ("s", symbol) );
          auto key = boost::make_tuple( a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
-         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_name_liquid_symbol >( key );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
@@ -4822,7 +4822,7 @@ asset database::get_balance( const account_name_type& name, asset_symbol_type sy
    if ( symbol.space() == asset_symbol_type::smt_nai_space )
    {
       auto key = boost::make_tuple( name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
-      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_name_liquid_symbol >( key );
 
       if( arbo == nullptr )
       {
