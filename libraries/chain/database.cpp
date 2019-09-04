@@ -1926,10 +1926,9 @@ void fill_comment_reward_context_local_state( util::comment_reward_context& ctx,
 {
    ctx.rshares = comment.net_rshares;
    ctx.reward_weight = comment.reward_weight;
-   ctx.max_sbd = comment.max_accepted_payout;
 }
 
-share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment, bool forward_curation_remainder )
+share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment, const price& current_steem_price, bool forward_curation_remainder )
 {
    try
    {
@@ -1946,8 +1945,17 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             ctx.content_constant = rf.content_constant;
          }
 
-         const share_type reward = util::get_rshare_reward( ctx );
-         uint128_t reward_tokens = uint128_t( reward.value );
+         uint64_t reward = util::get_rshare_reward( ctx );
+
+         // If it is payout dust
+         if( util::to_sbd( current_steem_price, asset( reward, STEEM_SYMBOL ) ) < STEEM_MIN_PAYOUT_SBD )
+            reward = 0;
+
+         uint64_t max_steem = util::to_steem( current_steem_price, comment.max_accepted_payout ).amount.value;
+
+         reward = std::min( reward, max_steem );
+
+         uint128_t reward_tokens = uint128_t( reward );
 
          if( reward_tokens > 0 )
          {
@@ -2110,7 +2118,7 @@ void database::process_comment_cashout()
 
    const auto& gpo = get_dynamic_global_properties();
    util::comment_reward_context ctx;
-   ctx.current_steem_price = get_feed_history().current_median_history;
+   const price current_steem_price = get_feed_history().current_median_history;
 
    vector< reward_fund_context > funds;
    vector< share_type > steem_awarded;
@@ -2182,12 +2190,12 @@ void database::process_comment_cashout()
       if( has_hardfork( STEEM_HARDFORK_0_17__771 ) )
       {
          auto fund_id = get_reward_fund( *current ).id._id;
-         ctx.total_reward_shares2 = funds[ fund_id ].recent_claims;
-         ctx.total_reward_fund_steem = funds[ fund_id ].reward_balance;
+         ctx.total_claims = funds[ fund_id ].recent_claims;
+         ctx.reward_fund = funds[ fund_id ].reward_balance.amount;
 
          bool forward_curation_remainder = !has_hardfork( STEEM_HARDFORK_0_20__1877 );
 
-         funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current, forward_curation_remainder );
+         funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current, current_steem_price, forward_curation_remainder );
       }
       else
       {
@@ -2195,10 +2203,10 @@ void database::process_comment_cashout()
          while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
          {
             const auto& comment = *itr; ++itr;
-            ctx.total_reward_shares2 = gpo.total_reward_shares2;
-            ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
+            ctx.total_claims = gpo.total_reward_shares2;
+            ctx.reward_fund = gpo.total_reward_fund_steem.amount;
 
-            auto reward = cashout_comment_helper( ctx, comment );
+            auto reward = cashout_comment_helper( ctx, comment, current_steem_price );
 
             if( reward > 0 )
             {
