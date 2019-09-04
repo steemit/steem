@@ -5,6 +5,7 @@
 #include <steem/chain/block_summary_object.hpp>
 #include <steem/chain/compound.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
+#include <steem/chain/comment_rewards.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
@@ -2100,6 +2101,12 @@ void database::process_comment_cashout()
    /// will represent 2+ months of rewards.
    if( !has_hardfork( STEEM_FIRST_CASHOUT_TIME ) )
       return;
+
+   if( has_hardfork( STEEM_SMT_HARDFORK ) )
+   {
+      process_comment_rewards( *this );
+      return;
+   }
 
    const auto& gpo = get_dynamic_global_properties();
    util::comment_reward_context ctx;
