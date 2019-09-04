@@ -1978,7 +1978,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
 
    _db.modify( voter, [&]( account_object& a )
    {
-      util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+      util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK );
    });
 
    if ( _db.has_hardfork( STEEM_HARDFORK_0_21__3004 ) )
@@ -1996,9 +1996,19 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
    if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
    {
-      used_mana = ( std::max( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
+      if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+      {
+         used_mana = ( std::max( ( ( uint128_t( voter.downvote_manabar.current_mana ) * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
                                 uint128_t( voter.voting_manabar.current_mana ) )
                   * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+      }
+      else
+      {
+         used_mana = ( std::max( ( uint128_t( voter.downvote_manabar.current_mana * STEEM_100_PERCENT ) / dgpo.downvote_pool_percent ),
+                                uint128_t( voter.voting_manabar.current_mana ) )
+                  * abs_weight * 60 * 60 * 24 ) / STEEM_100_PERCENT;
+      }
+
    }
    else
    {
@@ -2138,17 +2148,25 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
             auto curve = reward_fund.curation_reward_curve;
             uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
             uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
-            cv.weight = new_weight - old_weight;
 
-            max_vote_weight = cv.weight;
+            if( old_weight >= new_weight ) // old_weight > new_weight should never happen
+            {
+               cv.weight = 0;
+            }
+            else
+            {
+               cv.weight = new_weight - old_weight;
 
-            /// discount weight by time
-            uint128_t w(max_vote_weight);
-            uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
+               max_vote_weight = cv.weight;
 
-            w *= delta_t;
-            w /= dgpo.reverse_auction_seconds;
-            cv.weight = w.to_uint64();
+               /// discount weight by time
+               uint128_t w(max_vote_weight);
+               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t( dgpo.reverse_auction_seconds ) );
+
+               w *= delta_t;
+               w /= dgpo.reverse_auction_seconds;
+               cv.weight = w.to_uint64();
+            }
          }
          else
          {
@@ -3055,7 +3073,7 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    {
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
       {
-         util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.reward_vests.amount.value );
+         util::update_manabar( _db.get_dynamic_global_properties(), a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK, op.reward_vests.amount.value );
       }
 
       a.vesting_shares += op.reward_vests;
@@ -3162,15 +3180,24 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       _db.modify( delegator, [&]( account_object& a )
       {
-         util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+         util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK );
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
       if( gpo.downvote_pool_percent )
       {
-         available_downvote_shares = asset(
-            ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
-            + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+         if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+         {
+            available_downvote_shares = asset(
+               ( ( uint128_t( delegator.downvote_manabar.current_mana ) * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
+               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1 ).to_int64(), VESTS_SYMBOL );
+         }
+         else
+         {
+            available_downvote_shares = asset(
+               ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
+               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+         }
       }
       else
       {
@@ -3247,7 +3274,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          {
             a.voting_manabar.use_mana( op.vesting_shares.amount.value );
 
-            if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
+            if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+            {
+               a.downvote_manabar.use_mana( ( ( uint128_t( op.vesting_shares.amount.value ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64() );
+            }
+            else if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
             {
                a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
             }
@@ -3258,7 +3289,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.vesting_shares.amount.value );
+            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK, op.vesting_shares.amount.value );
          }
 
          a.received_vesting_shares += op.vesting_shares;
@@ -3285,7 +3316,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          {
             a.voting_manabar.use_mana( delta.amount.value );
 
-            if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
+            if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+            {
+               a.downvote_manabar.use_mana( ( ( uint128_t( delta.amount.value ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64() );
+            }
+            else if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
             {
                a.downvote_manabar.use_mana( delta.amount.value );
             }
@@ -3296,7 +3331,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
+            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK, delta.amount.value );
          }
 
          a.received_vesting_shares += delta;
@@ -3331,6 +3366,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       _db.modify( delegatee, [&]( account_object& a )
       {
+         if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+         {
+            util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), _db.head_block_num() > STEEM_HF_21_STALL_BLOCK );
+         }
+
          a.received_vesting_shares -= delta;
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
@@ -3344,7 +3384,14 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
             if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
             {
-               a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+               if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
+               {
+                  a.downvote_manabar.use_mana( ( ( uint128_t( delta.amount.value ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64() );
+               }
+               else
+               {
+                  a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+               }
 
                if( a.downvote_manabar.current_mana < 0 )
                {
