@@ -3162,12 +3162,12 @@ void delegate_vesting_shares_helper( database& _db, const AccountType& delegator
          util::update_manabar( gpo, a, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
       });
 
-      available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
+      available_shares = asset( delegator.voting_manabar.current_mana, vesting_shares.symbol );
       if( gpo.downvote_pool_percent )
       {
          available_downvote_shares = asset(
             ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
-            + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+            + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, vesting_shares.symbol );
       }
       else
       {
@@ -3196,26 +3196,30 @@ void delegate_vesting_shares_helper( database& _db, const AccountType& delegator
          auto weekly_withdraw = asset( std::min(
             delegator.vesting_withdraw_rate.amount.value,           // Weekly amount
             delegator.to_withdraw.value - delegator.withdrawn.value   // Or remainder
-            ), VESTS_SYMBOL );
+            ), vesting_shares.symbol );
 
-         available_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
-         available_downvote_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+         available_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
+         available_downvote_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
       }
    }
    else
    {
-      available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+      available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
    }
 
-   const auto& wso = _db.get_witness_schedule_object();
-
    // HF 20 increase fee meaning by 30x, reduce these thresholds to compensate.
-   auto min_delegation = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
-      asset( wso.median_props.account_creation_fee.amount / 3, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
-      asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
-   auto min_update = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
-      asset( wso.median_props.account_creation_fee.amount / 30, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
-      wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+   asset min_delegation = asset( 0, vesting_shares.symbol );
+   asset min_update     = asset( 0, vesting_shares.symbol );
+   if ( vesting_shares.symbol == VESTS_SYMBOL )
+   {
+      const auto& wso = _db.get_witness_schedule_object();
+      min_delegation = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+         asset( wso.median_props.account_creation_fee.amount / 3, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+         asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
+      min_update = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+         asset( wso.median_props.account_creation_fee.amount / 30, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+         wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+   }
 
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
@@ -3375,9 +3379,31 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    }
    else
    {
-      const auto& delegator = _db.get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, op.vesting_shares.symbol.get_paired_symbol() ) );
-      const auto& delegatee = _db.get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
-      delegate_vesting_shares_helper( _db, delegator, delegatee, op.vesting_shares );
+      const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, op.vesting_shares.symbol.get_paired_symbol() ) );
+
+      if ( delegator == nullptr )
+      {
+         delegator = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
+         {
+            account_balance.initialize_assets( op.vesting_shares.symbol.get_paired_symbol() );
+            account_balance.name = op.delegator;
+            account_balance.validate();
+         } );
+      }
+
+      const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
+
+      if ( delegatee == nullptr )
+      {
+         delegatee = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
+         {
+            account_balance.initialize_assets( op.vesting_shares.symbol.get_paired_symbol() );
+            account_balance.name = op.delegatee;
+            account_balance.validate();
+         } );
+      }
+
+      delegate_vesting_shares_helper( _db, *delegator, *delegatee, op.vesting_shares );
    }
 }
 
