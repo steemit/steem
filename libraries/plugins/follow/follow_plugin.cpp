@@ -67,7 +67,7 @@ struct pre_operation_visitor
 
          if( cv != cv_idx.end() )
          {
-            auto rep_delta = ( cv->rshares >> 6 );
+            auto rep_delta = ( cv->rshares >> STEEM_PRECISION_VESTS );
 
             const auto& rep_idx = db.get_index< reputation_index, by_account >();
             auto voter_rep = rep_idx.find( op.voter );
@@ -89,7 +89,7 @@ struct pre_operation_visitor
                {
                   db.modify( *author_rep, [&]( reputation_object& r )
                   {
-                     r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+                     r.reputation -= ( cv->rshares >> STEEM_PRECISION_VESTS ); // Shift away precision from vests. It is noise
                   });
                }
             }
@@ -187,7 +187,7 @@ struct post_operation_visitor
             db.create< reputation_object >( [&]( reputation_object& r )
             {
                r.account = op.author;
-               r.reputation = ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+               r.reputation = ( cv->rshares >> STEEM_PRECISION_VESTS ); // Shift away precision from vests. It is noise
             });
          }
          else
@@ -197,7 +197,7 @@ struct post_operation_visitor
 
             db.modify( *author_rep, [&]( reputation_object& r )
             {
-               r.reputation += ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+               r.reputation += ( cv->rshares >> STEEM_PRECISION_VESTS ); // Shift away precision from vests. It is noise
             });
          }
       }

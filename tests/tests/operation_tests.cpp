@@ -1253,7 +1253,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_TEST_MESSAGE( "--- Test mana charge when changing to downvote" );
          {
             generate_block();
-            //const auto& gpo = db->get_dynamic_global_properties();
             const auto& sam = db->get_account( "sam" );
             old_manabar = sam.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam );
@@ -1270,7 +1269,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
             db->push_transaction( tx, 0 );
 
             new_rshares = ( ( uint128_t( old_manabar.current_mana ) * 50 * STEEM_1_PERCENT + votes_per_period - 1 ) / ( votes_per_period * STEEM_100_PERCENT ) ).to_int64();
-            //new_rshares = ( ( uint128_t( old_downvote_manabar.current_mana ) * 50 * STEEM_1_PERCENT + votes_per_period - 1 ) / ( votes_per_period * gpo.downvote_pool_percent ) ).to_int64();
 
             BOOST_REQUIRE( sam.voting_manabar.current_mana == old_manabar.current_mana );
             BOOST_REQUIRE( sam.downvote_manabar.current_mana == old_downvote_manabar.current_mana - new_rshares );
@@ -1279,7 +1277,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_TEST_MESSAGE( "--- Test mana charge when increasing downvote" );
          {
             generate_block();
-            //const auto& gpo = db->get_dynamic_global_properties();
             const auto& sam = db->get_account( "sam" );
             old_manabar = sam.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam );

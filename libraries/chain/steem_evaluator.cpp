@@ -2067,7 +2067,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
          a.last_vote_time = _db.head_block_time();
       });
 
-      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       const auto& root = _db.get( comment.root_comment );
 
       auto old_vote_rshares = comment.vote_rshares;
@@ -2193,7 +2192,6 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
          a.last_vote_time = _db.head_block_time();
       });
 
-      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       const auto& root = _db.get( comment.root_comment );
 
       _db.modify( comment, [&]( comment_object& c )
