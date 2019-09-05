@@ -1890,7 +1890,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
          }
 
          for( auto& item : proxy_set )
-         {
+         { try {
             uint128_t weight( item->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
@@ -1913,12 +1913,12 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                #endif
                post_push_virtual_operation( vop );
             }
-         }
+         } FC_CAPTURE_AND_RETHROW( (*item) ) }
       }
       max_rewards -= unclaimed_rewards;
 
       return unclaimed_rewards;
-   } FC_CAPTURE_AND_RETHROW()
+   } FC_CAPTURE_AND_RETHROW( (max_rewards) )
 }
 
 void fill_comment_reward_context_local_state( util::comment_reward_context& ctx, const comment_object& comment )
@@ -2090,7 +2090,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       }
 
       return claimed_reward;
-   } FC_CAPTURE_AND_RETHROW( (comment) )
+   } FC_CAPTURE_AND_RETHROW( (comment)(ctx) )
 }
 
 void database::process_comment_cashout()
@@ -4368,6 +4368,7 @@ void database::clear_expired_delegations()
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
+      try{
       pre_push_virtual_operation( vop );
 
       modify( get_account( itr->delegator ), [&]( account_object& a )
@@ -4389,7 +4390,7 @@ void database::clear_expired_delegations()
 
       remove( *itr );
       itr = delegations_by_exp.begin();
-   }
+   } FC_CAPTURE_AND_RETHROW( (vop) ) }
 }
 
 template< typename smt_balance_object_type, class balance_operator_type >
@@ -4930,10 +4931,13 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
+   _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
 #endif
 
 
@@ -5342,6 +5346,8 @@ void database::apply_hardfork( uint32_t hardfork )
          });
       }
       break;
+      case STEEM_HARDFORK_0_22:
+         break;
       case STEEM_SMT_HARDFORK:
       {
          replenish_nai_pool( *this );
