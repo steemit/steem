@@ -3633,7 +3633,7 @@ void generic_delegate_vesting_shares_evaluator(
    const AccountType& delegator,
    const AccountType& delegatee,
    const asset& vesting_shares,
-   uint32_t voting_regeneration_period_seconds  )
+   uint32_t vote_regeneration_period_seconds  )
 {
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( delegator.name, delegatee.name, vesting_shares.symbol.get_paired_symbol() ) );
 
@@ -3648,7 +3648,7 @@ void generic_delegate_vesting_shares_evaluator(
 
       _db.modify( delegator, [&]( AccountType& a )
       {
-         util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+         util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, vesting_shares.symbol );
@@ -3761,7 +3761,7 @@ void generic_delegate_vesting_shares_evaluator(
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), vesting_shares.amount.value );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), vesting_shares.amount.value );
          }
 
          a.received_vesting_shares += vesting_shares;
@@ -3803,7 +3803,7 @@ void generic_delegate_vesting_shares_evaluator(
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
          }
 
          a.received_vesting_shares += delta;
@@ -3840,7 +3840,7 @@ void generic_delegate_vesting_shares_evaluator(
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
          {
-            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
          }
 
          a.received_vesting_shares -= delta;

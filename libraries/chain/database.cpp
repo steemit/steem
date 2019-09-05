@@ -4359,7 +4359,11 @@ void database::clear_expired_orders()
 }
 
 template< class AccountType >
-void generic_clear_expired_delegations( database& db, const AccountType& account, const vesting_delegation_expiration_object& o )
+void generic_clear_expired_delegations(
+   database& db,
+   const AccountType& account,
+   const vesting_delegation_expiration_object& o,
+   uint32_t vote_regeneration_period_seconds )
 {
    const auto& gpo = db.get_dynamic_global_properties();
    db.modify( account, [&]( AccountType& a )
@@ -4369,7 +4373,7 @@ void generic_clear_expired_delegations( database& db, const AccountType& account
          util::update_manabar(
             gpo,
             a,
-            STEEM_VOTING_MANA_REGENERATION_SECONDS,
+            vote_regeneration_period_seconds,
             db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
             o.vesting_shares.amount.value );
       }
@@ -4392,13 +4396,14 @@ void database::clear_expired_delegations()
 
       if ( itr->vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
       {
-         generic_clear_expired_delegations( *this, get_account( itr->delegator ), *itr );
+         generic_clear_expired_delegations( *this, get_account( itr->delegator ), *itr, STEEM_VOTING_MANA_REGENERATION_SECONDS );
       }
       else
       {
+         const auto& token = get< smt_token_object, by_symbol >( itr->vesting_shares.symbol.get_paired_symbol() );
          auto key = boost::make_tuple( itr->delegator, itr->vesting_shares.symbol.get_paired_symbol() );
          const auto& account = get< account_regular_balance_object, by_name_liquid_symbol >( key );
-         generic_clear_expired_delegations( *this, account, *itr );
+         generic_clear_expired_delegations( *this, account, *itr, token.vote_regeneration_period_seconds );
       }
 
       post_push_virtual_operation( vop );
