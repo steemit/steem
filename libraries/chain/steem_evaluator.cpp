@@ -3144,7 +3144,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 }
 
 template < class AccountType >
-void delegate_vesting_shares_helper( database& _db, const AccountType& delegator, const AccountType& delegatee, const asset& vesting_shares  )
+void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType& delegator, const AccountType& delegatee, const asset& vesting_shares  )
 {
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( delegator.name, delegatee.name, vesting_shares.symbol ) );
 
@@ -3375,21 +3375,13 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    {
       const auto& delegator = _db.get_account( op.delegator );
       const auto& delegatee = _db.get_account( op.delegatee );
-      delegate_vesting_shares_helper( _db, delegator, delegatee, op.vesting_shares );
+      generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares );
    }
    else
    {
       const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, op.vesting_shares.symbol.get_paired_symbol() ) );
 
-      if ( delegator == nullptr )
-      {
-         delegator = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
-         {
-            account_balance.initialize_assets( op.vesting_shares.symbol.get_paired_symbol() );
-            account_balance.name = op.delegator;
-            account_balance.validate();
-         } );
-      }
+      FC_ASSERT( delegator != nullptr, "Account ${acc} does not have enough mana to delegate.", ("acc", op.delegator) );
 
       const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
 
@@ -3403,7 +3395,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          } );
       }
 
-      delegate_vesting_shares_helper( _db, *delegator, *delegatee, op.vesting_shares );
+      generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares );
    }
 }
 

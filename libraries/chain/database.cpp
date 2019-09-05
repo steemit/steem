@@ -4357,7 +4357,7 @@ void database::clear_expired_orders()
 }
 
 template< class AccountType >
-void clear_expired_delegations_helper( database& db, const AccountType& account, const vesting_delegation_expiration_object& o )
+void generic_clear_expired_delegations( database& db, const AccountType& account, const vesting_delegation_expiration_object& o )
 {
    const auto& gpo = db.get_dynamic_global_properties();
    db.modify( account, [&]( AccountType& a )
@@ -4388,13 +4388,13 @@ void database::clear_expired_delegations()
 
       if ( itr->vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
       {
-         clear_expired_delegations_helper( *this, get_account( itr->delegator ), *itr );
+         generic_clear_expired_delegations( *this, get_account( itr->delegator ), *itr );
       }
       else
       {
          auto key = boost::make_tuple( itr->delegator, itr->vesting_shares.symbol.get_paired_symbol() );
          const auto& account = get< account_regular_balance_object, by_name_liquid_symbol >( key );
-         clear_expired_delegations_helper( *this, account, *itr );
+         generic_clear_expired_delegations( *this, account, *itr );
       }
 
       post_push_virtual_operation( vop );
