@@ -4,7 +4,6 @@
 #include <steem/chain/util/manabar.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
-#include <steem/chain/util/manabar.hpp>
 
 namespace steem { namespace chain {
 
