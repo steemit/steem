@@ -1299,6 +1299,7 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
                util::update_manabar(
                   cprops,
                   a,
+                  STEEM_VOTING_MANA_REGENERATION_SECONDS,
                   db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
                   new_vesting.amount.value );
             });
@@ -1878,7 +1879,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
       }
       else if( c.total_vote_weight > 0 )
       {
-         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
+         const auto& cvidx = get_index< comment_vote_index, by_comment_symbol_voter >();
          auto itr = cvidx.lower_bound( c.id );
 
          std::set< const comment_vote_object*, cmp > proxy_set;
@@ -1889,7 +1890,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
          }
 
          for( auto& item : proxy_set )
-         {
+         { try {
             uint128_t weight( item->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
             if( claim > 0 ) // min_amt is non-zero satoshis
@@ -1912,12 +1913,12 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
                #endif
                post_push_virtual_operation( vop );
             }
-         }
+         } FC_CAPTURE_AND_RETHROW( (*item) ) }
       }
       max_rewards -= unclaimed_rewards;
 
       return unclaimed_rewards;
-   } FC_CAPTURE_AND_RETHROW()
+   } FC_CAPTURE_AND_RETHROW( (max_rewards) )
 }
 
 void fill_comment_reward_context_local_state( util::comment_reward_context& ctx, const comment_object& comment )
@@ -2067,7 +2068,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
       push_virtual_operation( comment_payout_update_operation( comment.author, to_string( comment.permlink ) ) );
 
-      const auto& vote_idx = get_index< comment_vote_index >().indices().get< by_comment_voter >();
+      const auto& vote_idx = get_index< comment_vote_index, by_comment_voter_symbol >();
       auto vote_itr = vote_idx.lower_bound( comment.id );
       while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )
       {
@@ -2089,7 +2090,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       }
 
       return claimed_reward;
-   } FC_CAPTURE_AND_RETHROW( (comment) )
+   } FC_CAPTURE_AND_RETHROW( (comment)(ctx) )
 }
 
 void database::process_comment_cashout()
@@ -2676,6 +2677,7 @@ uint32_t database::last_non_undoable_block_num() const
 void database::initialize_evaluators()
 {
    _my->_evaluator_registry.register_evaluator< vote_evaluator                           >();
+   _my->_evaluator_registry.register_evaluator< vote2_evaluator                          >();
    _my->_evaluator_registry.register_evaluator< comment_evaluator                        >();
    _my->_evaluator_registry.register_evaluator< comment_options_evaluator                >();
    _my->_evaluator_registry.register_evaluator< delete_comment_evaluator                 >();
@@ -4367,6 +4369,7 @@ void generic_clear_expired_delegations( database& db, const AccountType& account
          util::update_manabar(
             gpo,
             a,
+            STEEM_VOTING_MANA_REGENERATION_SECONDS,
             db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
             o.vesting_shares.amount.value );
       }
@@ -4384,6 +4387,7 @@ void database::clear_expired_delegations()
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
       operation vop = return_vesting_delegation_operation( itr->delegator, itr->vesting_shares );
+      try{
       pre_push_virtual_operation( vop );
 
       if ( itr->vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
@@ -4401,7 +4405,7 @@ void database::clear_expired_delegations()
 
       remove( *itr );
       itr = delegations_by_exp.begin();
-   }
+   } FC_CAPTURE_AND_RETHROW( (vop) ) }
 }
 
 template< typename smt_balance_object_type, class balance_operator_type >
@@ -4942,10 +4946,13 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
+   _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
 #endif
 
 
@@ -5354,6 +5361,8 @@ void database::apply_hardfork( uint32_t hardfork )
          });
       }
       break;
+      case STEEM_HARDFORK_0_22:
+         break;
       case STEEM_SMT_HARDFORK:
       {
          replenish_nai_pool( *this );
@@ -5361,6 +5370,7 @@ void database::apply_hardfork( uint32_t hardfork )
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
+            gpo.target_votes_per_period = STEEM_VOTES_PER_PERIOD_SMT_HF;
          });
 
          break;
@@ -5552,7 +5562,7 @@ void database::validate_smt_invariants()const
       // Get total balances.
       typedef struct {
          asset liquid;
-         asset vesting;
+         asset vesting_shares;
          asset pending_liquid;
          asset pending_vesting_shares;
          asset pending_vesting_value;
@@ -5572,7 +5582,7 @@ void database::validate_smt_invariants()const
             {
             TCombinedBalance& existing_balance = insertInfo.first->second;
             existing_balance.liquid += regular.liquid;
-            existing_balance.vesting += regular.vesting_shares;
+            existing_balance.vesting_shares += regular.vesting_shares;
             }
       });
 
@@ -5641,7 +5651,7 @@ void database::validate_smt_invariants()const
                     "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
          // Check vesting SMT supply.
          asset total_vesting_supply = totalIt == theMap.end() ? asset(0, vesting_symbol) :
-            ( totalIt->second.vesting + totalIt->second.pending_vesting_shares );
+            ( totalIt->second.vesting_shares + totalIt->second.pending_vesting_shares );
          asset smt_vesting_supply = asset(smt.total_vesting_shares + smt.pending_rewarded_vesting_shares, vesting_symbol);
          FC_ASSERT( smt_vesting_supply == total_vesting_supply,
                     "", ("smt vesting supply",smt_vesting_supply)("total_vesting_supply",total_vesting_supply) );

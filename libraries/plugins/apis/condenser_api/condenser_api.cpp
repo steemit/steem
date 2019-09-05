@@ -1267,11 +1267,11 @@ namespace detail
 
       vector< tags::vote_state > votes;
       const auto& comment = _db.get_comment( args[0].as< account_name_type >(), args[1].as< string >() );
-      const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+      const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_symbol_voter >();
       chain::comment_id_type cid(comment.id);
-      auto itr = idx.lower_bound( cid );
+      auto itr = idx.lower_bound( boost::make_tuple( cid, STEEM_SYMBOL ) );
 
-      while( itr != idx.end() && itr->comment == cid )
+      while( itr != idx.end() && itr->comment == cid && itr->symbol == STEEM_SYMBOL )
       {
          const auto& vo = _db.get( itr->voter );
          tags::vote_state vstate;
@@ -1305,11 +1305,11 @@ namespace detail
       vector< account_vote > result;
 
       const auto& voter_acnt = _db.get_account( voter );
-      const auto& idx = _db.get_index< comment_vote_index, by_voter_comment >();
+      const auto& idx = _db.get_index< comment_vote_index, by_voter_symbol_comment >();
 
       account_id_type aid( voter_acnt.id );
-      auto itr = idx.lower_bound( aid );
-      auto end = idx.upper_bound( aid );
+      auto itr = idx.lower_bound( boost::make_tuple( aid, STEEM_SYMBOL ) );
+      auto end = idx.upper_bound( boost::make_tuple( aid, STEEM_SYMBOL ) );
       while( itr != end )
       {
          const auto& vo = _db.get( itr->comment );

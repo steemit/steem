@@ -73,6 +73,7 @@ namespace steem { namespace protocol {
 
             /// SMT operations
             claim_reward_balance2_operation,
+            vote2_operation,
 
             smt_setup_operation,
             smt_setup_emissions_operation,

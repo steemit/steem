@@ -4,6 +4,7 @@
 #include <steem/chain/util/manabar.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
+#include <steem/chain/util/manabar.hpp>
 
 namespace steem { namespace chain {
 
@@ -16,7 +17,7 @@ class account_regular_balance_object : public object< account_regular_balance_ob
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_regular_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_regular_balance_object(Constructor&& c, allocator< Allocator > a)
    {
@@ -39,6 +40,8 @@ public:
    util::manabar       voting_manabar;
    util::manabar       downvote_manabar;
 
+   fc::time_point_sec  last_vote_time;
+
    asset_symbol_type get_liquid_symbol() const
    {
       return liquid.symbol;
@@ -53,10 +56,10 @@ public:
       vesting_withdraw_rate    = asset( 0, liquid_symbol.get_paired_symbol() );
    }
 
-   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+   void add_vesting( const asset& shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
-      this->vesting_shares += vesting_shares;
+      vesting_shares += shares;
    }
 
    bool validate() const
@@ -78,7 +81,7 @@ class account_rewards_balance_object : public object< account_rewards_balance_ob
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_rewards_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_rewards_balance_object(Constructor&& c, allocator< Allocator > a)
    {
@@ -174,6 +177,7 @@ FC_REFLECT( steem::chain::account_regular_balance_object,
    (to_withdraw)
    (voting_manabar)
    (downvote_manabar)
+   (last_vote_time)
 )
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,

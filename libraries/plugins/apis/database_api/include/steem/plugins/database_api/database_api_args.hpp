@@ -56,7 +56,11 @@ enum sort_order_type
    by_voter_proposal,
    by_proposal_voter,
    by_contributor,
-   by_symbol_id
+   by_symbol_id,
+   by_comment_voter_symbol,
+   by_voter_comment_symbol,
+   by_comment_symbol_voter,
+   by_voter_symbol_comment
 };
 
 enum order_direction_type
@@ -403,6 +407,7 @@ struct find_votes_args
 {
    account_name_type author;
    string            permlink;
+   asset_symbol_type symbol = STEEM_SYMBOL;
 };
 
 typedef list_votes_return find_votes_return;
@@ -663,7 +668,11 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_voter_proposal)
    (by_proposal_voter)
    (by_contributor)
-   (by_symbol_id) )
+   (by_symbol_id)
+   (by_comment_voter_symbol)
+   (by_voter_comment_symbol)
+   (by_comment_symbol_voter)
+   (by_voter_symbol_comment) )
 
 FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
   (ascending)
@@ -767,7 +776,7 @@ FC_REFLECT( steem::plugins::database_api::list_votes_return,
    (votes) )
 
 FC_REFLECT( steem::plugins::database_api::find_votes_args,
-   (author)(permlink) )
+   (author)(permlink)(symbol) )
 
 FC_REFLECT( steem::plugins::database_api::list_limit_orders_return,
    (orders) )
