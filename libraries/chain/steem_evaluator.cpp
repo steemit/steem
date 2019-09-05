@@ -3371,32 +3371,35 @@ void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
-   if ( op.vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
+   try
    {
-      const auto& delegator = _db.get_account( op.delegator );
-      const auto& delegatee = _db.get_account( op.delegatee );
-      generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares );
-   }
-   else
-   {
-      const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, op.vesting_shares.symbol.get_paired_symbol() ) );
-
-      FC_ASSERT( delegator != nullptr, "Account ${acc} does not have enough mana to delegate.", ("acc", op.delegator) );
-
-      const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
-
-      if ( delegatee == nullptr )
+      if ( op.vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
       {
-         delegatee = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
-         {
-            account_balance.initialize_assets( op.vesting_shares.symbol.get_paired_symbol() );
-            account_balance.name = op.delegatee;
-            account_balance.validate();
-         } );
+         const auto& delegator = _db.get_account( op.delegator );
+         const auto& delegatee = _db.get_account( op.delegatee );
+         generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares );
       }
+      else
+      {
+         auto liquid_symbol = op.vesting_shares.symbol.get_paired_symbol();
+         const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, liquid_symbol ) );
+         FC_ASSERT( delegator != nullptr, "Account ${acc} does not have a balance for the given symbol. Symbol: ${sym}", ("acc", op.delegator)("sym", liquid_symbol) );
 
-      generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares );
-   }
+         const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, liquid_symbol ) );
+
+         if ( delegatee == nullptr )
+         {
+            delegatee = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
+            {
+               account_balance.initialize_assets( liquid_symbol );
+               account_balance.name = op.delegatee;
+               account_balance.validate();
+            } );
+         }
+
+         generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares );
+      }
+   } FC_CAPTURE_AND_RETHROW( (op) )
 }
 
 } } // steem::chain
