@@ -243,6 +243,19 @@ namespace steem { namespace protocol {
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(voter); }
    };
 
+   struct vote2_operation : public base_operation
+   {
+      account_name_type    voter;
+      account_name_type    author;
+      string               permlink;
+
+      flat_map< asset_symbol_type, int64_t > rshares;
+
+      extensions_type      extensions;
+
+      void validate()const;
+      void get_required_posting_authorities( flat_set< account_name_type >& a )const { a.insert( voter ); }
+   };
 
    /**
     * @ingroup operations
@@ -1118,6 +1131,7 @@ FC_REFLECT( steem::protocol::account_witness_vote_operation, (account)(witness)(
 FC_REFLECT( steem::protocol::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steem::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
 FC_REFLECT( steem::protocol::vote_operation, (voter)(author)(permlink)(weight) )
+FC_REFLECT( steem::protocol::vote2_operation, (voter)(author)(permlink)(rshares)(extensions) )
 FC_REFLECT( steem::protocol::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steem::protocol::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steem::protocol::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )

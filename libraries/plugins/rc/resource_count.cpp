@@ -148,9 +148,14 @@ struct count_operation_visitor
 
    void operator()( const vote_operation& op )const
    {
-      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
       state_bytes_count += _w.comment_vote_object_base_size;
       execution_time_count += _e.vote_operation_exec_time;
+   }
+
+   void operator()( const vote2_operation& op )const
+   {
+      state_bytes_count += _w.comment_vote_object_base_size * op.rshares.size();
+      execution_time_count += _e.vote_operation_exec_time * op.rshares.size();
    }
 
    void operator()( const witness_update_operation& op )const

@@ -696,7 +696,7 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    if( bo == nullptr )
       return asset( 0, vested_symbol );
 
-   return bo->vesting;
+   return bo->vesting_shares;
 }
 
 uint32_t database::witness_participation_rate()const
@@ -1299,8 +1299,8 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
                util::update_manabar(
                   cprops,
                   a,
+                  STEEM_VOTING_MANA_REGENERATION_SECONDS,
                   db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
-                  db.head_block_num() > STEEM_HF_21_STALL_BLOCK,
                   new_vesting.amount.value );
             });
          }
@@ -1668,9 +1668,9 @@ void database::process_vesting_withdrawals()
       const auto& token = get< smt_token_object, by_symbol >( iter->get_liquid_symbol() );
       share_type to_withdraw;
       if ( iter->to_withdraw - iter->withdrawn < iter->vesting_withdraw_rate.amount )
-         to_withdraw = std::min( iter->vesting.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->to_withdraw % iter->vesting_withdraw_rate.amount ).value;
       else
-         to_withdraw = std::min( iter->vesting.amount, iter->vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( iter->vesting_shares.amount, iter->vesting_withdraw_rate.amount ).value;
 
       auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
       auto converted_token = withdraw_token * token.get_vesting_share_price();
@@ -1681,11 +1681,11 @@ void database::process_vesting_withdrawals()
 
       modify( *iter, [&]( account_regular_balance_object& a )
       {
-         a.vesting   -= withdraw_token;
-         a.liquid    += converted_token;
-         a.withdrawn += to_withdraw;
+         a.vesting_shares  -= withdraw_token;
+         a.liquid          += converted_token;
+         a.withdrawn       += to_withdraw;
 
-         if ( a.withdrawn >= a.to_withdraw || a.vesting.amount == 0 )
+         if ( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
          {
             a.vesting_withdraw_rate.amount = 0;
             a.next_vesting_withdrawal      = fc::time_point_sec::maximum();
@@ -1879,7 +1879,7 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
       }
       else if( c.total_vote_weight > 0 )
       {
-         const auto& cvidx = get_index<comment_vote_index>().indices().get<by_comment_voter>();
+         const auto& cvidx = get_index< comment_vote_index, by_comment_symbol_voter >();
          auto itr = cvidx.lower_bound( c.id );
 
          std::set< const comment_vote_object*, cmp > proxy_set;
@@ -2068,7 +2068,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
       push_virtual_operation( comment_payout_update_operation( comment.author, to_string( comment.permlink ) ) );
 
-      const auto& vote_idx = get_index< comment_vote_index >().indices().get< by_comment_voter >();
+      const auto& vote_idx = get_index< comment_vote_index, by_comment_voter_symbol >();
       auto vote_itr = vote_idx.lower_bound( comment.id );
       while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )
       {
@@ -2677,6 +2677,7 @@ uint32_t database::last_non_undoable_block_num() const
 void database::initialize_evaluators()
 {
    _my->_evaluator_registry.register_evaluator< vote_evaluator                           >();
+   _my->_evaluator_registry.register_evaluator< vote2_evaluator                          >();
    _my->_evaluator_registry.register_evaluator< comment_evaluator                        >();
    _my->_evaluator_registry.register_evaluator< comment_options_evaluator                >();
    _my->_evaluator_registry.register_evaluator< delete_comment_evaluator                 >();
@@ -4377,8 +4378,8 @@ void database::clear_expired_delegations()
             util::update_manabar(
                gpo,
                a,
+               STEEM_VOTING_MANA_REGENERATION_SECONDS,
                has_hardfork( STEEM_HARDFORK_0_21__3336 ),
-               head_block_num() > STEEM_HF_21_STALL_BLOCK,
                itr->vesting_shares.amount.value );
          }
 
@@ -4557,14 +4558,14 @@ struct smt_regular_balance_operator
    void add_to_balance( account_regular_balance_object& smt_balance )
    {
       if( is_vesting )
-         smt_balance.vesting += delta;
+         smt_balance.vesting_shares += delta;
       else
          smt_balance.liquid += delta;
    }
    int64_t get_combined_balance( const account_regular_balance_object* bo, bool* is_all_zero )
    {
-      asset result = is_vesting ? bo->vesting + delta : bo->liquid + delta;
-      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting.amount.value) == 0;
+      asset result = is_vesting ? bo->vesting_shares + delta : bo->liquid + delta;
+      *is_all_zero = result.amount.value == 0 && (is_vesting ? bo->liquid.amount.value : bo->vesting_shares.amount.value) == 0;
       return result.amount.value;
    }
 
@@ -4814,7 +4815,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
          }
          else
          {
-            return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+            return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
          }
       }
    }
@@ -4833,7 +4834,7 @@ asset database::get_balance( const account_name_type& name, asset_symbol_type sy
       }
       else
       {
-         return symbol.is_vesting() ? arbo->vesting : arbo->liquid;
+         return symbol.is_vesting() ? arbo->vesting_shares : arbo->liquid;
       }
    }
    return get_balance( get_account( name ), symbol );
@@ -5354,6 +5355,7 @@ void database::apply_hardfork( uint32_t hardfork )
          modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
             gpo.required_actions_partition_percent = 25 * STEEM_1_PERCENT;
+            gpo.target_votes_per_period = STEEM_VOTES_PER_PERIOD_SMT_HF;
          });
 
          break;
@@ -5545,7 +5547,7 @@ void database::validate_smt_invariants()const
       // Get total balances.
       typedef struct {
          asset liquid;
-         asset vesting;
+         asset vesting_shares;
          asset pending_liquid;
          asset pending_vesting_shares;
          asset pending_vesting_value;
@@ -5558,14 +5560,14 @@ void database::validate_smt_invariants()const
       add_from_balance_index( balance_idx, [ &theMap ] ( const account_regular_balance_object& regular )
       {
          asset zero_liquid = asset( 0, regular.liquid.symbol );
-         asset zero_vesting = asset( 0, regular.vesting.symbol );
+         asset zero_vesting = asset( 0, regular.vesting_shares.symbol );
          auto insertInfo = theMap.emplace( regular.liquid.symbol,
-            TCombinedBalance( { regular.liquid, regular.vesting, zero_liquid, zero_vesting, zero_liquid } ) );
+            TCombinedBalance( { regular.liquid, regular.vesting_shares, zero_liquid, zero_vesting, zero_liquid } ) );
          if( insertInfo.second == false )
             {
             TCombinedBalance& existing_balance = insertInfo.first->second;
             existing_balance.liquid += regular.liquid;
-            existing_balance.vesting += regular.vesting;
+            existing_balance.vesting_shares += regular.vesting_shares;
             }
       });
 
@@ -5634,7 +5636,7 @@ void database::validate_smt_invariants()const
                     "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
          // Check vesting SMT supply.
          asset total_vesting_supply = totalIt == theMap.end() ? asset(0, vesting_symbol) :
-            ( totalIt->second.vesting + totalIt->second.pending_vesting_shares );
+            ( totalIt->second.vesting_shares + totalIt->second.pending_vesting_shares );
          asset smt_vesting_supply = asset(smt.total_vesting_shares + smt.pending_rewarded_vesting_shares, vesting_symbol);
          FC_ASSERT( smt_vesting_supply == total_vesting_supply,
                     "", ("smt vesting supply",smt_vesting_supply)("total_vesting_supply",total_vesting_supply) );

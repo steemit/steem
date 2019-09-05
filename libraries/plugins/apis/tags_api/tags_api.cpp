@@ -508,10 +508,10 @@ DEFINE_API_IMPL( tags_api_impl, get_active_votes )
 {
    get_active_votes_return result;
    const auto& comment = _db.get_comment( args.author, args.permlink );
-   const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+   const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_symbol_voter >();
    chain::comment_id_type cid(comment.id);
-   auto itr = idx.lower_bound( cid );
-   while( itr != idx.end() && itr->comment == cid )
+   auto itr = idx.lower_bound( boost::make_tuple( cid, STEEM_SYMBOL ) );
+   while( itr != idx.end() && itr->comment == cid && itr->symbol == STEEM_SYMBOL )
    {
       const auto& vo = _db.get( itr->voter );
       vote_state vstate;
