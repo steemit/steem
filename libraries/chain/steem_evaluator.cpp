@@ -3628,9 +3628,14 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 }
 
 template < class AccountType >
-void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType& delegator, const AccountType& delegatee, const asset& vesting_shares  )
+void generic_delegate_vesting_shares_evaluator(
+   database& _db,
+   const AccountType& delegator,
+   const AccountType& delegatee,
+   const asset& vesting_shares,
+   uint32_t voting_regeneration_period_seconds  )
 {
-   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( delegator.name, delegatee.name, vesting_shares.symbol ) );
+   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( delegator.name, delegatee.name, vesting_shares.symbol.get_paired_symbol() ) );
 
    const auto& gpo = _db.get_dynamic_global_properties();
 
@@ -3643,7 +3648,7 @@ void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType
 
       _db.modify( delegator, [&]( AccountType& a )
       {
-         util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+         util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
       });
 
       available_shares = asset( delegator.voting_manabar.current_mana, vesting_shares.symbol );
@@ -3756,7 +3761,7 @@ void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), vesting_shares.amount.value );
+            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), vesting_shares.amount.value );
          }
 
          a.received_vesting_shares += vesting_shares;
@@ -3798,7 +3803,7 @@ void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
+            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
          }
 
          a.received_vesting_shares += delta;
@@ -3835,7 +3840,7 @@ void generic_delegate_vesting_shares_evaluator( database& _db, const AccountType
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+            util::update_manabar( gpo, a, voting_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
          }
 
          a.received_vesting_shares -= delta;
@@ -3890,27 +3895,27 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          const auto& delegator = _db.get_account( op.delegator );
          const auto& delegatee = _db.get_account( op.delegatee );
-         generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares );
+         generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares, STEEM_VOTING_MANA_REGENERATION_SECONDS );
       }
       else
       {
-         auto liquid_symbol = op.vesting_shares.symbol.get_paired_symbol();
-         const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, liquid_symbol ) );
-         FC_ASSERT( delegator != nullptr, "Account ${acc} does not have a balance for the given symbol. Symbol: ${sym}", ("acc", op.delegator)("sym", liquid_symbol) );
+         const auto& token = _db.get< smt_token_object, by_symbol >( op.vesting_shares.symbol.get_paired_symbol() );
+         const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, token.liquid_symbol ) );
+         FC_ASSERT( delegator != nullptr, "Account ${acc} does not have a balance for the given symbol. Symbol: ${sym}", ("acc", op.delegator)("sym", token.liquid_symbol) );
 
-         const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, liquid_symbol ) );
+         const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, token.liquid_symbol ) );
 
          if ( delegatee == nullptr )
          {
             delegatee = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
             {
-               account_balance.initialize_assets( liquid_symbol );
+               account_balance.initialize_assets( token.liquid_symbol );
                account_balance.name = op.delegatee;
                account_balance.validate();
             } );
          }
 
-         generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares );
+         generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares, token.vote_regeneration_period_seconds );
       }
    } FC_CAPTURE_AND_RETHROW( (op) )
 }

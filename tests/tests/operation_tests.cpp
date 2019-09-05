@@ -6735,7 +6735,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       BOOST_REQUIRE( bob_acc.downvote_manabar.current_mana == old_bob_downvote_manabar.current_mana + op.vesting_shares.amount.value / 4 );
 
       BOOST_TEST_MESSAGE( "--- Test that the delegation object is correct. " );
-      auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+      auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, STEEM_SYMBOL ) );
 
 
       BOOST_REQUIRE( delegation != nullptr );
@@ -6969,7 +6969,7 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
       BOOST_REQUIRE( exp_obj->expiration == db->head_block_time() + gpo.delegation_return_period );
       BOOST_REQUIRE( db->get_account( "sam" ).delegated_vesting_shares == sam_vest );
       BOOST_REQUIRE( db->get_account( "dave" ).received_vesting_shares == ASSET( "0.000000 VESTS" ) );
-      delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+      delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, STEEM_SYMBOL ) );
       BOOST_REQUIRE( delegation == nullptr );
 
       old_sam_manabar.regenerate_mana( sam_params, db->head_block_time() );

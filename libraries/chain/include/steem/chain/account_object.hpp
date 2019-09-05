@@ -179,9 +179,9 @@ namespace steem { namespace chain {
          asset             vesting_shares;
          time_point_sec    min_delegation_time;
 
-         asset_symbol_type get_vesting_symbol() const
+         asset_symbol_type get_liquid_symbol() const
          {
-            return vesting_shares.symbol;
+            return vesting_shares.symbol.get_paired_symbol();
          }
    };
 
@@ -353,7 +353,7 @@ namespace steem { namespace chain {
             composite_key< vesting_delegation_object,
                member< vesting_delegation_object, account_name_type,        &vesting_delegation_object::delegator >,
                member< vesting_delegation_object, account_name_type,        &vesting_delegation_object::delegatee >,
-               const_mem_fun< vesting_delegation_object, asset_symbol_type, &vesting_delegation_object::get_vesting_symbol >
+               const_mem_fun< vesting_delegation_object, asset_symbol_type, &vesting_delegation_object::get_liquid_symbol >
             >,
             composite_key_compare< std::less< account_name_type >, std::less< account_name_type >, std::less< asset_symbol_type > >
          >

@@ -4694,7 +4694,7 @@ BOOST_AUTO_TEST_CASE( smt_delegate_vesting_shares_apply )
    BOOST_REQUIRE( bob_acc.received_vesting_shares == asset( 1000000000000, symbol.get_paired_symbol() ) );
 
    BOOST_TEST_MESSAGE( "--- Test that the delegation object is correct. " );
-   auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol ) );
+   auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
 
    BOOST_REQUIRE( delegation != nullptr );
    BOOST_REQUIRE( delegation->delegator == op.delegator);
@@ -4870,7 +4870,7 @@ BOOST_AUTO_TEST_CASE( smt_delegate_vesting_shares_apply )
    BOOST_REQUIRE( exp_obj->expiration == db->head_block_time() + gpo.delegation_return_period );
    BOOST_REQUIRE( sam_acc.delegated_vesting_shares == sam_vest );
    BOOST_REQUIRE( dave_acc.received_vesting_shares == asset( 0, symbol.get_paired_symbol() ) );
-   delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol ) );
+   delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
    BOOST_REQUIRE( delegation == nullptr );
 
    generate_blocks( exp_obj->expiration + STEEM_BLOCK_INTERVAL );
