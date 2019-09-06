@@ -724,8 +724,6 @@ struct comment_options_extension_visitor
          }
       }
 
-      auto allowed_vote_assets = _c.allowed_vote_assets;
-
       for( const auto& a : va.votable_assets )
       {
          if( a.second.beneficiaries.beneficiaries.size() )
@@ -735,14 +733,50 @@ struct comment_options_extension_visitor
                auto acc = _db.find< account_object, by_name >( b.account );
                FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
             }
-         }
 
-         allowed_vote_assets.insert_or_assign( a.first, a.second );
+            auto beneficiaries = _db.find< comment_smt_beneficiaries_object, by_comment_symbol >( boost::make_tuple( _c.id, a.first ) );
+
+            if( beneficiaries == nullptr )
+            {
+               _db.create< comment_smt_beneficiaries_object >( [&]( comment_smt_beneficiaries_object& b )
+               {
+                  b.beneficiaries.insert(
+                     b.beneficiaries.end(),
+                     a.second.beneficiaries.beneficiaries.begin(),
+                     a.second.beneficiaries.beneficiaries.end() );
+               });
+            }
+            else
+            {
+               _db.modify( *beneficiaries, [&]( comment_smt_beneficiaries_object& b )
+               {
+                  b.beneficiaries.clear();
+                  b.beneficiaries.insert(
+                     b.beneficiaries.end(),
+                     a.second.beneficiaries.beneficiaries.begin(),
+                     a.second.beneficiaries.beneficiaries.end() );
+               });
+            }
+         }
+         else
+         {
+            auto beneficiaries = _db.find< comment_smt_beneficiaries_object, by_comment_symbol >( boost::make_tuple( _c.id, a.first ) );
+
+            if( beneficiaries != nullptr )
+            {
+               _db.remove( *beneficiaries );
+            }
+         }
       }
 
       _db.modify( _c, [&]( comment_object& c )
       {
-         c.allowed_vote_assets = allowed_vote_assets;
+         for( const auto& a : va.votable_assets )
+         {
+            auto vote_assets = c.allowed_vote_assets[ a.first ];
+            vote_assets.max_accepted_payout = a.second.max_accepted_payout;
+            vote_assets.allow_curation_rewards = a.second.allow_curation_rewards;
+         }
       });
    }
 

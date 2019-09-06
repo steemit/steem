@@ -4485,9 +4485,12 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
 
          BOOST_REQUIRE( alice_comment.allowed_vote_assets.find( alice_symbol ) != alice_comment.allowed_vote_assets.end() );
          const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
+
          BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
          BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
-         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 0 );
+
+         const auto beneficiaries = db->find< comment_smt_beneficiaries_object, by_comment_symbol >( boost::make_tuple( alice_comment.id, alice_symbol ) );
+         BOOST_REQUIRE( beneficiaries == nullptr );
       }
 
 
@@ -4525,7 +4528,10 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
          const auto va_opts = alice_comment.allowed_vote_assets.find( alice_symbol );
          BOOST_REQUIRE( va_opts->second.max_accepted_payout == opts.max_accepted_payout );
          BOOST_REQUIRE( va_opts->second.allow_curation_rewards == opts.allow_curation_rewards );
-         BOOST_REQUIRE( va_opts->second.beneficiaries.beneficiaries.size() == 1 );
+
+         const auto beneficiaries = db->find< comment_smt_beneficiaries_object, by_comment_symbol >( boost::make_tuple( alice_comment.id, alice_symbol ) );
+         BOOST_REQUIRE( beneficiaries != nullptr );
+         BOOST_REQUIRE( beneficiaries->beneficiaries.size() == 1 );
       }
 
 

@@ -53,14 +53,25 @@ namespace steem { namespace chain {
       share_type        author_rewards = 0;
    };
 
+   struct comment_votable_asset_options
+   {
+      share_type  max_accepted_payout    = std::numeric_limits< int64_t >::max();
+      bool        allow_curation_rewards = true;
+   };
+
    class comment_object : public object < comment_object_type, comment_object >
    {
       STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
 
       public:
          template< typename Constructor, typename Allocator >
-         comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a ), allowed_vote_assets( a ), smt_rshares( a )
+         comment_object( Constructor&& c, allocator< Allocator > a ) :
+            category( a ),
+            parent_permlink( a ),
+            permlink( a ),
+            beneficiaries( a ),
+            allowed_vote_assets( a ),
+            smt_rshares( a )
          {
             c( *this );
          }
@@ -114,7 +125,7 @@ namespace steem { namespace chain {
          using t_beneficiaries = t_vector< beneficiary_route_type >;
          t_beneficiaries   beneficiaries;
 
-         using t_votable_assets = t_flat_map< asset_symbol_type, votable_asset_options >;
+         using t_votable_assets = t_flat_map< asset_symbol_type, comment_votable_asset_options >;
          t_votable_assets  allowed_vote_assets;
 
          using t_smt_rshares = t_flat_map< asset_symbol_type, rshare_context >;
@@ -140,6 +151,25 @@ namespace steem { namespace chain {
          shared_string     title;
          shared_string     body;
          shared_string     json_metadata;
+   };
+
+   class comment_smt_beneficiaries_object : public object< comment_smt_beneficiaries_object_type, comment_smt_beneficiaries_object >
+   {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_smt_beneficiaries_object )
+
+      public:
+         template< typename Constructor, typename Allocator >
+         comment_smt_beneficiaries_object( Constructor&& c, allocator< Allocator > a ) :
+            beneficiaries( a )
+         {
+            c( *this );
+         }
+
+         id_type           id;
+
+         comment_id_type   comment;
+         asset_symbol_type smt;
+         t_vector< beneficiary_route_type > beneficiaries;
    };
 
    /**
@@ -289,6 +319,23 @@ namespace steem { namespace chain {
       allocator< comment_content_object >
    > comment_content_index;
 
+   struct by_comment_symbol;
+
+   typedef multi_index_container<
+      comment_smt_beneficiaries_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< comment_smt_beneficiaries_object, comment_smt_beneficiaries_id_type, &comment_smt_beneficiaries_object::id > >,
+         ordered_unique< tag< by_comment_symbol >,
+            composite_key< comment_smt_beneficiaries_object,
+               member< comment_smt_beneficiaries_object, comment_id_type, &comment_smt_beneficiaries_object::comment >,
+               member< comment_smt_beneficiaries_object, asset_symbol_type, &comment_smt_beneficiaries_object::smt >
+            >
+         >
+      >,
+      allocator< comment_smt_beneficiaries_object >
+   > comment_smt_beneficiaries_index;
+
+
 } } // steem::chain
 
 #ifdef ENABLE_MIRA
@@ -301,6 +348,10 @@ template<> struct is_static_length< steem::chain::comment_vote_object > : public
 
 FC_REFLECT( steem::chain::rshare_context,
             (net_rshares)(abs_rshares)(vote_rshares)(total_vote_weight)(net_votes)(author_rewards) )
+
+FC_REFLECT( steem::chain::comment_votable_asset_options,
+            (max_accepted_payout)(allow_curation_rewards)
+          )
 
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
@@ -325,6 +376,9 @@ FC_REFLECT( steem::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)(symbol)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )
+
+FC_REFLECT( steem::chain::comment_smt_beneficiaries_object, (id)(comment)(smt)(beneficiaries) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_smt_beneficiaries_object, steem::chain::comment_smt_beneficiaries_index )
 
 namespace helpers
 {
