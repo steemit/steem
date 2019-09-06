@@ -1254,7 +1254,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Withdraw vesting operation for SMTs is not enabled until the SMT hardfork." );
       FC_ASSERT( o.vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
       auto liquid_symbol = o.vesting_shares.symbol.get_paired_symbol();
-      const auto* bal_obj = _db.find< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
+      const auto* bal_obj = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( account.name, liquid_symbol ) );
 
       FC_ASSERT( bal_obj != nullptr, "Account does not have sufficient Token Power for withdrawal." );
       FC_ASSERT( bal_obj->vesting_shares - bal_obj->delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Token Power for withdrawal." );
@@ -2728,7 +2728,7 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
          ctx.mana_regen_period = smt.vote_regeneration_period_seconds;
          ctx.votes_per_regen_period = smt.votes_per_regeneration_period;
 
-         const auto& smt_balance = _db.get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( o.voter, symbol_rshare.first ) );
+         const auto& smt_balance = _db.get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( o.voter, symbol_rshare.first ) );
 
          FC_ASSERT( ( _db.head_block_time() - smt_balance.last_vote_time ).to_seconds() >= STEEM_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds." );
 
@@ -3627,13 +3627,15 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
    } // for( const auto& token : op.reward_tokens )
 }
 
-void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
+template < class AccountType >
+void generic_delegate_vesting_shares_evaluator(
+   database& _db,
+   const AccountType& delegator,
+   const AccountType& delegatee,
+   const asset& vesting_shares,
+   uint32_t vote_regeneration_period_seconds  )
 {
-#pragma message( "TODO: Update get_effective_vesting_shares when modifying this operation to support SMTs." )
-
-   const auto& delegator = _db.get_account( op.delegator );
-   const auto& delegatee = _db.get_account( op.delegatee );
-   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( delegator.name, delegatee.name, vesting_shares.symbol.get_paired_symbol() ) );
 
    const auto& gpo = _db.get_dynamic_global_properties();
 
@@ -3644,25 +3646,25 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    {
       auto max_mana = util::get_effective_vesting_shares( delegator );
 
-      _db.modify( delegator, [&]( account_object& a )
+      _db.modify( delegator, [&]( AccountType& a )
       {
-         util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+         util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
       });
 
-      available_shares = asset( delegator.voting_manabar.current_mana, VESTS_SYMBOL );
+      available_shares = asset( delegator.voting_manabar.current_mana, vesting_shares.symbol );
       if( gpo.downvote_pool_percent )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
          {
             available_downvote_shares = asset(
                ( ( uint128_t( delegator.downvote_manabar.current_mana ) * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
-               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1 ).to_int64(), VESTS_SYMBOL );
+               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1 ).to_int64(), vesting_shares.symbol );
          }
          else
          {
             available_downvote_shares = asset(
                ( delegator.downvote_manabar.current_mana * STEEM_100_PERCENT ) / gpo.downvote_pool_percent
-               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, VESTS_SYMBOL );
+               + ( STEEM_100_PERCENT / gpo.downvote_pool_percent ) - 1, vesting_shares.symbol );
          }
       }
       else
@@ -3692,89 +3694,93 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          auto weekly_withdraw = asset( std::min(
             delegator.vesting_withdraw_rate.amount.value,           // Weekly amount
             delegator.to_withdraw.value - delegator.withdrawn.value   // Or remainder
-            ), VESTS_SYMBOL );
+            ), vesting_shares.symbol );
 
-         available_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
-         available_downvote_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+         available_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
+         available_downvote_shares += weekly_withdraw - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
       }
    }
    else
    {
-      available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+      available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, vesting_shares.symbol );
    }
 
-   const auto& wso = _db.get_witness_schedule_object();
-
    // HF 20 increase fee meaning by 30x, reduce these thresholds to compensate.
-   auto min_delegation = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
-      asset( wso.median_props.account_creation_fee.amount / 3, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
-      asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
-   auto min_update = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
-      asset( wso.median_props.account_creation_fee.amount / 30, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
-      wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+   asset min_delegation = asset( 0, vesting_shares.symbol );
+   asset min_update     = asset( 0, vesting_shares.symbol );
+   if ( vesting_shares.symbol == VESTS_SYMBOL )
+   {
+      const auto& wso = _db.get_witness_schedule_object();
+      min_delegation = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+         asset( wso.median_props.account_creation_fee.amount / 3, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+         asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
+      min_update = _db.has_hardfork( STEEM_HARDFORK_0_20__1761 ) ?
+         asset( wso.median_props.account_creation_fee.amount / 30, STEEM_SYMBOL ) * gpo.get_vesting_share_price() :
+         wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+   }
 
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
    {
-      FC_ASSERT( available_shares >= op.vesting_shares, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
-         ("acc", op.delegator)("r", op.vesting_shares)("a", available_shares) );
+      FC_ASSERT( available_shares >= vesting_shares, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
+         ("acc", delegator.name)("r", vesting_shares)("a", available_shares) );
       FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
-         FC_ASSERT( available_downvote_shares >= op.vesting_shares, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
-         ("acc", op.delegator)("r", op.vesting_shares)("a", available_downvote_shares) );
-      FC_ASSERT( op.vesting_shares >= min_delegation, "Account must delegate a minimum of ${v}", ("v", min_delegation) );
+         FC_ASSERT( available_downvote_shares >= vesting_shares, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
+         ("acc", delegator.name)("r", vesting_shares)("a", available_downvote_shares) );
+      FC_ASSERT( vesting_shares >= min_delegation, "Account must delegate a minimum of ${v}", ("v", min_delegation) );
 
       _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& obj )
       {
-         obj.delegator = op.delegator;
-         obj.delegatee = op.delegatee;
-         obj.vesting_shares = op.vesting_shares;
+         obj.delegator = delegator.name;
+         obj.delegatee = delegatee.name;
+         obj.vesting_shares = vesting_shares;
          obj.min_delegation_time = _db.head_block_time();
       });
 
-      _db.modify( delegator, [&]( account_object& a )
+      _db.modify( delegator, [&]( AccountType& a )
       {
-         a.delegated_vesting_shares += op.vesting_shares;
+         a.delegated_vesting_shares += vesting_shares;
 
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            a.voting_manabar.use_mana( op.vesting_shares.amount.value );
+            a.voting_manabar.use_mana( vesting_shares.amount.value );
 
             if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
             {
-               a.downvote_manabar.use_mana( ( ( uint128_t( op.vesting_shares.amount.value ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64() );
+               a.downvote_manabar.use_mana( ( ( uint128_t( vesting_shares.amount.value ) * gpo.downvote_pool_percent ) / STEEM_100_PERCENT ).to_int64() );
             }
             else if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
             {
-               a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+               a.downvote_manabar.use_mana( vesting_shares.amount.value );
             }
          }
       });
 
-      _db.modify( delegatee, [&]( account_object& a )
+      _db.modify( delegatee, [&]( AccountType& a )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), op.vesting_shares.amount.value );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), vesting_shares.amount.value );
          }
 
-         a.received_vesting_shares += op.vesting_shares;
+         a.received_vesting_shares += vesting_shares;
       });
    }
    // Else if the delegation is increasing
-   else if( op.vesting_shares >= delegation->vesting_shares )
+   else if( vesting_shares >= delegation->vesting_shares )
    {
-      auto delta = op.vesting_shares - delegation->vesting_shares;
+      auto delta = vesting_shares - delegation->vesting_shares;
 
       FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a difference. min_update: ${min}", ("min", min_update) );
       FC_ASSERT( available_shares >= delta, "Account ${acc} does not have enough mana to delegate. required: ${r} available: ${a}",
-         ("acc", op.delegator)("r", delta)("a", available_shares) );
+         ("acc", delegator.name)("r", delta)("a", available_shares) );
       FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) )
          FC_ASSERT( available_downvote_shares >= delta, "Account ${acc} does not have enough downvote mana to delegate. required: ${r} available: ${a}",
-         ("acc", op.delegator)("r", delta)("a", available_downvote_shares) );
+         ("acc", delegator.name)("r", delta)("a", available_downvote_shares) );
 
-      _db.modify( delegator, [&]( account_object& a )
+      _db.modify( delegator, [&]( AccountType& a )
       {
          a.delegated_vesting_shares += delta;
 
@@ -3793,11 +3799,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          }
       });
 
-      _db.modify( delegatee, [&]( account_object& a )
+      _db.modify( delegatee, [&]( AccountType& a )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ), delta.amount.value );
          }
 
          a.received_vesting_shares += delta;
@@ -3805,18 +3811,18 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       _db.modify( *delegation, [&]( vesting_delegation_object& obj )
       {
-         obj.vesting_shares = op.vesting_shares;
+         obj.vesting_shares = vesting_shares;
       });
    }
    // Else the delegation is decreasing
    else /* delegation->vesting_shares > op.vesting_shares */
    {
-      auto delta = delegation->vesting_shares - op.vesting_shares;
+      auto delta = delegation->vesting_shares - vesting_shares;
 
-      if( op.vesting_shares.amount > 0 )
+      if( vesting_shares.amount > 0 )
       {
          FC_ASSERT( delta >= min_update, "Steem Power decrease is not enough of a difference. min_update: ${min}", ("min", min_update) );
-         FC_ASSERT( op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+         FC_ASSERT( vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
       }
       else
       {
@@ -3825,16 +3831,16 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
       {
-         obj.delegator = op.delegator;
+         obj.delegator = delegator.name;
          obj.vesting_shares = delta;
          obj.expiration = std::max( _db.head_block_time() + gpo.delegation_return_period, delegation->min_delegation_time );
       });
 
-      _db.modify( delegatee, [&]( account_object& a )
+      _db.modify( delegatee, [&]( AccountType& a )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
          {
-            util::update_manabar( gpo, a, STEEM_VOTING_MANA_REGENERATION_SECONDS, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
+            util::update_manabar( gpo, a, vote_regeneration_period_seconds, _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) );
          }
 
          a.received_vesting_shares -= delta;
@@ -3856,7 +3862,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
                }
                else
                {
-                  a.downvote_manabar.use_mana( op.vesting_shares.amount.value );
+                  a.downvote_manabar.use_mana( vesting_shares.amount.value );
                }
 
                if( a.downvote_manabar.current_mana < 0 )
@@ -3867,11 +3873,11 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          }
       });
 
-      if( op.vesting_shares.amount > 0 )
+      if( vesting_shares.amount > 0 )
       {
          _db.modify( *delegation, [&]( vesting_delegation_object& obj )
          {
-            obj.vesting_shares = op.vesting_shares;
+            obj.vesting_shares = vesting_shares;
          });
       }
       else
@@ -3879,6 +3885,39 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          _db.remove( *delegation );
       }
    }
+}
+
+void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
+{
+   try
+   {
+      if ( op.vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
+      {
+         const auto& delegator = _db.get_account( op.delegator );
+         const auto& delegatee = _db.get_account( op.delegatee );
+         generic_delegate_vesting_shares_evaluator( _db, delegator, delegatee, op.vesting_shares, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      }
+      else
+      {
+         const auto& token = _db.get< smt_token_object, by_symbol >( op.vesting_shares.symbol.get_paired_symbol() );
+         const auto* delegator = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegator, token.liquid_symbol ) );
+         FC_ASSERT( delegator != nullptr, "Account ${acc} does not have a balance for the given symbol. Symbol: ${sym}", ("acc", op.delegator)("sym", token.liquid_symbol) );
+
+         const auto* delegatee = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.delegatee, token.liquid_symbol ) );
+
+         if ( delegatee == nullptr )
+         {
+            delegatee = &_db.create< account_regular_balance_object >( [&]( account_regular_balance_object& account_balance )
+            {
+               account_balance.initialize_assets( token.liquid_symbol );
+               account_balance.name = op.delegatee;
+               account_balance.validate();
+            } );
+         }
+
+         generic_delegate_vesting_shares_evaluator( _db, *delegator, *delegatee, op.vesting_shares, token.vote_regeneration_period_seconds );
+      }
+   } FC_CAPTURE_AND_RETHROW( (op) )
 }
 
 } } // steem::chain

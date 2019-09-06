@@ -1409,7 +1409,7 @@ BOOST_AUTO_TEST_CASE( smt_withdraw_vesting_apply )
    db->push_transaction( tx, 0 );
 
    auto key = boost::make_tuple( "alice", symbol );
-   const auto* balance_obj = db->find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+   const auto* balance_obj = db->find< account_regular_balance_object, by_name_liquid_symbol >( key );
 
    BOOST_REQUIRE( balance_obj != nullptr );
    BOOST_REQUIRE( db->get_balance( "alice", symbol.get_paired_symbol() ).amount.value == old_vesting_shares.amount.value );
@@ -4629,6 +4629,259 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_delegate_vesting_shares_validate )
+{
+   BOOST_TEST_MESSAGE( "Testing: smt_delegate_vesting_shares_validate" );
+   ACTORS( (alice) )
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+   delegate_vesting_shares_operation op;
+
+   op.delegator = "alice";
+   op.delegatee = "bob";
+   op.vesting_shares = asset( 0, symbol.get_paired_symbol() );
+   op.validate();
+
+   BOOST_TEST_MESSAGE( " --- Invalid vesting_shares amount" );
+   op.vesting_shares = asset( -1, symbol.get_paired_symbol() );
+   STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " --- Invalid vesting_shares symbol (non-vesting)" );
+   op.vesting_shares = asset( 0, symbol );
+   STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.vesting_shares = asset( 0, symbol.get_paired_symbol() );
+
+   BOOST_TEST_MESSAGE( " --- Invalid delegator account" );
+   op.delegator = "alice-";
+   STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.delegator = "alice";
+
+   BOOST_TEST_MESSAGE( " --- Invalid to account" );
+   op.delegatee = "bob-";
+   STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   op.delegatee = "bob";
+
+   op.validate();
+}
+
+BOOST_AUTO_TEST_CASE( smt_delegate_vesting_shares_apply )
+{
+   BOOST_TEST_MESSAGE( "Testing: smt_delegate_vesting_shares_apply" );
+   signed_transaction tx;
+   ACTORS( (alice)(bob)(charlie)(creator) )
+   generate_block();
+
+   auto symbol = create_smt( "creator", creator_private_key, 3 );
+   fund( STEEM_INIT_MINER_NAME, asset( 10000000, symbol ) );
+   vest( STEEM_INIT_MINER_NAME, "alice", asset( 10000000, symbol ) );
+
+   generate_block();
+
+   delegate_vesting_shares_operation op;
+   op.vesting_shares = asset( 1000000000000, symbol.get_paired_symbol() );
+   op.delegator = "alice";
+   op.delegatee = "bob";
+
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+   generate_blocks( 1 );
+   const account_regular_balance_object& alice_acc = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", symbol ) );
+   const account_regular_balance_object& bob_acc   = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "bob", symbol ) );
+
+   BOOST_REQUIRE( alice_acc.delegated_vesting_shares == asset( 1000000000000, symbol.get_paired_symbol() ) );
+   BOOST_REQUIRE( bob_acc.received_vesting_shares == asset( 1000000000000, symbol.get_paired_symbol() ) );
+
+   BOOST_TEST_MESSAGE( "--- Test that the delegation object is correct. " );
+   auto delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
+
+   BOOST_REQUIRE( delegation != nullptr );
+   BOOST_REQUIRE( delegation->delegator == op.delegator);
+   BOOST_REQUIRE( delegation->vesting_shares  == asset( 1000000000000, symbol.get_paired_symbol() ) );
+
+   validate_database();
+   tx.clear();
+   op.vesting_shares = asset( 2000000000000, symbol.get_paired_symbol() );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+   generate_blocks(1);
+
+   BOOST_REQUIRE( delegation != nullptr );
+   BOOST_REQUIRE( delegation->delegator == op.delegator);
+   BOOST_REQUIRE( delegation->vesting_shares == asset( 2000000000000, symbol.get_paired_symbol() ) );
+   BOOST_REQUIRE( alice_acc.delegated_vesting_shares == asset( 2000000000000, symbol.get_paired_symbol() ) );
+   BOOST_REQUIRE( bob_acc.received_vesting_shares == asset( 2000000000000, symbol.get_paired_symbol() ) );
+
+   BOOST_TEST_MESSAGE( "--- Test failure delegating delgated VESTS." );
+
+   op.delegator = "bob";
+   op.delegatee = "charlie";
+   tx.clear();
+   tx.operations.push_back( op );
+   sign( tx, bob_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+   BOOST_TEST_MESSAGE( "--- Test that effective vesting shares is accurate and being applied." );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   db_plugin->debug_update( [=]( database& db )
+   {
+      db.modify( db.get< smt_token_object, by_symbol >( symbol ), [=]( smt_token_object& smt )
+      {
+         smt.phase = smt_phase::launch_success;
+      } );
+   } );
+   generate_block();
+
+   util::manabar old_manabar = bob_acc.voting_manabar;
+   util::manabar_params params( util::get_effective_vesting_shares( bob_acc ), STEEM_VOTING_MANA_REGENERATION_SECONDS );
+   old_manabar.regenerate_mana( params, db->head_block_time() );
+
+   comment_operation comment_op;
+   comment_op.author = "alice";
+   comment_op.permlink = "foo";
+   comment_op.parent_permlink = "test";
+   comment_op.title = "bar";
+   comment_op.body = "foo bar";
+   tx.operations.push_back( comment_op );
+
+   comment_options_operation comment_opts;
+   comment_opts.author = "alice";
+   comment_opts.permlink = "foo";
+   allowed_vote_assets ava;
+   ava.votable_assets[ symbol ] = votable_asset_options();
+   comment_opts.extensions.insert( ava );
+   tx.operations.push_back( comment_opts );
+
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+   tx.signatures.clear();
+   tx.operations.clear();
+   vote2_operation vote_op;
+   vote_op.voter = "bob";
+   vote_op.author = "alice";
+   vote_op.permlink = "foo";
+   vote_op.rshares[ symbol ] = util::get_effective_vesting_shares( bob_acc ) / 50;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( vote_op );
+   sign( tx, bob_private_key );
+
+   db->push_transaction( tx, 0 );
+   generate_blocks(1);
+
+   const auto& vote_idx = db->get_index< comment_vote_index >().indices().get< by_comment_voter_symbol >();
+
+   auto& alice_comment = db->get_comment( "alice", string( "foo" ) );
+   auto itr = vote_idx.find( boost::make_tuple( alice_comment.id, db->get_account("bob").id, symbol ) );
+   BOOST_REQUIRE( alice_comment.smt_rshares.find( symbol )->second.net_rshares.value == old_manabar.current_mana - bob_acc.voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD );
+   BOOST_REQUIRE( itr->rshares == old_manabar.current_mana - bob_acc.voting_manabar.current_mana - STEEM_VOTE_DUST_THRESHOLD );
+
+   generate_block();
+   ACTORS( (sam)(dave) )
+   generate_block();
+
+   fund( "sam", asset( 1000000, symbol ) );
+   vest( "sam", asset( 1000000, symbol ) );
+
+   generate_block();
+
+   auto sam_vest = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", symbol ) ).vesting_shares;
+
+   BOOST_TEST_MESSAGE( "--- Test failure when delegating 0 VESTS" );
+   tx.clear();
+   op.delegator = "sam";
+   op.delegatee = "dave";
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, sam_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
+
+
+   BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+   tx.clear();
+   op.vesting_shares = asset( sam_vest.amount + 1, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   sign( tx, sam_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
+
+
+   BOOST_TEST_MESSAGE( "--- Test failure delegating vesting shares that are part of a power down" );
+   tx.clear();
+   sam_vest = asset( sam_vest.amount / 2, symbol.get_paired_symbol() );
+   withdraw_vesting_operation withdraw;
+   withdraw.account = "sam";
+   withdraw.vesting_shares = sam_vest;
+   tx.operations.push_back( withdraw );
+   sign( tx, sam_private_key );
+   db->push_transaction( tx, 0 );
+
+   tx.clear();
+   op.vesting_shares = asset( sam_vest.amount + 2, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   sign( tx, sam_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
+
+   tx.clear();
+   withdraw.vesting_shares = asset( 0, symbol.get_paired_symbol() );
+   tx.operations.push_back( withdraw );
+   sign( tx, sam_private_key );
+   db->push_transaction( tx, 0 );
+
+
+   BOOST_TEST_MESSAGE( "--- Test failure powering down vesting shares that are delegated" );
+   sam_vest.amount += 1000;
+   op.vesting_shares = sam_vest;
+   tx.clear();
+   tx.operations.push_back( op );
+   sign( tx, sam_private_key );
+   db->push_transaction( tx, 0 );
+
+   tx.clear();
+   withdraw.vesting_shares = asset( sam_vest.amount, symbol.get_paired_symbol() );
+   tx.operations.push_back( withdraw );
+   sign( tx, sam_private_key );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
+
+
+   BOOST_TEST_MESSAGE( "--- Remove a delegation and ensure it is returned after 1 week" );
+   tx.clear();
+   op.vesting_shares = asset( 0, symbol.get_paired_symbol() );
+   tx.operations.push_back( op );
+   sign( tx, sam_private_key );
+   db->push_transaction( tx, 0 );
+
+   auto exp_obj = db->get_index< vesting_delegation_expiration_index, by_id >().begin();
+   auto end = db->get_index< vesting_delegation_expiration_index, by_id >().end();
+   auto gpo = db->get_dynamic_global_properties();
+
+   const auto& sam_acc = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", symbol ) );
+   const auto& dave_acc = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "dave", symbol ) );
+
+   BOOST_REQUIRE( gpo.delegation_return_period == STEEM_DELEGATION_RETURN_PERIOD_HF20 );
+
+   BOOST_REQUIRE( exp_obj != end );
+   BOOST_REQUIRE( exp_obj->delegator == "sam" );
+   BOOST_REQUIRE( exp_obj->vesting_shares == sam_vest );
+   BOOST_REQUIRE( exp_obj->expiration == db->head_block_time() + gpo.delegation_return_period );
+   BOOST_REQUIRE( sam_acc.delegated_vesting_shares == sam_vest );
+   BOOST_REQUIRE( dave_acc.received_vesting_shares == asset( 0, symbol.get_paired_symbol() ) );
+   delegation = db->find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee, op.vesting_shares.symbol.get_paired_symbol() ) );
+   BOOST_REQUIRE( delegation == nullptr );
+
+   generate_blocks( exp_obj->expiration + STEEM_BLOCK_INTERVAL );
+
+   exp_obj = db->get_index< vesting_delegation_expiration_index, by_id >().begin();
+   end = db->get_index< vesting_delegation_expiration_index, by_id >().end();
+
+   BOOST_REQUIRE( exp_obj == end );
+   BOOST_REQUIRE( sam_acc.delegated_vesting_shares == asset( 0, symbol.get_paired_symbol() ) );
+}
+
 BOOST_AUTO_TEST_CASE( vote2_authorities )
 {
    try
@@ -4705,7 +4958,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
       {
          const auto& alice = db->get_account( "alice" );
-         const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+         const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
 
          signed_transaction tx;
          comment_operation comment_op;
@@ -4834,7 +5087,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             old_manabar = alice.voting_manabar;
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+            const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar = alice_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -4900,7 +5153,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "bob" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& bob_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
+            const auto& bob_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
             params.max_mana = util::get_effective_vesting_shares( bob_smt );
             old_smt_manabar = bob_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -4911,7 +5164,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             generate_blocks( db->head_block_time() + fc::seconds( ( STEEM_CASHOUT_WINDOW_SECONDS / 2 ) ), true );
 
             const auto& new_bob = db->get_account( "bob" );
-            const auto& new_bob_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
+            const auto& new_bob_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
             const auto& new_alice_comment = db->get_comment( "alice", string( "foo" ) );
 
             op.rshares[ STEEM_SYMBOL ] = old_manabar.current_mana / 50;
@@ -4946,7 +5199,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
 
          {
             const auto& new_sam = db->get_account( "sam" );
-            const auto& new_sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& new_sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             const auto& new_bob_comment = db->get_comment( "bob", string( "foo" ) );
 
             auto old_abs_rshares = new_bob_comment.abs_rshares.value;
@@ -4956,7 +5209,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( new_sam );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar = sam_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5002,7 +5255,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+            const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar = alice_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5056,7 +5309,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar = alice_smt.voting_manabar;
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5111,7 +5364,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+            const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
             old_smt_manabar = alice_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5194,7 +5447,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
                   a.downvote_manabar.last_update_time = db.head_block_time().sec_since_epoch();
                });
 
-               const auto& alice_smt = db.get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+               const auto& alice_smt = db.get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
 
                db.modify( alice_smt, [&]( account_regular_balance_object& a )
                {
@@ -5219,7 +5472,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "alice" ) ) / 4;
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& alice_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+            const auto& alice_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
 
             old_smt_manabar = alice_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( alice_smt );
@@ -5270,7 +5523,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "dave" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& dave_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
+            const auto& dave_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
             old_smt_manabar = dave_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( dave_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5312,7 +5565,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( db->get_account( "dave" ) );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& dave_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
+            const auto& dave_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
             old_smt_manabar = dave_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( dave_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5353,7 +5606,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             op.voter = "sam";
             op.author = "dave";
             op.rshares[ STEEM_SYMBOL ] = db->get_account( "sam" ).voting_manabar.current_mana * 3 / 50 / 4;
-            op.rshares[ alice_symbol ] = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) ).voting_manabar.current_mana * 3 / 50 / 4;
+            op.rshares[ alice_symbol ] = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) ).voting_manabar.current_mana * 3 / 50 / 4;
             tx.clear();
             tx.operations.push_back( comment_op );
             tx.operations.push_back( comment_opts );
@@ -5368,7 +5621,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             old_smt_manabar = sam_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5395,7 +5648,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam );
             old_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             old_smt_manabar = sam_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5424,7 +5677,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             old_smt_manabar = sam_smt.voting_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam_smt );
             old_smt_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5454,7 +5707,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             old_smt_downvote_manabar = sam_smt.downvote_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );
@@ -5481,7 +5734,7 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             params.max_mana = util::get_effective_vesting_shares( sam ) / 4;
             old_downvote_manabar.regenerate_mana( params, db->head_block_time() );
 
-            const auto& sam_smt = db->get< account_regular_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
+            const auto& sam_smt = db->get< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( "sam", alice_symbol ) );
             old_smt_downvote_manabar = sam_smt.downvote_manabar;
             params.max_mana = util::get_effective_vesting_shares( sam_smt ) / 4;
             old_smt_downvote_manabar.regenerate_mana( params, db->head_block_time() );

@@ -690,13 +690,13 @@ asset database::get_effective_vesting_shares( const account_object& account, ass
    FC_ASSERT( vested_symbol.space() == asset_symbol_type::smt_nai_space );
    FC_ASSERT( vested_symbol.is_vesting() );
 
-#pragma message( "TODO: Update the code below when delegation is modified to support SMTs." )
-   const account_regular_balance_object* bo = find< account_regular_balance_object, by_owner_liquid_symbol >(
-      boost::make_tuple( account.name, vested_symbol.get_paired_symbol() ) );
-   if( bo == nullptr )
+   auto key = boost::make_tuple( account.name, vested_symbol.get_paired_symbol() );
+   const auto* balance_obj = find< account_regular_balance_object, by_name_liquid_symbol >( key );
+
+   if( balance_obj == nullptr )
       return asset( 0, vested_symbol );
 
-   return bo->vesting_shares;
+   return balance_obj->vesting_shares - balance_obj->delegated_vesting_shares + balance_obj->received_vesting_shares;
 }
 
 uint32_t database::witness_participation_rate()const
@@ -1675,15 +1675,15 @@ void database::process_vesting_withdrawals()
       auto withdraw_token  = asset( to_withdraw, token.liquid_symbol.get_paired_symbol() );
       auto converted_token = withdraw_token * token.get_vesting_share_price();
 
-      operation vop = fill_vesting_withdraw_operation( iter->owner, iter->owner, withdraw_token, converted_token );
+      operation vop = fill_vesting_withdraw_operation( iter->name, iter->name, withdraw_token, converted_token );
 
       pre_push_virtual_operation( vop );
 
       modify( *iter, [&]( account_regular_balance_object& a )
       {
-         a.vesting_shares  -= withdraw_token;
-         a.liquid          += converted_token;
-         a.withdrawn       += to_withdraw;
+         a.vesting_shares   -= withdraw_token;
+         a.liquid           += converted_token;
+         a.withdrawn        += to_withdraw;
 
          if ( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
          {
@@ -4358,12 +4358,35 @@ void database::clear_expired_orders()
    }
 }
 
+template< class AccountType >
+void generic_clear_expired_delegations(
+   database& db,
+   const AccountType& account,
+   const vesting_delegation_expiration_object& o,
+   uint32_t vote_regeneration_period_seconds )
+{
+   const auto& gpo = db.get_dynamic_global_properties();
+   db.modify( account, [&]( AccountType& a )
+   {
+      if( db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
+      {
+         util::update_manabar(
+            gpo,
+            a,
+            vote_regeneration_period_seconds,
+            db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
+            o.vesting_shares.amount.value );
+      }
+
+      a.delegated_vesting_shares -= o.vesting_shares;
+   } );
+}
+
 void database::clear_expired_delegations()
 {
    auto now = head_block_time();
    const auto& delegations_by_exp = get_index< vesting_delegation_expiration_index, by_expiration >();
    auto itr = delegations_by_exp.begin();
-   const auto& gpo = get_dynamic_global_properties();
 
    while( itr != delegations_by_exp.end() && itr->expiration < now )
    {
@@ -4371,20 +4394,17 @@ void database::clear_expired_delegations()
       try{
       pre_push_virtual_operation( vop );
 
-      modify( get_account( itr->delegator ), [&]( account_object& a )
+      if ( itr->vesting_shares.symbol.space() == asset_symbol_type::legacy_space )
       {
-         if( has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
-         {
-            util::update_manabar(
-               gpo,
-               a,
-               STEEM_VOTING_MANA_REGENERATION_SECONDS,
-               has_hardfork( STEEM_HARDFORK_0_21__3336 ),
-               itr->vesting_shares.amount.value );
-         }
-
-         a.delegated_vesting_shares -= itr->vesting_shares;
-      });
+         generic_clear_expired_delegations( *this, get_account( itr->delegator ), *itr, STEEM_VOTING_MANA_REGENERATION_SECONDS );
+      }
+      else
+      {
+         const auto& token = get< smt_token_object, by_symbol >( itr->vesting_shares.symbol.get_paired_symbol() );
+         auto key = boost::make_tuple( itr->delegator, itr->vesting_shares.symbol.get_paired_symbol() );
+         const auto& account = get< account_regular_balance_object, by_name_liquid_symbol >( key );
+         generic_clear_expired_delegations( *this, account, *itr, token.vote_regeneration_period_seconds );
+      }
 
       post_push_virtual_operation( vop );
 
@@ -4398,7 +4418,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
    balance_operator_type balance_operator )
 {
    asset_symbol_type liquid_symbol = delta.symbol.is_vesting() ? delta.symbol.get_paired_symbol() : delta.symbol;
-   const smt_balance_object_type* bo = find< smt_balance_object_type, by_owner_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
+   const smt_balance_object_type* bo = find< smt_balance_object_type, by_name_liquid_symbol >( boost::make_tuple( name, liquid_symbol ) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -4414,7 +4434,7 @@ void database::adjust_smt_balance( const account_name_type& name, const asset& d
       create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
          smt_balance.initialize_assets( liquid_symbol );
-         smt_balance.owner = name;
+         smt_balance.name = name;
          balance_operator.add_to_balance( smt_balance );
          smt_balance.validate();
       } );
@@ -4808,7 +4828,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       {
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "Invalid symbol: ${s}", ("s", symbol) );
          auto key = boost::make_tuple( a.name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
-         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+         const account_regular_balance_object* arbo = find< account_regular_balance_object, by_name_liquid_symbol >( key );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
@@ -4826,7 +4846,7 @@ asset database::get_balance( const account_name_type& name, asset_symbol_type sy
    if ( symbol.space() == asset_symbol_type::smt_nai_space )
    {
       auto key = boost::make_tuple( name, symbol.is_vesting() ? symbol.get_paired_symbol() : symbol );
-      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_owner_liquid_symbol >( key );
+      const account_regular_balance_object* arbo = find< account_regular_balance_object, by_name_liquid_symbol >( key );
 
       if( arbo == nullptr )
       {

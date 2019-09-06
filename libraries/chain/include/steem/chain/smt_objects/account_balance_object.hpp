@@ -1,8 +1,9 @@
 #pragma once
 
 #include <steem/chain/steem_object_types.hpp>
-#include <steem/protocol/smt_operations.hpp>
 #include <steem/chain/util/manabar.hpp>
+
+#include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace chain {
 
@@ -23,10 +24,10 @@ public:
    }
 
    id_type             id;
-   account_name_type   owner;
+   account_name_type   name;
    asset               liquid;
-   asset               vesting_shares;
 
+   asset               vesting_shares;
    asset               delegated_vesting_shares;
    asset               received_vesting_shares;
 
@@ -87,7 +88,7 @@ public:
    }
 
    id_type             id;
-   account_name_type   owner;
+   account_name_type   name;
    asset               pending_liquid;          /// 'reward_steem_balance' for pending STEEM
    asset               pending_vesting_shares;  /// 'reward_vesting_balance' for pending VESTS
    asset               pending_vesting_value;   /// 'reward_vesting_steem' for pending VESTS
@@ -118,7 +119,7 @@ public:
    }
 };
 
-struct by_owner_liquid_symbol;
+struct by_name_liquid_symbol;
 struct by_next_vesting_withdrawal;
 
 typedef multi_index_container <
@@ -127,16 +128,16 @@ typedef multi_index_container <
       ordered_unique< tag< by_id >,
          member< account_regular_balance_object, account_regular_balance_id_type, &account_regular_balance_object::id >
       >,
-      ordered_unique< tag< by_owner_liquid_symbol >,
+      ordered_unique< tag< by_name_liquid_symbol >,
          composite_key< account_regular_balance_object,
-            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::owner >,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
             const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
          >
       >,
       ordered_unique< tag< by_next_vesting_withdrawal >,
          composite_key< account_regular_balance_object,
             member< account_regular_balance_object, time_point_sec, &account_regular_balance_object::next_vesting_withdrawal >,
-            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::owner >,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
             const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
          >
       >
@@ -150,9 +151,9 @@ typedef multi_index_container <
       ordered_unique< tag< by_id >,
          member< account_rewards_balance_object, account_rewards_balance_id_type, &account_rewards_balance_object::id >
       >,
-      ordered_unique< tag< by_owner_liquid_symbol >,
+      ordered_unique< tag< by_name_liquid_symbol >,
          composite_key< account_rewards_balance_object,
-            member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::owner >,
+            member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::name >,
             const_mem_fun< account_rewards_balance_object, asset_symbol_type, &account_rewards_balance_object::get_liquid_symbol >
          >
       >
@@ -164,7 +165,7 @@ typedef multi_index_container <
 
 FC_REFLECT( steem::chain::account_regular_balance_object,
    (id)
-   (owner)
+   (name)
    (liquid)
    (vesting_shares)
    (delegated_vesting_shares)
@@ -180,7 +181,7 @@ FC_REFLECT( steem::chain::account_regular_balance_object,
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,
    (id)
-   (owner)
+   (name)
    (pending_liquid)
    (pending_vesting_shares)
    (pending_vesting_value)
