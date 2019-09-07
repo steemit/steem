@@ -1133,7 +1133,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
 
       BOOST_REQUIRE( token.market_maker.steem_balance == asset( 75000000, STEEM_SYMBOL ) );
       BOOST_REQUIRE( token.market_maker.token_balance == asset( 1500000000, symbol ) );
-      BOOST_REQUIRE( token.rewards_fund == asset( 3000000000, symbol ) );
+      BOOST_REQUIRE( token.reward_balance == asset( 3000000000, symbol ) );
 
       validate_database();
 

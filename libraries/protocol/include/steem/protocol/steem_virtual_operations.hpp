@@ -165,6 +165,7 @@ namespace steem { namespace protocol {
       string            permlink;
       asset             sbd_payout;
       asset             steem_payout;
+      asset             liquid_payout;
       asset             vesting_payout;
    };
 

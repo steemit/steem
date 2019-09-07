@@ -100,7 +100,7 @@ bool operator==( const smt_founder_payout_action& lhs, const smt_founder_payout_
       lhs.account_payouts == rhs.account_payouts &&
       lhs.market_maker_steem == rhs.market_maker_steem &&
       lhs.market_maker_tokens == rhs.market_maker_tokens &&
-      lhs.rewards_fund == rhs.rewards_fund;
+      lhs.reward_balance == rhs.reward_balance;
 }
 
 } } //steem::protocol

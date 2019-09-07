@@ -125,11 +125,11 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
    {
       o.market_maker.token_balance = asset( a.market_maker_tokens, a.symbol );
       o.market_maker.steem_balance = asset( a.market_maker_steem, STEEM_SYMBOL );
-      o.rewards_fund = asset( a.rewards_fund, a.symbol );
+      o.reward_balance = asset( a.reward_balance, a.symbol );
    } );
 
    additional_token_supply += a.market_maker_tokens;
-   additional_token_supply += a.rewards_fund;
+   additional_token_supply += a.reward_balance;
 
    if ( additional_token_supply > 0 )
       _db.adjust_supply( asset( additional_token_supply, a.symbol ) );

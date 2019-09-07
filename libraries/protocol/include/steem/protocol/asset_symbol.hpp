@@ -106,7 +106,7 @@ class asset_symbol_type
        * \warning checking that it's SMT symbol is caller responsibility.
        */
       uint32_t get_stripped_precision_smt_num() const
-      { 
+      {
          return asset_num & ~( SMT_ASSET_NUM_PRECISION_MASK );
       }
 
