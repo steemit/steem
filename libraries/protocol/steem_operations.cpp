@@ -744,7 +744,7 @@ namespace steem { namespace protocol {
    {
       validate_account_name( account );
       FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
-      FC_ASSERT( reward_tokens.begin()->amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_tokens.begin()->amount > 0, "Cannot claim a negative amount" );
       bool is_substantial_reward = reward_tokens.begin()->amount > 0;
       for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
       {

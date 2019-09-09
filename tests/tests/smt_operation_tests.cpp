@@ -1167,8 +1167,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
       BOOST_TEST_MESSAGE( "--- Claiming a partial reward balance" );
       // Legacy symbols
       asset partial_vests = ASSET( "5.000000 VESTS" );
-      op.reward_tokens.push_back( ASSET( "0.000 TBD" ) );
-      op.reward_tokens.push_back( ASSET( "0.000 TESTS" ) );
+      op.reward_tokens.clear();
       op.reward_tokens.push_back( partial_vests );
       PUSH_OP(op, alice_private_key);
       BOOST_REQUIRE( db->get_account( "alice" ).balance == alice_steem + ASSET( "0.000 TESTS" ) );
@@ -1183,9 +1182,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_apply )
       op.reward_tokens.clear();
       // SMTs
       asset partial_smt2 = asset( 5*std::pow(10, smt2.decimals()), smt2 );
-      op.reward_tokens.push_back( asset( 0, smt1 ) );
       op.reward_tokens.push_back( partial_smt2 );
-      op.reward_tokens.push_back( asset( 0, smt3 ) );
       PUSH_OP(op, alice_private_key);
       BOOST_REQUIRE( db->get_balance( "alice", smt1 ) == alice_smt1 + asset( 0, smt1 ) );
       BOOST_REQUIRE( db->get_balance( "alice", smt2 ) == alice_smt2 + partial_smt2 );
