@@ -93,16 +93,24 @@ class asset_symbol_type
 
       uint32_t to_nai()const;
 
-      /**Returns true when symbol represents vesting variant of the token,
+      /**
+       * Returns true when symbol represents vesting variant of the token,
        * false for liquid one.
        */
       bool is_vesting() const;
-      /**Returns vesting symbol when called from liquid one
+
+      /**
+       * Returns vesting symbol when called from liquid one
        * and liquid symbol when called from vesting one.
        * Returns back the SBD symbol if represents SBD.
        */
       asset_symbol_type get_paired_symbol() const;
-      /**Returns asset_num stripped of precision holding bits.
+
+      asset_symbol_type get_vesting_symbol() const;
+      asset_symbol_type get_liquid_symbol() const;
+
+      /**
+       * Returns asset_num stripped of precision holding bits.
        * \warning checking that it's SMT symbol is caller responsibility.
        */
       uint32_t get_stripped_precision_smt_num() const

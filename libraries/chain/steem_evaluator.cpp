@@ -3597,8 +3597,6 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
 void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_operation& op )
 {
-   const account_object* a = nullptr; // Lazily initialized below because it may turn out unnecessary.
-
    for( const asset& token : op.reward_tokens )
    {
       if( token.amount == 0 )
@@ -3606,31 +3604,67 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
-         _db.adjust_reward_balance( op.account, -token );
+         const auto* bal = _db.find< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( op.account, token.symbol.get_liquid_symbol() ) );
+
+         FC_ASSERT( bal != nullptr, "Account ${a} has no rewards balance for SMT ${s}", ("a", op.account)("s", token.symbol) );
+         if( token.symbol.is_vesting() )
+         {
+            FC_ASSERT( token <= bal->pending_liquid, "Account only has ${p} pending in their rewards balance. Claimed: ${c}",
+               ("p", bal->pending_vesting_shares)("c", token) );
+
+            asset reward_vesting_token_to_move = asset( 0, token.symbol.get_vesting_symbol() );
+
+            if( token == bal->pending_vesting_shares )
+               reward_vesting_token_to_move = bal->pending_vesting_value;
+            else
+               reward_vesting_token_to_move = asset( ( ( uint128_t( token.amount.value ) * uint128_t( bal->pending_vesting_value.amount.value ) )
+                  / uint128_t( bal->pending_vesting_shares.amount.value ) ).to_uint64(), token.symbol.get_vesting_symbol() );
+
+            _db.modify( *bal, [&]( account_rewards_balance_object& arbo )
+            {
+               arbo.pending_vesting_shares -= token;
+               arbo.pending_vesting_value -= reward_vesting_token_to_move;
+            });
+
+            _db.modify( _db.get< smt_token_object, by_symbol >( token.symbol.get_vesting_symbol() ), [&]( smt_token_object& smt )
+            {
+               smt.total_vesting_shares += token.amount;
+               smt.total_vesting_fund_smt += reward_vesting_token_to_move.amount;
+               smt.pending_rewarded_vesting_shares -= token.amount;
+               smt.pending_rewarded_vesting_smt -= reward_vesting_token_to_move.amount;
+            });
+
+         }
+         else
+         {
+            FC_ASSERT( token <= bal->pending_liquid, "Account only has ${p} pending in their rewards balance. Claimed: ${c}",
+               ("p", bal->pending_liquid)("c", token) );
+
+            _db.modify( *bal, [&]( account_rewards_balance_object& arbo )
+            {
+               arbo.pending_liquid -= token;
+            });
+         }
+
          _db.adjust_balance( op.account, token );
       }
       else
       {
-         // Lazy init here.
-         if( a == nullptr )
-         {
-            a = _db.find_account( op.account );
-            FC_ASSERT( a != nullptr, "Could NOT find account ${a}", ("a", op.account) );
-         }
+         const account_object& a = _db.get_account( op.account );
 
          if( token.symbol == VESTS_SYMBOL)
          {
-            FC_ASSERT( token <= a->reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
-               ("c", token)("a", a->reward_vesting_balance) );
+            FC_ASSERT( token <= a.reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
+               ("c", token)("a", a.reward_vesting_balance) );
 
             asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
-            if( token == a->reward_vesting_balance )
-               reward_vesting_steem_to_move = a->reward_vesting_steem;
+            if( token == a.reward_vesting_balance )
+               reward_vesting_steem_to_move = a.reward_vesting_steem;
             else
-               reward_vesting_steem_to_move = asset( ( ( uint128_t( token.amount.value ) * uint128_t( a->reward_vesting_steem.amount.value ) )
-                  / uint128_t( a->reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
+               reward_vesting_steem_to_move = asset( ( ( uint128_t( token.amount.value ) * uint128_t( a.reward_vesting_steem.amount.value ) )
+                  / uint128_t( a.reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
 
-            _db.modify( *a, [&]( account_object& a )
+            _db.modify( a, [&]( account_object& a )
             {
                a.vesting_shares += token;
                a.reward_vesting_balance -= token;
@@ -3646,16 +3680,16 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
                gpo.pending_rewarded_vesting_steem -= reward_vesting_steem_to_move;
             });
 
-            _db.adjust_proxied_witness_votes( *a, token.amount );
+            _db.adjust_proxied_witness_votes( a, token.amount );
          }
          else if( token.symbol == STEEM_SYMBOL || token.symbol == SBD_SYMBOL )
          {
-            FC_ASSERT( is_asset_type( token, STEEM_SYMBOL ) == false || token <= a->reward_steem_balance,
-                       "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
-            FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a->reward_sbd_balance,
-                       "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
-            _db.adjust_reward_balance( *a, -token );
-            _db.adjust_balance( *a, token );
+            FC_ASSERT( is_asset_type( token, STEEM_SYMBOL ) == false || token <= a.reward_steem_balance,
+                       "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a.reward_steem_balance) );
+            FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a.reward_sbd_balance,
+                       "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a.reward_sbd_balance) );
+            _db.adjust_reward_balance( a, -token );
+            _db.adjust_balance( a, token );
          }
          else
             FC_ASSERT( false, "Unknown asset symbol" );
