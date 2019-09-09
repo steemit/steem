@@ -301,6 +301,8 @@ FC_REFLECT( steem::chain::smt_token_object,
    (pending_rewarded_vesting_shares)
    (pending_rewarded_vesting_smt)
    (reward_balance)
+   (recent_claims)
+   (last_reward_update)
    (allow_downvotes)
    (market_maker)
    (allow_voting)

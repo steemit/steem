@@ -276,7 +276,7 @@ share_type reward_comment( comment_context c_ctx, const CommentType& comment, co
 #endif
 
       return claimed_reward;
-   } FC_CAPTURE_AND_RETHROW( (c_ctx)(comment)(rf_ctx)(current_steem_price) );
+   } FC_CAPTURE_AND_RETHROW( (comment)(rf_ctx)(current_steem_price) );
 }
 
 template< typename CommentType >
@@ -346,11 +346,12 @@ share_type reward_curators( share_type tokens, comment_context& c_ctx, const Com
       tokens -= unclaimed_rewards;
       return unclaimed_rewards;
 
-   } FC_CAPTURE_AND_RETHROW( (tokens)(c_ctx)(comment)(symbol) )
+   } FC_CAPTURE_AND_RETHROW( (tokens)(comment)(symbol) )
 }
 
 } } // steem::chain
 
+/*
 FC_REFLECT( steem::chain::comment_context,
             (id)
             (author)
@@ -361,3 +362,4 @@ FC_REFLECT( steem::chain::comment_context,
             (total_vote_weight)
             (max_accepted_payout)
             (allow_curation_rewards) )
+*/
