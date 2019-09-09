@@ -114,10 +114,10 @@ void process_comment_rewards( database& db )
    current = cidx.begin();
    util::comment_reward_context ctx;
 
-   while( current != cidx.end() && current->cashout_time < now )
+   while( current != cidx.end() && current->cashout_time <= now )
    {
-      ctx.total_claims = steem_rf.recent_claims;
-      ctx.reward_fund = steem_rf.reward_balance.amount;
+      ctx.total_claims = reward_funds[ STEEM_SYMBOL ].recent_claims;
+      ctx.reward_fund = reward_funds[ STEEM_SYMBOL ].reward_balance.amount;
       reward_funds[ STEEM_SYMBOL ].tokens_awarded += db.cashout_comment_helper( ctx, *current, current_steem_price, false );
       /*reward_funds[ STEEM_SYMBOL ].tokens_awarded += reward_comment(
          current->author,
@@ -154,6 +154,30 @@ void process_comment_rewards( database& db )
 #ifndef IS_LOW_MEM
             //c.author_rewards += c_ctx.author_tokens;
 #endif
+         });
+      }
+
+      current = cidx.begin();
+   }
+
+   for( auto& rf_ctx : reward_funds )
+   {
+      if( rf_ctx.first == STEEM_SYMBOL )
+      {
+         db.modify( steem_rf, [&]( reward_fund_object& r )
+         {
+            r.recent_claims = rf_ctx.second.recent_claims;
+            r.reward_balance -= asset( rf_ctx.second.tokens_awarded, STEEM_SYMBOL );
+            r.last_update = rf_ctx.second.last_update;
+         });
+      }
+      else
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( rf_ctx.first ), [&]( smt_token_object& t )
+         {
+            t.recent_claims = rf_ctx.second.recent_claims;
+            t.reward_balance -= asset( rf_ctx.second.tokens_awarded, rf_ctx.second.reward_balance.symbol );
+            t.last_reward_update = rf_ctx.second.last_update;
          });
       }
    }

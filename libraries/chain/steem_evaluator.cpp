@@ -740,6 +740,8 @@ struct comment_options_extension_visitor
             {
                _db.create< comment_smt_beneficiaries_object >( [&]( comment_smt_beneficiaries_object& b )
                {
+                  b.comment = _c.id;
+                  b.smt = a.first;
                   b.beneficiaries.insert(
                      b.beneficiaries.end(),
                      a.second.beneficiaries.beneficiaries.begin(),
@@ -773,7 +775,7 @@ struct comment_options_extension_visitor
       {
          for( const auto& a : va.votable_assets )
          {
-            auto vote_assets = c.allowed_vote_assets[ a.first ];
+            auto& vote_assets = c.allowed_vote_assets[ a.first ];
             vote_assets.max_accepted_payout = a.second.max_accepted_payout;
             vote_assets.allow_curation_rewards = a.second.allow_curation_rewards;
          }
