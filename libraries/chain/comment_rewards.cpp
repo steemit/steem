@@ -91,6 +91,8 @@ void process_comment_rewards( database& db )
             reward_funds.insert_or_assign( smt_rshare.first, std::move( rf_ctx ) );
 
             new_claims[ smt_rshare.first ] = 0;
+
+            smt_rf = reward_funds.find( smt_rshare.first );
          }
 
          if( smt_rshare.second.net_rshares > 0 )
@@ -350,16 +352,3 @@ share_type reward_curators( share_type tokens, comment_context& c_ctx, const Com
 }
 
 } } // steem::chain
-
-/*
-FC_REFLECT( steem::chain::comment_context,
-            (id)
-            (author)
-            (permlink)
-            (net_rshares)
-            (abs_rshares)
-            (vote_rshares)
-            (total_vote_weight)
-            (max_accepted_payout)
-            (allow_curation_rewards) )
-*/
