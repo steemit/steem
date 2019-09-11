@@ -187,6 +187,184 @@ BOOST_AUTO_TEST_CASE( smt_founder_vesting )
    BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "bob.vesting" ) == account_name_type( "bob.vesting" ) );
 }
 
+BOOST_AUTO_TEST_CASE( tick_pricing_rules_validation )
+{
+   BOOST_TEST_MESSAGE( "Testing: tick_pricing_rules_validatation" );
+
+   auto symbol = get_new_smt_symbol( 5, db );
+
+   price tick_price;
+   tick_price.base  = asset( 56, STEEM_SYMBOL );
+   tick_price.quote = asset( 10, symbol );
+
+   BOOST_TEST_MESSAGE( " -- Test success when STEEM is base symbol when paired with a token" );
+   validate_tick_pricing( tick_price );
+
+   BOOST_TEST_MESSAGE( " -- Test failure STEEM must be the base symbol when trading tokens" );
+   tick_price.invert();
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+   tick_price.invert();
+
+   BOOST_TEST_MESSAGE( " -- Test failure quote symbol must be a power of 10" );
+   tick_price.quote = asset( 11, symbol );
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+   tick_price.quote = asset( 10, symbol );
+
+   BOOST_TEST_MESSAGE( " -- Test failure SBD must be the base symbol when trading SBDs" );
+   tick_price.quote = asset( 10, SBD_SYMBOL );
+   tick_price.base  = asset( 10, STEEM_SYMBOL );
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Test success when SBD is base symbol when paired with STEEM" );
+   tick_price.invert();
+   tick_price.base.amount = 11;
+   validate_tick_pricing( tick_price );
+}
+
+BOOST_AUTO_TEST_CASE( tick_pricing_rules )
+{
+   BOOST_TEST_MESSAGE( "Testing: tick_pricing_rules" );
+
+   ACTORS( (alice)(bob)(charlie)(creator) )
+   const auto& token = create_smt( "creator", creator_private_key, 3 );
+   fund( "alice", asset( 1000000, STEEM_SYMBOL) );
+   fund( "alice", asset( 1000000, SBD_SYMBOL) );
+   fund( "alice", asset( 1000000, token) );
+   fund( "bob", asset( 1000000, STEEM_SYMBOL) );
+   fund( "bob", asset( 1000000, SBD_SYMBOL) );
+   fund( "bob", asset( 1000000, token) );
+   fund( "charlie", asset( 1000000, STEEM_SYMBOL) );
+
+   witness_create( "charlie", charlie_private_key, "foo.bar", charlie_private_key.get_public_key(), 1000 );
+   signed_transaction tx;
+
+   BOOST_TEST_MESSAGE( "--- Test failure publishing price feed when quote is not power of 10" );
+   feed_publish_operation fop;
+   fop.publisher = "charlie";
+   fop.exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 1100000, STEEM_SYMBOL ) );
+   tx.operations.push_back( fop );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, charlie_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( "--- Test failure publishing price feed when SBD is not base" );
+   fop.exchange_rate = price( asset( 1000000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
+   tx.operations.push_back( fop );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, charlie_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( "--- Test success publishing price feed" );
+   fop.exchange_rate.invert();
+   tx.operations.push_back( fop );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, charlie_private_key );
+   db->push_transaction( tx, database::skip_transaction_dupe_check );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   limit_order_create2_operation op;
+
+   BOOST_TEST_MESSAGE( " -- Test success when matching two orders of the same token" );
+   op.owner = "alice";
+   op.amount_to_sell = asset( 1000, token );
+   op.exchange_rate = price( asset( 125000, STEEM_SYMBOL ), asset( 1000, token ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, database::skip_transaction_dupe_check );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   op.owner = "bob";
+   op.amount_to_sell = asset( 125000, STEEM_SYMBOL );
+   op.exchange_rate = price( asset( 125000, STEEM_SYMBOL ), asset( 1000, token ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   db->push_transaction( tx, database::skip_transaction_dupe_check );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == asset( 1000000 + 125000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", token )        == asset( 1000000 - 1000, token ) );
+
+   BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == asset( 1000000 - 125000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "bob", token )        == asset( 1000000 + 1000, token ) );
+
+   BOOST_TEST_MESSAGE( " -- Test failure when quote is not a power of 10" );
+   op.owner = "bob";
+   op.amount_to_sell = asset( 125000, STEEM_SYMBOL );
+   op.exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 1100000, STEEM_SYMBOL ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( " -- Test failure when STEEM is not base" );
+   op.owner = "bob";
+   op.amount_to_sell = asset( 125000, STEEM_SYMBOL );
+   op.exchange_rate = price( asset( 10000, token ), asset( 125000, STEEM_SYMBOL ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( " -- Test failure when SBD is not base" );
+   op.owner = "bob";
+   op.amount_to_sell = asset( 1000000, STEEM_SYMBOL );
+   op.exchange_rate = price( asset( 10000, STEEM_SYMBOL ), asset( 1000000, SBD_SYMBOL ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( " -- Test success when SBD is base" );
+   op.owner = "bob";
+   op.amount_to_sell = asset( 10000, STEEM_SYMBOL );
+   op.exchange_rate = price( asset( 1000000, SBD_SYMBOL ), asset( 10000, STEEM_SYMBOL ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, bob_private_key );
+   db->push_transaction( tx, database::skip_transaction_dupe_check );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_TEST_MESSAGE( " -- Test matching SBD:STEEM" );
+   op.owner = "alice";
+   op.amount_to_sell = asset( 1000000, SBD_SYMBOL );
+   op.exchange_rate = price( asset( 1000000, SBD_SYMBOL ), asset( 10000, STEEM_SYMBOL ) );
+   op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, database::skip_transaction_dupe_check );
+   tx.operations.clear();
+   tx.signatures.clear();
+
+   BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ) == asset( 1000000 + 125000 + 10000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "alice", SBD_SYMBOL )   == asset( 1000000 - 1000000, SBD_SYMBOL ) );
+
+   BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ) == asset( 1000000 - 125000 - 10000, STEEM_SYMBOL ) );
+   BOOST_REQUIRE( db->get_balance( "bob", SBD_SYMBOL )   == asset( 1000000 + 1000000, SBD_SYMBOL ) );
+}
+
 /*
  * SMT legacy tests
  *

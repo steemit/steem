@@ -32,4 +32,35 @@ inline void validate_smt_symbol( const asset_symbol_type& symbol )
    FC_ASSERT( symbol.is_vesting() == false, "liquid variant of NAI expected");
 }
 
+/**
+ * Validate a price complies with Tick Pricing Rules.
+ *
+ * - For prices involving Steem Dollars (SBD), the base asset must be SBD.
+ * - For prices involving SMT assets, the base asset must be STEEM.
+ * - The quote must be a power of 10.
+ *
+ * \param price The price to perform Tick Pricing Rules validation
+ * \throw fc::assert_exception If the price does not conform to Tick Pricing Rules
+ */
+inline void validate_tick_pricing( const price& p )
+{
+   if ( p.base.symbol == SBD_SYMBOL )
+   {
+      FC_ASSERT( p.quote.symbol == STEEM_SYMBOL, "Only STEEM can be paired with SBD as the base symbol." );
+   }
+   else if ( p.base.symbol == STEEM_SYMBOL )
+   {
+      FC_ASSERT( p.quote.symbol.space() == asset_symbol_type::smt_nai_space, "Only tokens can be paired with STEEM as the base symbol." );
+   }
+   else
+   {
+      FC_ASSERT( false, "STEEM and SBD are the only valid base symbols." );
+   }
+
+   share_type tmp = p.quote.amount;
+   while ( tmp > 9 && tmp % 10 == 0 )
+      tmp /= 10;
+   FC_ASSERT( tmp == 1, "The quote amount must be a power of 10." );
+}
+
 } }

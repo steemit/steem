@@ -132,6 +132,7 @@ namespace steem { namespace protocol {
 
       bool is_null()const;
       void validate()const;
+      void invert();
 
    }; /// price
 

@@ -3052,6 +3052,9 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
       FC_ASSERT( is_asset_type( o.exchange_rate.base, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ),
             "Price feed must be a SBD/STEEM price" );
 
+   if ( _db.has_hardfork( STEEM_SMT_HARDFORK ) )
+      validate_tick_pricing( o.exchange_rate );
+
    const auto& witness = _db.get_witness( o.publisher );
    _db.modify( witness, [&]( witness_object& w )
    {
@@ -3083,6 +3086,8 @@ void convert_evaluator::do_apply( const convert_operation& o )
 
 void limit_order_create_evaluator::do_apply( const limit_order_create_operation& o )
 {
+   FC_ASSERT( !_db.has_hardfork( STEEM_SMT_HARDFORK ), "The 'limit_order_create' operation is deprecated in favor of `limit_order_create2'." );
+
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449) )
@@ -3126,6 +3131,35 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
       FC_ASSERT( o.expiration <= _db.head_block_time() + STEEM_MAX_LIMIT_ORDER_EXPIRATION, "Limit Order Expiration must not be more than 28 days in the future" );
    }
 
+   price exchange_rate = o.exchange_rate;
+
+   if ( _db.has_hardfork( STEEM_SMT_HARDFORK ) )
+   {
+      validate_tick_pricing( o.get_price() );
+
+      if ( o.exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space )
+      {
+         const auto* token = _db.find< smt_token_object, by_symbol >( o.exchange_rate.quote.symbol );
+         FC_ASSERT( token != nullptr, "Unable to find quote token. Symbol: ${symbol}", ("symbol", o.exchange_rate.quote.symbol) );
+      }
+
+      if ( o.amount_to_sell.symbol != o.exchange_rate.base.symbol )
+         exchange_rate.invert();
+
+      FC_ASSERT( o.amount_to_sell.symbol == exchange_rate.base.symbol,
+         "Sell asset must be in the price. Sell symbol: ${symbol}, Exchange rate: ${exchange}",
+            ("symbol", o.amount_to_sell.symbol)("exchange", o.exchange_rate) );
+   }
+   else
+   {
+      FC_ASSERT( o.amount_to_sell.symbol == o.exchange_rate.base.symbol, "Sell asset must be the base of the price" );
+      FC_ASSERT(
+         ( is_asset_type( o.amount_to_sell, STEEM_SYMBOL ) && is_asset_type( o.exchange_rate.quote, SBD_SYMBOL ) ) ||
+         ( is_asset_type( o.amount_to_sell, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ) ),
+         "Amount to sell symbol cannot be paired the given quote. Sell symbol: ${symbol}, Quote symbol: ${quote}",
+            ("symbol", o.amount_to_sell.symbol)("quote", o.exchange_rate.quote.symbol) );
+   }
+
    _db.adjust_balance( o.owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
@@ -3134,7 +3168,7 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
        obj.seller     = o.owner;
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
-       obj.sell_price = o.exchange_rate;
+       obj.sell_price = exchange_rate;
 
        FC_TODO( "Check past order expirations and cleanup after HF 20" )
        if( _db.has_hardfork( STEEM_HARDFORK_0_20__1449 ) )
