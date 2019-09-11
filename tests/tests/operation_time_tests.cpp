@@ -1444,12 +1444,12 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
       }
 
       ops[0].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
-      ops[1].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 105000, STEEM_SYMBOL ) );
-      ops[2].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  98000, STEEM_SYMBOL ) );
-      ops[3].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  97000, STEEM_SYMBOL ) );
-      ops[4].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  99000, STEEM_SYMBOL ) );
-      ops[5].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  97500, STEEM_SYMBOL ) );
-      ops[6].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 102000, STEEM_SYMBOL ) );
+      ops[1].exchange_rate = price( asset( 942, SBD_SYMBOL ),  asset( 100000, STEEM_SYMBOL ) );
+      ops[2].exchange_rate = price( asset( 1020, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
+      ops[3].exchange_rate = price( asset( 1031, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
+      ops[4].exchange_rate = price( asset( 1010, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
+      ops[5].exchange_rate = price( asset( 1026, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
+      ops[6].exchange_rate = price( asset( 980, SBD_SYMBOL ),  asset( 100000, STEEM_SYMBOL ) );
 
       for( int i = 0; i < 7; i++ )
       {
@@ -1465,8 +1465,8 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
       BOOST_TEST_MESSAGE( "Get feed history object" );
       feed_history_object feed_history = db->get_feed_history();
       BOOST_TEST_MESSAGE( "Check state" );
-      BOOST_REQUIRE( feed_history.current_median_history == price( asset( 1000, SBD_SYMBOL ), asset( 99000, STEEM_SYMBOL) ) );
-      BOOST_REQUIRE( feed_history.price_history[ 0 ] == price( asset( 1000, SBD_SYMBOL ), asset( 99000, STEEM_SYMBOL) ) );
+      BOOST_REQUIRE( feed_history.current_median_history == price( asset( 1010, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL) ) );
+      BOOST_REQUIRE( feed_history.price_history[ 0 ] == price( asset( 1010, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL) ) );
       validate_database();
 
       for ( int i = 0; i < 23; i++ )
@@ -1477,7 +1477,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
          {
             txs[j].operations.clear();
             txs[j].signatures.clear();
-            ops[j].exchange_rate = price( ops[j].exchange_rate.base, asset( ops[j].exchange_rate.quote.amount + 10, STEEM_SYMBOL ) );
+            ops[j].exchange_rate = price( asset( ops[j].exchange_rate.base.amount + 1, SBD_SYMBOL ), ops[j].exchange_rate.quote );
             txs[j].set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
             txs[j].operations.push_back( ops[j] );
             sign( txs[j], keys[j] );
@@ -1486,12 +1486,12 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
 
          BOOST_TEST_MESSAGE( "Generate Blocks" );
 
-         generate_blocks( STEEM_BLOCKS_PER_HOUR  ); // Jump forward 1 hour
+         generate_blocks( STEEM_BLOCKS_PER_HOUR ); // Jump forward 1 hour
 
          BOOST_TEST_MESSAGE( "Check feed_history" );
 
          feed_history = db->get(feed_history_id_type());
-         BOOST_REQUIRE( feed_history.current_median_history == feed_history.price_history[ ( i + 1 ) / 2 ] );
+         BOOST_REQUIRE( feed_history.current_median_history == feed_history.price_history[ ( i + 1 ) / 2 + ( i % 2 ? 0 : 1 ) ] );
          BOOST_REQUIRE( feed_history.price_history[ i + 1 ] == ops[4].exchange_rate );
          validate_database();
       }

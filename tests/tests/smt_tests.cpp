@@ -201,9 +201,9 @@ BOOST_AUTO_TEST_CASE( tick_pricing_rules_validation )
    validate_tick_pricing( tick_price );
 
    BOOST_TEST_MESSAGE( " -- Test failure STEEM must be the base symbol when trading tokens" );
-   tick_price.invert();
+   tick_price = tick_price.inverse();
    BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
-   tick_price.invert();
+   tick_price = tick_price.inverse();
 
    BOOST_TEST_MESSAGE( " -- Test failure quote symbol must be a power of 10" );
    tick_price.quote = asset( 11, symbol );
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE( tick_pricing_rules_validation )
    BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( " -- Test success when SBD is base symbol when paired with STEEM" );
-   tick_price.invert();
+   tick_price = tick_price.inverse();
    tick_price.base.amount = 11;
    validate_tick_pricing( tick_price );
 }
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE( tick_pricing_rules )
    tx.signatures.clear();
 
    BOOST_TEST_MESSAGE( "--- Test success publishing price feed" );
-   fop.exchange_rate.invert();
+   fop.exchange_rate = fop.exchange_rate.inverse();
    tx.operations.push_back( fop );
    tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
    sign( tx, charlie_private_key );

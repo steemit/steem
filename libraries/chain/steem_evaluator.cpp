@@ -3144,7 +3144,7 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
       }
 
       if ( o.amount_to_sell.symbol != o.exchange_rate.base.symbol )
-         exchange_rate.invert();
+         exchange_rate = exchange_rate.inverse();
 
       FC_ASSERT( o.amount_to_sell.symbol == exchange_rate.base.symbol,
          "Sell asset must be in the price. Sell symbol: ${symbol}, Exchange rate: ${exchange}",

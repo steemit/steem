@@ -312,13 +312,9 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 
       bool price::is_null() const { return *this == price(); }
 
-      void price::invert()
+      price price::inverse() const
       {
-         auto _quote = base;
-         auto _base  = quote;
-         base  = _base;
-         quote = _quote;
-         validate();
+         return price( quote, base );
       }
 
       void price::validate() const
