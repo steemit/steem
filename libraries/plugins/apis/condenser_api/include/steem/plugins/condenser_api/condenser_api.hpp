@@ -103,6 +103,7 @@ struct api_account_object
       posting( a.posting ),
       memo_key( a.memo_key ),
       json_metadata( a.json_metadata ),
+      posting_json_metadata( a.posting_json_metadata ),
       proxy( a.proxy ),
       last_owner_update( a.last_owner_update ),
       last_account_update( a.last_account_update ),
@@ -165,6 +166,7 @@ struct api_account_object
    authority         posting;
    public_key_type   memo_key;
    string            json_metadata;
+   string            posting_json_metadata;
    account_name_type proxy;
 
    time_point_sec    last_owner_update;
@@ -1196,7 +1198,8 @@ FC_REFLECT( steem::plugins::condenser_api::api_operation_object,
              (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)
+             (proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(downvote_manabar)(voting_power)
