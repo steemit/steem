@@ -1949,9 +1949,9 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
       push_virtual_operation( comment_payout_update_operation( comment.author, to_string( comment.permlink ) ) );
 
-      const auto& vote_idx = get_index< comment_vote_index, by_comment_voter_symbol >();
-      auto vote_itr = vote_idx.lower_bound( comment.id );
-      while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )
+      const auto& vote_idx = get_index< comment_vote_index, by_comment_symbol_voter >();
+      auto vote_itr = vote_idx.lower_bound( boost::make_tuple( comment.id, STEEM_SYMBOL ) );
+      while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id && vote_itr->symbol == STEEM_SYMBOL )
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;

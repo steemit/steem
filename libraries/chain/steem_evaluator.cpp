@@ -2349,7 +2349,7 @@ void generic_vote_evaluator(
    if( _db.calculate_discussion_payout_time( ctx.comment ) == fc::time_point_sec::maximum() )
    {
 #ifndef CLEAR_VOTES
-      auto itr = comment_vote_idx.find( boost::make_tuple( ctx.comment.id, ctx.voter_id ) );
+      auto itr = comment_vote_idx.find( boost::make_tuple( ctx.comment.id, ctx.voter_id, ctx.symbol ) );
 
       if( itr == comment_vote_idx.end() )
          _db.create< comment_vote_object >( [&]( comment_vote_object& cvo )

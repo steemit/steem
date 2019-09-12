@@ -44,7 +44,7 @@ template< typename CommentType >
 share_type reward_comment( comment_context c_ctx, const CommentType& comment, const reward_fund_context& rf_ctx, const price& current_steem_price, database& db );
 
 template< typename CommentType >
-share_type reward_curators( share_type tokens, comment_context& c_ctx, const CommentType& comment, const asset_symbol_type symbol, database& db );
+share_type reward_curators( share_type& tokens, comment_context& c_ctx, const CommentType& comment, const asset_symbol_type symbol, database& db );
 
 void process_comment_rewards( database& db )
 {
@@ -121,16 +121,6 @@ void process_comment_rewards( database& db )
       ctx.total_claims = reward_funds[ STEEM_SYMBOL ].recent_claims;
       ctx.reward_fund = reward_funds[ STEEM_SYMBOL ].reward_balance.amount;
       reward_funds[ STEEM_SYMBOL ].tokens_awarded += db.cashout_comment_helper( ctx, *current, current_steem_price, false );
-      /*reward_funds[ STEEM_SYMBOL ].tokens_awarded += reward_comment(
-         current->author,
-         *current,
-         current->max_accepted_payout.amount,
-         reward_funds[ STEEM_SYMBOL ],
-         current_steem_price,
-         &(current->beneficiaries)
-         db
-      );
-      */
 
       for( auto smt_rshare : current->smt_rshares )
       {
@@ -154,6 +144,7 @@ void process_comment_rewards( database& db )
             c.vote_rshares = c_ctx.vote_rshares;
             c.total_vote_weight = c_ctx.total_vote_weight.value;
 #ifndef IS_LOW_MEM
+            FC_TODO( "Update SMT author rewards" ); // This is non-consensus and should probably be done in a plugin/hivemind
             //c.author_rewards += c_ctx.author_tokens;
 #endif
          });
@@ -213,7 +204,7 @@ share_type reward_comment( comment_context c_ctx, const CommentType& comment, co
             share_type curation_tokens = ( ( reward_tokens * rf_ctx.percent_curation_rewards ) / STEEM_100_PERCENT ).to_uint64();
             author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
-            curation_tokens -= reward_curators( curation_tokens, c_ctx, comment, rf_ctx.reward_balance.symbol, db );
+            reward_curators( curation_tokens, c_ctx, comment, rf_ctx.reward_balance.symbol, db );
 
             share_type total_beneficiary = 0;
             claimed_reward = author_tokens + curation_tokens;
@@ -243,7 +234,6 @@ share_type reward_comment( comment_context c_ctx, const CommentType& comment, co
             auto vesting_token = author_tokens;
 
             const auto& author = db.get_account( c_ctx.author );
-            // TODO Update author reward operation to hold all tokens at once
             operation vop = author_reward_operation( c_ctx.author, c_ctx.permlink, asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ), asset( 0, VESTS_SYMBOL ) );
 
             create_vesting2( db, author, asset( vesting_token.value, rf_ctx.reward_balance.symbol ), true,
@@ -253,14 +243,14 @@ share_type reward_comment( comment_context c_ctx, const CommentType& comment, co
                db.pre_push_virtual_operation( vop );
             } );
 
-            FC_TODO( "Adjust total payout for SMTs" );
+            FC_TODO( "Adjust total payout for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
 
             db.post_push_virtual_operation( vop );
             vop = comment_reward_operation( c_ctx.author, c_ctx.permlink, asset( claimed_reward, rf_ctx.reward_balance.symbol ) );
             db.pre_push_virtual_operation( vop );
             db.post_push_virtual_operation( vop );
 
-            FC_TODO( "Update author and posting rewards for SMTs" );
+            FC_TODO( "Update author and posting rewards for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
          }
       }
 
@@ -274,15 +264,33 @@ share_type reward_comment( comment_context c_ctx, const CommentType& comment, co
       c_ctx.vote_rshares = 0;
       c_ctx.total_vote_weight = 0;
 #ifndef IS_LOW_MEM
+      FC_TODO( "Update SMT author rewards" ); // This is non-consensus and should probably be done in a plugin/hivemind
       //c_ctx.author_rewards += author_tokens;
 #endif
+
+      const auto& vote_idx = db.get_index< comment_vote_index, by_comment_symbol_voter >();
+      auto vote_itr = vote_idx.lower_bound( boost::make_tuple( c_ctx.id, rf_ctx.reward_balance.symbol ) );
+      while( vote_itr != vote_idx.end() && vote_itr->comment == c_ctx.id && vote_itr->symbol == rf_ctx.reward_balance.symbol )
+      {
+         const auto& cur_vote = *vote_itr;
+         ++vote_itr;
+
+#ifdef CLEAR_VOTES
+         db.remove( cur_vote );
+#else
+         db.modify( cur_vote, [&]( comment_vote_object& cvo )
+         {
+            cvo.num_changes = -1;
+         });
+#endif
+      }
 
       return claimed_reward;
    } FC_CAPTURE_AND_RETHROW( (comment)(rf_ctx)(current_steem_price) );
 }
 
 template< typename CommentType >
-share_type reward_curators( share_type tokens, comment_context& c_ctx, const CommentType& comment, const asset_symbol_type symbol, database& db )
+share_type reward_curators( share_type& tokens, comment_context& c_ctx, const CommentType& comment, const asset_symbol_type symbol, database& db )
 {
    struct cmp
    {
@@ -337,7 +345,8 @@ share_type reward_curators( share_type tokens, comment_context& c_ctx, const Com
                      db.pre_push_virtual_operation( vop );
                   });
 
-                  // TODO Curtation reward count for SMTs
+                  FC_TODO( "Update curtation reward count for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
+
 
                   db.post_push_virtual_operation( vop );
                }

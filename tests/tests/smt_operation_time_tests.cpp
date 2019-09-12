@@ -1424,5 +1424,189 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_rewards )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(charlie)(dave) )
+      fund( "alice", 100000 );
+      vest( "alice", 100000 );
+      fund( "bob", 100000 );
+      vest( "bob", 100000 );
+      fund( "charlie", 100000 );
+      vest( "charlie", 100000 );
+      fund( "dave", 100000 );
+      vest( "dave", 100000 );
+
+      auto alice_symbol = create_smt( "alice", alice_private_key, 3 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      uint64_t recent_claims = 10000000000ull;
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto alice_smt_vests = db.create_vesting( db.get_account( "alice" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "bob" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "charlie" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "dave" ), asset( 1000000, alice_symbol ), false );
+         auto now = db.head_block_time();
+
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+            smt.current_supply = 4000000;
+            smt.total_vesting_shares = alice_smt_vests.amount;
+            smt.total_vesting_fund_smt = 4000000;
+            smt.votes_per_regeneration_period = 50;
+            smt.vote_regeneration_period_seconds = 5*24*60*60;
+            smt.recent_claims = uint128_t( 0, recent_claims );
+            smt.author_reward_curve = curve_id::convergent_linear;
+            smt.curation_reward_curve = convergent_square_root;
+            smt.content_constant = STEEM_CONTENT_CONSTANT_HF21;
+            smt.percent_curation_rewards = 50 * STEEM_1_PERCENT;
+            smt.last_reward_update = now;
+         });
+
+         db.modify( db.get( reward_fund_id_type() ), [&]( reward_fund_object& rfo )
+         {
+            rfo.recent_claims = uint128_t( 0, recent_claims );
+            rfo.last_update = now;
+         });
+      });
+      generate_block();
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "foo";
+      comment.body = "bar";
+      allowed_vote_assets ava;
+      ava.votable_assets[ alice_symbol ] = votable_asset_options();
+      comment_options_operation comment_opts;
+      comment_opts.author = "alice";
+      comment_opts.permlink = "test";
+      comment_opts.percent_steem_dollars = 0;
+      comment_opts.extensions.insert( ava );
+      vote2_operation vote;
+      vote.voter = "alice";
+      vote.author = comment.author;
+      vote.permlink = comment.permlink;
+      vote.rshares[ STEEM_SYMBOL ] = 100ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      comment.author = "bob";
+      comment_opts.author = "bob";
+      vote.voter = "bob";
+      vote.author = comment.author;
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->head_block_time() + ( STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21 / 2 ), true );
+
+      tx.clear();
+      vote.voter = "bob";
+      vote.rshares[ STEEM_SYMBOL ] = 50ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->head_block_time() + STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21, true );
+
+      tx.clear();
+      vote.voter = "charlie";
+      vote.rshares[ STEEM_SYMBOL ] = 50ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, charlie_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->get_comment( comment.author, comment.permlink ).cashout_time - ( STEEM_UPVOTE_LOCKOUT_SECONDS / 2 ), true );
+
+      tx.clear();
+      vote.voter = "dave";
+      vote.author = "alice";
+      vote.rshares[ STEEM_SYMBOL ] = 100ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, dave_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->get_comment( comment.author, comment.permlink ).cashout_time - STEEM_BLOCK_INTERVAL, true );
+
+      share_type reward_fund = 10000000;
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto now = db.head_block_time();
+
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.recent_claims = uint128_t( 0, recent_claims );
+            smt.reward_balance = asset( reward_fund, alice_symbol );
+            smt.current_supply += reward_fund;
+            smt.last_reward_update = now;
+         });
+
+         share_type reward_delta = 0;
+
+         db.modify( db.get( reward_fund_id_type() ), [&]( reward_fund_object& rfo )
+         {
+            reward_delta = reward_fund - rfo.reward_balance.amount - 60; //60 adjusts for inflation
+            rfo.reward_balance += asset( reward_delta, STEEM_SYMBOL );
+            rfo.recent_claims = uint128_t( 0, recent_claims );
+            rfo.last_update = now;
+         });
+
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply += asset( reward_delta, STEEM_SYMBOL );
+         });
+      });
+
+      generate_block();
+
+      const auto& rf = db->get( reward_fund_id_type() );
+      const auto& alice_smt = db->get< smt_token_object, by_symbol >( alice_symbol );
+
+      BOOST_REQUIRE( rf.recent_claims == alice_smt.recent_claims );
+      BOOST_REQUIRE( rf.reward_balance.amount == alice_smt.reward_balance.amount );
+
+      const auto& alice_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+      const auto& alice_reward_balance = db->get_account( "alice" );
+      BOOST_REQUIRE( alice_reward_balance.reward_vesting_steem.amount == alice_smt_balance.pending_vesting_value.amount );
+
+      const auto& bob_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
+      const auto& bob_reward_balance = db->get_account( "bob" );
+      BOOST_REQUIRE( bob_reward_balance.reward_vesting_steem.amount == bob_smt_balance.pending_vesting_value.amount );
+
+      const auto& charlie_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "charlie", alice_symbol ) );
+      const auto& charlie_reward_balance = db->get_account( "charlie" );
+      BOOST_REQUIRE( charlie_reward_balance.reward_vesting_steem.amount == charlie_smt_balance.pending_vesting_value.amount );
+
+      const auto& dave_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
+      const auto& dave_reward_balance = db->get_account( "dave" );
+      BOOST_REQUIRE( dave_reward_balance.reward_vesting_steem.amount == dave_smt_balance.pending_vesting_value.amount );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
