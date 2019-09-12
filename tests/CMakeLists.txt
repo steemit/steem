@@ -308,6 +308,8 @@ add_boost_test( chain_test
    smt_tests/setup_authorities
    smt_tests/setup_apply
    smt_tests/smt_create_apply
+   smt_tests/tick_pricing_rules_validation
+   smt_tests/tick_pricing_rules
    undo_tests/undo_basic
    undo_tests/undo_object_disapear
    undo_tests/undo_key_collision
