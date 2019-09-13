@@ -312,11 +312,6 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 
       bool price::is_null() const { return *this == price(); }
 
-      price price::inverse() const
-      {
-         return price( quote, base );
-      }
-
       void price::validate() const
       { try {
          FC_ASSERT( base.amount > share_type(0) );
