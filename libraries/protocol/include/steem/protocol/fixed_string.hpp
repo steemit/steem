@@ -121,11 +121,6 @@ class fixed_string_impl
          return *this;
       }
 
-      const char* c_str()const
-      {
-         return (const char*)(&data);
-      }
-
       friend std::string operator + ( const fixed_string_impl& a, const std::string& b ) { return std::string( a ) + b; }
       friend std::string operator + ( const std::string& a, const fixed_string_impl& b ){ return a + std::string( b ); }
       friend bool operator < ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data < b.data; }

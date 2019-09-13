@@ -12,7 +12,7 @@
 using namespace steem::chain;
 using namespace steem::protocol;
 
-BOOST_FIXTURE_TEST_SUITE( smt_market_history, smt_database_fixture_for_plugin )
+BOOST_FIXTURE_TEST_SUITE( smt_market_history, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( smt_mh_test )
 {
