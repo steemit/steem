@@ -27,7 +27,7 @@ using fc::string;
 using boost::container::flat_set;
 using boost::container::flat_map;
 
-BOOST_FIXTURE_TEST_SUITE( smt_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( smt_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( smt_transfer_validate )
 {

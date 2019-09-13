@@ -28,7 +28,7 @@ using fc::string;
 using fc::uint128_t;
 using boost::container::flat_set;
 
-BOOST_FIXTURE_TEST_SUITE( smt_operation_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( smt_operation_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( smt_limit_order_create_authorities )
 {
