@@ -180,7 +180,6 @@ add_boost_test( chain_test
    operation_time_tests/convert_delay
    operation_time_tests/steem_inflation
    operation_time_tests/sbd_interest
-   operation_time_tests/liquidity_rewards
    operation_time_tests/post_rate_limit
    operation_time_tests/comment_freeze
    operation_time_tests/sbd_stability
@@ -294,7 +293,6 @@ add_boost_test( chain_test
    smt_operation_tests/smt_delegate_vesting_shares_apply
    smt_operation_tests/vote2_authorities
    smt_operation_tests/vote2_apply
-   smt_operation_time_tests/smt_liquidity_rewards
    smt_operation_time_tests/smt_refunds
    smt_operation_time_tests/smt_ico_payouts
    smt_operation_time_tests/smt_ico_payouts_special_destinations
