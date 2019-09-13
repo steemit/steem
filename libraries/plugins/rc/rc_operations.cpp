@@ -7,6 +7,7 @@
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/global_property_object.hpp>
+#include <steem/chain/smt_objects.hpp>
 
 #include <steem/chain/util/manabar.hpp>
 
@@ -16,10 +17,25 @@ namespace steem { namespace plugins { namespace rc {
 
 using namespace steem::chain;
 
+inline bool is_destination_nai( const string& dest )
+{
+   return dest.size() == STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH && dest.c_str()[0] == '@' && dest.c_str()[1] == '@';
+}
+
 void delegate_to_pool_operation::validate()const
 {
    validate_account_name( from_account );
-   validate_account_name( to_pool );
+   //validate_account_name( to_pool );
+   if( is_destination_nai( to_pool ) )
+   {
+      auto symbol = asset_symbol_type::from_nai_string( to_pool.c_str(), 0 );
+      FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "SMT Pool destination not in NAI space" );
+      FC_ASSERT( !symbol.is_vesting(), "SMT Pool destination must be liquid NAI" );
+   }
+   else
+   {
+      validate_account_name( to_pool );
+   }
 
    FC_ASSERT( amount.symbol.is_vesting(), "Must use vesting symbol" );
    FC_ASSERT( amount.symbol == VESTS_SYMBOL, "Currently can only delegate VESTS (SMT's not supported #2698)" );
@@ -78,8 +94,19 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
    rc_pool_manabar_params.regen_time = STEEM_RC_REGEN_TIME;
    if( !to_pool )
    {
-      const account_object* to_pool_account = _db.find< account_object, by_name >( op.to_pool );
-      FC_ASSERT( to_pool_account, "Account ${a} does not exist", ("a", op.to_pool) );
+      if( is_destination_nai( op.to_pool ) )
+      {
+         const smt_token_object* to_pool_smt = _db.find< smt_token_object, by_symbol >( asset_symbol_type::from_nai_string( op.to_pool.c_str(), 0 ) );
+         FC_ASSERT( to_pool_smt, "SMT ${s} does not exist", ("s", op.to_pool) );
+         FC_ASSERT( to_pool_smt->phase == smt_phase::ico_completed || to_pool_smt->phase == smt_phase::launch_success,
+            "SMT ${s} must have succesfully completed ICO to receive delegation", ("s", op.to_pool) );
+      }
+      else
+      {
+         const account_object* to_pool_account = _db.find< account_object, by_name >( op.to_pool );
+         FC_ASSERT( to_pool_account, "Account ${a} does not exist", ("a", op.to_pool) );
+      }
+
       rc_pool_manabar.current_mana = 0;
       rc_pool_manabar.last_update_time = now;
       rc_pool_manabar_params.max_mana = 0;
