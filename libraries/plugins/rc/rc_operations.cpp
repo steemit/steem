@@ -98,7 +98,7 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
       {
          asset_symbol_type smt_symbol = asset_symbol_type::from_nai_string( std::string( op.to_pool ).c_str(), 0 );
          const auto& smt_idx = _db.get_index< smt_token_index, by_symbol >();
-         const auto to_pool_smt = smt_idx.lower_bound( smt_symbol );
+         auto to_pool_smt = smt_idx.lower_bound( smt_symbol );
          FC_ASSERT( to_pool_smt != smt_idx.end(), "SMT ${s} does not exist", ("s", op.to_pool) );
          FC_ASSERT( to_pool_smt->liquid_symbol.to_nai() == smt_symbol.to_nai(), "SMT ${s} does not exist", ("s", op.to_pool) );
          FC_ASSERT( to_pool_smt->phase == smt_phase::ico_completed || to_pool_smt->phase == smt_phase::launch_success,
