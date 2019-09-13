@@ -332,6 +332,7 @@ add_boost_test( plugin_test
     json_rpc/positive_validation
     json_rpc/semantics_validation
     market_history/mh_test
+    smt_market_history/smt_mh_test
     transaction_status/transaction_status_test
     rc_delegation/rc_delegate_to_pool_apply
     rc_delegation/rc_set_slot_delegator

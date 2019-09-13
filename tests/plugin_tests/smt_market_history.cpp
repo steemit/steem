@@ -85,10 +85,10 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       auto fill_order_a_time = db->head_block_time();
       auto time_a = fc::time_point_sec( ( fill_order_a_time.sec_since_epoch() / 15 ) * 15 );
 
-      limit_order_create_operation op;
+      limit_order_create2_operation op;
       op.owner = "alice";
       op.amount_to_sell = asset( 1000, any_smt_symbol );
-      op.min_to_receive = ASSET( "2.000 TESTS" );
+      op.exchange_rate  = price( ASSET( "2.000 TESTS" ), asset( 1000, any_smt_symbol ) );
       op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       op.owner = "bob";
       op.amount_to_sell = ASSET( "1.500 TESTS" );
-      op.min_to_receive = asset( 750, any_smt_symbol );
+      op.exchange_rate  = price( ASSET( "2.000 TESTS" ), asset( 1000, any_smt_symbol ) );
       tx.operations.push_back( op );
       sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       op.owner = "sam";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
-      op.min_to_receive = asset( 500, any_smt_symbol );
+      op.exchange_rate  = price( ASSET( "2.000 TESTS" ), asset( 1000, any_smt_symbol ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, sam_private_key );
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       op.owner = "alice";
       op.amount_to_sell = asset( 500, any_smt_symbol );
-      op.min_to_receive = ASSET( "0.900 TESTS" );
+      op.exchange_rate  = price( ASSET( "1.800 TESTS" ), asset( 1000, any_smt_symbol ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       op.owner = "bob";
       op.amount_to_sell = ASSET( "0.450 TESTS" );
-      op.min_to_receive = asset( 250, any_smt_symbol );
+      op.exchange_rate  = price( ASSET( "1.800 TESTS" ), asset( 1000, any_smt_symbol ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, bob_private_key );
