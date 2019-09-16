@@ -1,5 +1,7 @@
 # Building Steem
 
+Building Steeem requires 8GB of RAM.
+
 ## Compile-Time Options (cmake)
 
 ### CMAKE_BUILD_TYPE=[Release/Debug]
@@ -41,6 +43,8 @@ We ship a Dockerfile.  This builds both common node type binaries.
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
 will build out of the box without further effort:
 
+    sudo apt-get update
+
     # Required packages
     sudo apt-get install -y \
         autoconf \
@@ -55,7 +59,8 @@ will build out of the box without further effort:
         make \
         pkg-config \
         python3 \
-        python3-jinja2
+        python3-jinja2 \
+        doxygen
 
     # Boost packages (also required)
     sudo apt-get install -y \
@@ -75,7 +80,6 @@ will build out of the box without further effort:
 
     # Optional packages (not required, but will make a nicer experience)
     sudo apt-get install -y \
-        doxygen \
         libncurses5-dev \
         libreadline-dev \
         perl
@@ -117,7 +121,8 @@ Here are the required packages:
         python-dev \
         perl \
         python3 \
-        python3-jinja2
+        python3-jinja2 \
+        doxygen
 
 The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old.
 Steem requires Boost 1.58 (as in Ubuntu 16.04) and works with versions up to 1.60 (including).
@@ -185,12 +190,16 @@ Install Homebrew by following the instructions here: http://brew.sh/
         openssl \
         snappy \
         zlib \
-        python3
+        bzip2 \
+        python3 \
+        doxygen
         
     pip3 install --user jinja2
     
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
 steem. Until then, this will allow you to install boost 1.60.0.
+You may also need to install zlib and bzip2 libraries manually.
+In that case, change the directories for `export` accordingly.
 
 *Optional.* To use TCMalloc in LevelDB:
 
@@ -208,11 +217,11 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 ### Compile
 
-    export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
     export BOOST_ROOT=$(brew --prefix)/Cellar/boost@1.60/1.60.0/
-    export SNAPPY_LIBRARIES=$(brew --prefix)/Cellar/snappy/1.1.7_1/lib/
-    export SNAPPY_INCLUDE_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1/include/
-    export ZLIB_LIBRARIES=$(brew --prefix)/Cellar/zlib/1.2.11/lib/
+    export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2q/
+    export SNAPPY_ROOT_DIR=$(brew --prefix)/Cellar/snappy/1.1.7_1
+    export ZLIB_ROOT_DIR=$(brew --prefix)/Cellar/zlib/1.2.11
+    export BZIP2_ROOT_DIR=$(brew --prefix)/Cellar/bzip2/1.0.6_1
     git checkout stable
     git submodule update --init --recursive
     mkdir build && cd build

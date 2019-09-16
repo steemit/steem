@@ -1,4 +1,5 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/account_history_rocksdb/account_history_rocksdb_objects.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>

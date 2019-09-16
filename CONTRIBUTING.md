@@ -8,7 +8,7 @@ If there is an existing feature that is not working correctly, or a glitch in th
 
 ## Enhancement Suggestions
 
-Do **not** use the issue tracker to suggest enhancements or improvements to the platform. The best place for these discussions is on Steemit.com. If there is a well vetted idea that has the support of the community that you feel should be considered by the development team, please email it to [sneak@steemit.com](mailto:sneak@steemit.com) for review.
+Do **not** use the issue tracker to suggest enhancements or improvements to the platform. The best place for these discussions is on Steemit.com. If there is a well vetted idea that has the support of the community that you feel should be considered by the development team, please email it to [suggestions@steemit.com](mailto:suggestions@steemit.com) for review.
 
 ## Implementation Discussion
 
@@ -30,4 +30,4 @@ This issue tracker is only intended to track issues for the Steem blockchain. If
 
 Anybody in the community is welcome and encouraged to submit pull requests with any desired changes to the platform!
 
-Requests to make changes that include working, tested pull requests jump to the top of the queue. There is not a guarantee that all functionality submitted as a PR will be accepted and merged, however.
+Requests to make changes that include working, tested pull requests jump to the top of the queue. There is not a guarantee that all functionality submitted as a PR will be accepted and merged, however. Please read through our [Git Guidelines](doc/git-guidelines.md) prior to submitting a PR.

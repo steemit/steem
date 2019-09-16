@@ -1,4 +1,6 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
+
 #include <fc/uint128.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
@@ -52,6 +54,7 @@ namespace steem { namespace chain {
          asset       virtual_supply             = asset( 0, STEEM_SYMBOL );
          asset       current_supply             = asset( 0, STEEM_SYMBOL );
          asset       confidential_supply        = asset( 0, STEEM_SYMBOL ); ///< total asset held in confidential balances
+         asset       init_sbd_supply            = asset( 0, SBD_SYMBOL );
          asset       current_sbd_supply         = asset( 0, SBD_SYMBOL );
          asset       confidential_sbd_supply    = asset( 0, SBD_SYMBOL ); ///< total asset held in confidential balances
          asset       total_vesting_fund_steem   = asset( 0, STEEM_SYMBOL );
@@ -59,7 +62,7 @@ namespace steem { namespace chain {
          asset       total_reward_fund_steem    = asset( 0, STEEM_SYMBOL );
          fc::uint128 total_reward_shares2; ///< the running total of REWARD^2
          asset       pending_rewarded_vesting_shares = asset( 0, VESTS_SYMBOL );
-         asset       pending_rewarded_vesting_steem = asset( 0, STEEM_SYMBOL );
+         asset       pending_rewarded_vesting_steem  = asset( 0, STEEM_SYMBOL );
 
          price       get_vesting_share_price() const
          {
@@ -121,7 +124,7 @@ namespace steem { namespace chain {
           * "wasting" voting power through spillover; any user voting faster than this rate will have
           * their votes reduced.
           */
-         uint32_t vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
+         uint32_t target_votes_per_period = STEEM_INITIAL_VOTE_POWER_RATE;
 
          uint32_t delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
@@ -131,9 +134,20 @@ namespace steem { namespace chain {
 
          uint16_t sbd_stop_percent = 0;
          uint16_t sbd_start_percent = 0;
-#ifdef STEEM_ENABLE_SMT
+
+         //settings used to compute payments for every proposal
+         time_point_sec next_maintenance_time;
+         time_point_sec last_budget_time;
+
+         uint16_t content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF16;
+         uint16_t vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
+         uint16_t sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
+
+         asset sps_interval_ledger = asset( 0, SBD_SYMBOL );
+
+         uint16_t downvote_pool_percent = 0;
+
          asset smt_creation_fee = asset( 1000, SBD_SYMBOL );
-#endif
    };
 
    typedef multi_index_container<
@@ -147,6 +161,14 @@ namespace steem { namespace chain {
 
 } } // steem::chain
 
+#ifdef ENABLE_MIRA
+namespace mira {
+
+template<> struct is_static_length< steem::chain::dynamic_global_property_object > : public boost::true_type {};
+
+} // mira
+#endif
+
 FC_REFLECT( steem::chain::dynamic_global_property_object,
              (id)
              (head_block_number)
@@ -158,6 +180,7 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (virtual_supply)
              (current_supply)
              (confidential_supply)
+             (init_sbd_supply)
              (current_sbd_supply)
              (confidential_sbd_supply)
              (total_vesting_fund_steem)
@@ -174,14 +197,19 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (recent_slots_filled)
              (participation_count)
              (last_irreversible_block_num)
-             (vote_power_reserve_rate)
+             (target_votes_per_period)
              (delegation_return_period)
              (reverse_auction_seconds)
              (available_account_subsidies)
              (sbd_stop_percent)
              (sbd_start_percent)
-#ifdef STEEM_ENABLE_SMT
+             (next_maintenance_time)
+             (last_budget_time)
+             (content_reward_percent)
+             (vesting_reward_percent)
+             (sps_fund_percent)
+             (sps_interval_ledger)
+             (downvote_pool_percent)
              (smt_creation_fee)
-#endif
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::dynamic_global_property_object, steem::chain::dynamic_global_property_index )

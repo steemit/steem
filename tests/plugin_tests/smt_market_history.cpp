@@ -1,4 +1,4 @@
-#if defined IS_TEST_NET && defined STEEM_ENABLE_SMT
+#if defined IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steem/chain/account_object.hpp>
@@ -12,7 +12,7 @@
 using namespace steem::chain;
 using namespace steem::protocol;
 
-BOOST_FIXTURE_TEST_SUITE( smt_market_history, smt_database_fixture_for_plugin )
+BOOST_FIXTURE_TEST_SUITE( smt_market_history, database_fixture )
 
 BOOST_AUTO_TEST_CASE( smt_mh_test )
 {

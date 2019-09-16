@@ -6,8 +6,11 @@
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <fc/string.hpp>
+#include <fc/io/json.hpp>
+#include <fc/io/fstream.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -66,10 +69,13 @@ class chain_plugin_impl
 
       void start_write_processing();
       void stop_write_processing();
+      void write_default_database_config( bfs::path& p );
 
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
       uint16_t                         shared_file_scale_rate = 0;
+      int16_t                          sps_remove_threshold = -1;
+      uint32_t                         chainbase_flags = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;
@@ -77,11 +83,13 @@ class chain_plugin_impl
       bool                             check_locks = false;
       bool                             validate_invariants = false;
       bool                             dump_memory_details = false;
-      bool                             benchmark_is_enabled =false;
+      bool                             benchmark_is_enabled = false;
       bool                             statsd_on_replay = false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
+      bool                             replay_in_memory = false;
+      std::vector< std::string >       replay_memory_indices{};
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
       std::string                      from_state = "";
       std::string                      to_state = "";
@@ -96,6 +104,7 @@ class chain_plugin_impl
 
       vector< string >                 loaded_plugins;
       fc::mutable_variant_object       plugin_state_opts;
+      bfs::path                        database_cfg;
 
       database  db;
       std::string block_generator_registrant;
@@ -292,6 +301,12 @@ void chain_plugin_impl::stop_write_processing()
    write_processor_thread.reset();
 }
 
+void chain_plugin_impl::write_default_database_config( bfs::path &p )
+{
+   ilog( "writing database configuration: ${p}", ("p", p.string()) );
+   fc::json::save_to_file( steem::utilities::default_database_configuration(), p );
+}
+
 } // detail
 
 
@@ -309,6 +324,7 @@ bfs::path chain_plugin::state_storage_dir() const
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
+         ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
          ("shared-file-dir", bpo::value<bfs::path>()->default_value("blockchain"),
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
          ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G. If running a full node, increase this value to 200G.")
@@ -322,9 +338,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("from-state", bpo::value<string>()->default_value(""), "Load from state, then replay subsequent blocks (EXPERIMENTAL)")
          ("to-state", bpo::value<string>()->default_value(""), "File to save state after --stop-replay-at-block" )
          ("state-format", bpo::value<string>()->default_value("binary"), "State file save format (binary|json)" )
+#ifdef ENABLE_MIRA
+         ("memory-replay-indices", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
+#endif
          ;
    cli.add_options()
+         ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
+         ("force-open", bpo::bool_switch()->default_value(false), "force open the database, skipping the environment check" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("advanced-benchmark", "Make profiling for every plugin.")
@@ -332,6 +353,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+#ifdef ENABLE_MIRA
+         ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
+         ("memory-replay,m", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
+#endif
 #ifdef IS_TEST_NET
          ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID ), "chain ID to connect to")
 #endif
@@ -359,10 +384,14 @@ void chain_plugin::plugin_initialize(const variables_map& options)
    if( options.count( "shared-file-scale-rate" ) )
       my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
 
+   my->sps_remove_threshold = options.at( "sps-remove-threshold" ).as< uint16_t >();
+
+   my->chainbase_flags |= options.at( "force-open" ).as< bool >() ? chainbase::skip_env_check : chainbase::skip_nothing;
+
    my->from_state          = options.at( "from-state" ).as<string>();
    my->to_state            = options.at( "to-state" ).as<string>();
-   my->replay              = options.at( "replay-blockchain" ).as<bool>();
-   my->resync              = options.at( "resync-blockchain" ).as<bool>();
+   my->replay              = options.at( "replay-blockchain").as<bool>();
+   my->resync              = options.at( "resync-blockchain").as<bool>();
    my->stop_replay_at      =
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
@@ -405,6 +434,29 @@ void chain_plugin::plugin_initialize(const variables_map& options)
    {
       my->statsd_on_replay = options.at( "statsd-record-on-replay" ).as< bool >();
    }
+#ifdef ENABLE_MIRA
+   my->database_cfg = options.at( "database-cfg" ).as< bfs::path >();
+
+   if( my->database_cfg.is_relative() )
+      my->database_cfg = app().data_dir() / my->database_cfg;
+
+   if( !bfs::exists( my->database_cfg ) )
+   {
+      my->write_default_database_config( my->database_cfg );
+   }
+
+   my->replay_in_memory = options.at( "memory-replay" ).as< bool >();
+   if ( options.count( "memory-replay-indices" ) )
+   {
+      std::vector<std::string> indices = options.at( "memory-replay-indices" ).as< vector< string > >();
+      for ( auto& element : indices )
+      {
+         std::vector< std::string > tmp;
+         boost::split( tmp, element, boost::is_any_of("\t ") );
+         my->replay_memory_indices.insert( my->replay_memory_indices.end(), tmp.begin(), tmp.end() );
+      }
+   }
+#endif
 
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
@@ -468,16 +520,41 @@ void chain_plugin::plugin_startup()
       }
    };
 
+   fc::variant database_config;
+
+#ifdef ENABLE_MIRA
+   try
+   {
+      database_config = fc::json::from_file( my->database_cfg, fc::json::strict_parser );
+   }
+   catch ( const std::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+   catch ( const fc::exception& e )
+   {
+      elog( "Error while parsing database configuration: ${e}", ("e", e.what()) );
+      exit( EXIT_FAILURE );
+   }
+#endif
+
    database::open_args db_open_args;
    db_open_args.data_dir = app().data_dir() / "blockchain";
    db_open_args.shared_mem_dir = my->shared_memory_dir;
    db_open_args.initial_supply = STEEM_INIT_SUPPLY;
+   db_open_args.sbd_initial_supply = STEEM_SBD_INIT_SUPPLY;
    db_open_args.shared_file_size = my->shared_memory_size;
    db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
    db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
+   db_open_args.sps_remove_threshold = my->sps_remove_threshold;
+   db_open_args.chainbase_flags = my->chainbase_flags;
    db_open_args.do_validate_invariants = my->validate_invariants;
    db_open_args.stop_replay_at = my->stop_replay_at;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
+   db_open_args.database_cfg = database_config;
+   db_open_args.replay_in_memory = my->replay_in_memory;
+   db_open_args.replay_memory_indices = my->replay_memory_indices;
 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
@@ -563,7 +640,10 @@ void chain_plugin::plugin_startup()
       }
       catch( const fc::exception& e )
       {
-         wlog("Error opening database. If the binary or configuration has changed, replay the blockchain explicitly. Error: ${e}", ("e", e));
+         wlog( "Error opening database. If the binary or configuration has changed, replay the blockchain explicitly using `--replay-blockchain`." );
+         wlog( "If you know what you are doing you can skip this check and force open the database using `--force-open`." );
+         wlog( "WARNING: THIS MAY CORRUPT YOUR DATABASE. FORCE OPEN AT YOUR OWN RISK." );
+         wlog( " Error: ${e}", ("e", e) );
          exit(EXIT_FAILURE);
       }
    }

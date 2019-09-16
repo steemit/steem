@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <inttypes.h>
 
+#include "cache/lru_cache.h"
+#include "cache/sharded_cache.h"
 #include "options/options_helper.h"
 #include "options/options_parser.h"
 #include "options/options_sanity_check.h"
@@ -32,8 +34,8 @@
 #ifndef GFLAGS
 bool FLAGS_enable_print = false;
 #else
-#include <gflags/gflags.h>
-using GFLAGS::ParseCommandLineFlags;
+#include "util/gflags_compat.h"
+using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 #endif  // GFLAGS
 
@@ -60,7 +62,8 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
        "kZSTD:"
        "kZSTDNotFinalCompression"},
       {"bottommost_compression", "kLZ4Compression"},
-      {"compression_opts", "4:5:6:7"},
+      {"bottommost_compression_opts", "5:6:7:8:9:true"},
+      {"compression_opts", "4:5:6:7:8:true"},
       {"num_levels", "8"},
       {"level0_file_num_compaction_trigger", "8"},
       {"level0_slowdown_writes_trigger", "9"},
@@ -87,6 +90,7 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
       {"compaction_measure_io_stats", "false"},
       {"inplace_update_num_locks", "25"},
       {"memtable_prefix_bloom_size_ratio", "0.26"},
+      {"memtable_whole_key_filtering", "true"},
       {"memtable_huge_page_size", "28"},
       {"bloom_locality", "29"},
       {"max_successive_merges", "30"},
@@ -124,6 +128,8 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
       {"is_fd_close_on_exec", "true"},
       {"skip_log_error_on_recovery", "false"},
       {"stats_dump_period_sec", "46"},
+      {"stats_persist_period_sec", "57"},
+      {"stats_history_buffer_size", "69"},
       {"advise_random_on_open", "true"},
       {"use_adaptive_mutex", "false"},
       {"new_table_reader_for_compaction_inputs", "true"},
@@ -157,7 +163,15 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
   ASSERT_EQ(new_cf_opt.compression_opts.level, 5);
   ASSERT_EQ(new_cf_opt.compression_opts.strategy, 6);
   ASSERT_EQ(new_cf_opt.compression_opts.max_dict_bytes, 7);
+  ASSERT_EQ(new_cf_opt.compression_opts.zstd_max_train_bytes, 8);
+  ASSERT_EQ(new_cf_opt.compression_opts.enabled, true);
   ASSERT_EQ(new_cf_opt.bottommost_compression, kLZ4Compression);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.window_bits, 5);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.level, 6);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.strategy, 7);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.max_dict_bytes, 8);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.zstd_max_train_bytes, 9);
+  ASSERT_EQ(new_cf_opt.bottommost_compression_opts.enabled, true);
   ASSERT_EQ(new_cf_opt.num_levels, 8);
   ASSERT_EQ(new_cf_opt.level0_file_num_compaction_trigger, 8);
   ASSERT_EQ(new_cf_opt.level0_slowdown_writes_trigger, 9);
@@ -184,6 +198,7 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
   ASSERT_EQ(new_cf_opt.inplace_update_support, true);
   ASSERT_EQ(new_cf_opt.inplace_update_num_locks, 25U);
   ASSERT_EQ(new_cf_opt.memtable_prefix_bloom_size_ratio, 0.26);
+  ASSERT_EQ(new_cf_opt.memtable_whole_key_filtering, true);
   ASSERT_EQ(new_cf_opt.memtable_huge_page_size, 28U);
   ASSERT_EQ(new_cf_opt.bloom_locality, 29U);
   ASSERT_EQ(new_cf_opt.max_successive_merges, 30U);
@@ -249,6 +264,8 @@ TEST_F(OptionsTest, GetOptionsFromMapTest) {
   ASSERT_EQ(new_db_opt.is_fd_close_on_exec, true);
   ASSERT_EQ(new_db_opt.skip_log_error_on_recovery, false);
   ASSERT_EQ(new_db_opt.stats_dump_period_sec, 46U);
+  ASSERT_EQ(new_db_opt.stats_persist_period_sec, 57U);
+  ASSERT_EQ(new_db_opt.stats_history_buffer_size, 69U);
   ASSERT_EQ(new_db_opt.advise_random_on_open, true);
   ASSERT_EQ(new_db_opt.use_adaptive_mutex, false);
   ASSERT_EQ(new_db_opt.new_table_reader_for_compaction_inputs, true);
@@ -529,6 +546,101 @@ TEST_F(OptionsTest, GetBlockBasedTableOptionsFromString) {
   ASSERT_EQ(table_opt.cache_index_and_filter_blocks,
             new_opt.cache_index_and_filter_blocks);
   ASSERT_EQ(table_opt.filter_policy, new_opt.filter_policy);
+
+  // Check block cache options are overwritten when specified
+  // in new format as a struct.
+  ASSERT_OK(GetBlockBasedTableOptionsFromString(table_opt,
+             "block_cache={capacity=1M;num_shard_bits=4;"
+             "strict_capacity_limit=true;high_pri_pool_ratio=0.5;};"
+             "block_cache_compressed={capacity=1M;num_shard_bits=4;"
+             "strict_capacity_limit=true;high_pri_pool_ratio=0.5;}",
+             &new_opt));
+  ASSERT_TRUE(new_opt.block_cache != nullptr);
+  ASSERT_EQ(new_opt.block_cache->GetCapacity(), 1024UL*1024UL);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache)->GetNumShardBits(), 4);
+  ASSERT_EQ(new_opt.block_cache->HasStrictCapacityLimit(), true);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache)->GetHighPriPoolRatio(), 0.5);
+  ASSERT_TRUE(new_opt.block_cache_compressed != nullptr);
+  ASSERT_EQ(new_opt.block_cache_compressed->GetCapacity(), 1024UL*1024UL);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache_compressed)->GetNumShardBits(), 4);
+  ASSERT_EQ(new_opt.block_cache_compressed->HasStrictCapacityLimit(), true);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache_compressed)->GetHighPriPoolRatio(),
+                0.5);
+
+  // Set only block cache capacity. Check other values are
+  // reset to default values.
+  ASSERT_OK(GetBlockBasedTableOptionsFromString(table_opt,
+             "block_cache={capacity=2M};"
+             "block_cache_compressed={capacity=2M}",
+             &new_opt));
+  ASSERT_TRUE(new_opt.block_cache != nullptr);
+  ASSERT_EQ(new_opt.block_cache->GetCapacity(), 2*1024UL*1024UL);
+  // Default values
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache)->GetNumShardBits(),
+                GetDefaultCacheShardBits(new_opt.block_cache->GetCapacity()));
+  ASSERT_EQ(new_opt.block_cache->HasStrictCapacityLimit(), false);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache)->GetHighPriPoolRatio(), 0.0);
+  ASSERT_TRUE(new_opt.block_cache_compressed != nullptr);
+  ASSERT_EQ(new_opt.block_cache_compressed->GetCapacity(), 2*1024UL*1024UL);
+  // Default values
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache_compressed)->GetNumShardBits(),
+                GetDefaultCacheShardBits(
+                    new_opt.block_cache_compressed->GetCapacity()));
+  ASSERT_EQ(new_opt.block_cache_compressed->HasStrictCapacityLimit(), false);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache_compressed)->GetHighPriPoolRatio(),
+                0.0);
+
+  // Set couple of block cache options.
+  ASSERT_OK(GetBlockBasedTableOptionsFromString(table_opt,
+             "block_cache={num_shard_bits=5;high_pri_pool_ratio=0.5;};"
+             "block_cache_compressed={num_shard_bits=5;"
+             "high_pri_pool_ratio=0.5;}",
+             &new_opt));
+  ASSERT_EQ(new_opt.block_cache->GetCapacity(), 0);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache)->GetNumShardBits(), 5);
+  ASSERT_EQ(new_opt.block_cache->HasStrictCapacityLimit(), false);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache)->GetHighPriPoolRatio(), 0.5);
+  ASSERT_TRUE(new_opt.block_cache_compressed != nullptr);
+  ASSERT_EQ(new_opt.block_cache_compressed->GetCapacity(), 0);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache_compressed)->GetNumShardBits(), 5);
+  ASSERT_EQ(new_opt.block_cache_compressed->HasStrictCapacityLimit(), false);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache_compressed)->GetHighPriPoolRatio(),
+                0.5);
+
+  // Set couple of block cache options.
+  ASSERT_OK(GetBlockBasedTableOptionsFromString(table_opt,
+             "block_cache={capacity=1M;num_shard_bits=4;"
+             "strict_capacity_limit=true;};"
+             "block_cache_compressed={capacity=1M;num_shard_bits=4;"
+             "strict_capacity_limit=true;}",
+             &new_opt));
+  ASSERT_TRUE(new_opt.block_cache != nullptr);
+  ASSERT_EQ(new_opt.block_cache->GetCapacity(), 1024UL*1024UL);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache)->GetNumShardBits(), 4);
+  ASSERT_EQ(new_opt.block_cache->HasStrictCapacityLimit(), true);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache)->GetHighPriPoolRatio(), 0.0);
+  ASSERT_TRUE(new_opt.block_cache_compressed != nullptr);
+  ASSERT_EQ(new_opt.block_cache_compressed->GetCapacity(), 1024UL*1024UL);
+  ASSERT_EQ(std::dynamic_pointer_cast<ShardedCache>(
+                new_opt.block_cache_compressed)->GetNumShardBits(), 4);
+  ASSERT_EQ(new_opt.block_cache_compressed->HasStrictCapacityLimit(), true);
+  ASSERT_EQ(std::dynamic_pointer_cast<LRUCache>(
+                new_opt.block_cache_compressed)->GetHighPriPoolRatio(),
+                0.0);
 }
 #endif  // !ROCKSDB_LITE
 
@@ -598,8 +710,8 @@ TEST_F(OptionsTest, GetMemTableRepFactoryFromString) {
                                              &new_mem_factory));
 
   ASSERT_NOK(GetMemTableRepFactoryFromString("cuckoo", &new_mem_factory));
-  ASSERT_OK(GetMemTableRepFactoryFromString("cuckoo:1024", &new_mem_factory));
-  ASSERT_EQ(std::string(new_mem_factory->Name()), "HashCuckooRepFactory");
+  // CuckooHash memtable is already removed.
+  ASSERT_NOK(GetMemTableRepFactoryFromString("cuckoo:1024", &new_mem_factory));
 
   ASSERT_NOK(GetMemTableRepFactoryFromString("bad_factory", &new_mem_factory));
 }
@@ -619,6 +731,8 @@ TEST_F(OptionsTest, GetOptionsFromStringTest) {
       "write_buffer_size=10;max_write_buffer_number=16;"
       "block_based_table_factory={block_cache=1M;block_size=4;};"
       "compression_opts=4:5:6;create_if_missing=true;max_open_files=1;"
+      "bottommost_compression_opts=5:6:7;create_if_missing=true;max_open_files="
+      "1;"
       "rate_limiter_bytes_per_sec=1024",
       &new_options));
 
@@ -626,7 +740,15 @@ TEST_F(OptionsTest, GetOptionsFromStringTest) {
   ASSERT_EQ(new_options.compression_opts.level, 5);
   ASSERT_EQ(new_options.compression_opts.strategy, 6);
   ASSERT_EQ(new_options.compression_opts.max_dict_bytes, 0);
+  ASSERT_EQ(new_options.compression_opts.zstd_max_train_bytes, 0);
+  ASSERT_EQ(new_options.compression_opts.enabled, false);
   ASSERT_EQ(new_options.bottommost_compression, kDisableCompressionOption);
+  ASSERT_EQ(new_options.bottommost_compression_opts.window_bits, 5);
+  ASSERT_EQ(new_options.bottommost_compression_opts.level, 6);
+  ASSERT_EQ(new_options.bottommost_compression_opts.strategy, 7);
+  ASSERT_EQ(new_options.bottommost_compression_opts.max_dict_bytes, 0);
+  ASSERT_EQ(new_options.bottommost_compression_opts.zstd_max_train_bytes, 0);
+  ASSERT_EQ(new_options.bottommost_compression_opts.enabled, false);
   ASSERT_EQ(new_options.write_buffer_size, 10U);
   ASSERT_EQ(new_options.max_write_buffer_number, 16);
   BlockBasedTableOptions new_block_based_table_options =
@@ -1119,37 +1241,79 @@ TEST_F(OptionsParserTest, DuplicateCFOptions) {
 }
 
 TEST_F(OptionsParserTest, IgnoreUnknownOptions) {
-  DBOptions db_opt;
-  db_opt.max_open_files = 12345;
-  db_opt.max_background_flushes = 301;
-  db_opt.max_total_wal_size = 1024;
-  ColumnFamilyOptions cf_opt;
+  for (int case_id = 0; case_id < 5; case_id++) {
+    DBOptions db_opt;
+    db_opt.max_open_files = 12345;
+    db_opt.max_background_flushes = 301;
+    db_opt.max_total_wal_size = 1024;
+    ColumnFamilyOptions cf_opt;
 
-  std::string options_file_content =
-      "# This is a testing option string.\n"
-      "# Currently we only support \"#\" styled comment.\n"
-      "\n"
-      "[Version]\n"
-      "  rocksdb_version=3.14.0\n"
-      "  options_file_version=1\n"
-      "[DBOptions]\n"
-      "  max_open_files=12345\n"
-      "  max_background_flushes=301\n"
-      "  max_total_wal_size=1024  # keep_log_file_num=1000\n"
-      "  unknown_db_option1=321\n"
-      "  unknown_db_option2=false\n"
-      "[CFOptions \"default\"]\n"
-      "  unknown_cf_option1=hello\n"
-      "[CFOptions \"something_else\"]\n"
-      "  unknown_cf_option2=world\n"
-      "  # if a section is blank, we will use the default\n";
+    std::string version_string;
+    bool should_ignore = true;
+    if (case_id == 0) {
+      // same version
+      should_ignore = false;
+      version_string =
+          ToString(ROCKSDB_MAJOR) + "." + ToString(ROCKSDB_MINOR) + ".0";
+    } else if (case_id == 1) {
+      // higher minor version
+      should_ignore = true;
+      version_string =
+          ToString(ROCKSDB_MAJOR) + "." + ToString(ROCKSDB_MINOR + 1) + ".0";
+    } else if (case_id == 2) {
+      // higher major version.
+      should_ignore = true;
+      version_string = ToString(ROCKSDB_MAJOR + 1) + ".0.0";
+    } else if (case_id == 3) {
+      // lower minor version
+#if ROCKSDB_MINOR == 0
+      continue;
+#else
+      version_string =
+          ToString(ROCKSDB_MAJOR) + "." + ToString(ROCKSDB_MINOR - 1) + ".0";
+      should_ignore = false;
+#endif
+    } else {
+      // lower major version
+      should_ignore = false;
+      version_string =
+          ToString(ROCKSDB_MAJOR - 1) + "." + ToString(ROCKSDB_MINOR) + ".0";
+    }
 
-  const std::string kTestFileName = "test-rocksdb-options.ini";
-  env_->WriteToNewFile(kTestFileName, options_file_content);
-  RocksDBOptionsParser parser;
-  ASSERT_NOK(parser.Parse(kTestFileName, env_.get()));
-  ASSERT_OK(parser.Parse(kTestFileName, env_.get(),
-                         true /* ignore_unknown_options */));
+    std::string options_file_content =
+        "# This is a testing option string.\n"
+        "# Currently we only support \"#\" styled comment.\n"
+        "\n"
+        "[Version]\n"
+        "  rocksdb_version=" +
+        version_string +
+        "\n"
+        "  options_file_version=1\n"
+        "[DBOptions]\n"
+        "  max_open_files=12345\n"
+        "  max_background_flushes=301\n"
+        "  max_total_wal_size=1024  # keep_log_file_num=1000\n"
+        "  unknown_db_option1=321\n"
+        "  unknown_db_option2=false\n"
+        "[CFOptions \"default\"]\n"
+        "  unknown_cf_option1=hello\n"
+        "[CFOptions \"something_else\"]\n"
+        "  unknown_cf_option2=world\n"
+        "  # if a section is blank, we will use the default\n";
+
+    const std::string kTestFileName = "test-rocksdb-options.ini";
+    env_->DeleteFile(kTestFileName);
+    env_->WriteToNewFile(kTestFileName, options_file_content);
+    RocksDBOptionsParser parser;
+    ASSERT_NOK(parser.Parse(kTestFileName, env_.get()));
+    if (should_ignore) {
+      ASSERT_OK(parser.Parse(kTestFileName, env_.get(),
+                             true /* ignore_unknown_options */));
+    } else {
+      ASSERT_NOK(parser.Parse(kTestFileName, env_.get(),
+                              true /* ignore_unknown_options */));
+    }
+  }
 }
 
 TEST_F(OptionsParserTest, ParseVersion) {
@@ -1370,6 +1534,7 @@ TEST_F(OptionsParserTest, DifferentDefault) {
   const std::string kOptionsFileName = "test-persisted-options.ini";
 
   ColumnFamilyOptions cf_level_opts;
+  ASSERT_EQ(CompactionPri::kMinOverlappingRatio, cf_level_opts.compaction_pri);
   cf_level_opts.OptimizeLevelStyleCompaction();
 
   ColumnFamilyOptions cf_univ_opts;
@@ -1439,6 +1604,14 @@ TEST_F(OptionsParserTest, DifferentDefault) {
     Options old_default_opts;
     old_default_opts.OldDefaults(5, 2);
     ASSERT_EQ(16 * 1024U * 1024U, old_default_opts.delayed_write_rate);
+    ASSERT_TRUE(old_default_opts.compaction_pri ==
+                CompactionPri::kByCompensatedSize);
+  }
+  {
+    Options old_default_opts;
+    old_default_opts.OldDefaults(5, 18);
+    ASSERT_TRUE(old_default_opts.compaction_pri ==
+                CompactionPri::kByCompensatedSize);
   }
 
   Options small_opts;

@@ -20,6 +20,25 @@ public class WriteOptions extends RocksObject {
 
   }
 
+  // TODO(AR) consider ownership
+  WriteOptions(final long nativeHandle) {
+    super(nativeHandle);
+    disOwnNativeHandle();
+  }
+
+  /**
+   * Copy constructor for WriteOptions.
+   *
+   * NOTE: This does a shallow copy, which means comparator, merge_operator, compaction_filter,
+   * compaction_filter_factory and other pointers will be cloned!
+   *
+   * @param other The ColumnFamilyOptions to copy.
+   */
+  public WriteOptions(WriteOptions other) {
+    super(copyWriteOptions(other.nativeHandle_));
+  }
+
+
   /**
    * If true, the write will be flushed from the operating system
    * buffer cache (by calling WritableFile::Sync()) before the write
@@ -144,7 +163,41 @@ public class WriteOptions extends RocksObject {
     return noSlowdown(nativeHandle_);
   }
 
+  /**
+   * If true, this write request is of lower priority if compaction is
+   * behind. In this case that, {@link #noSlowdown()} == true, the request
+   * will be cancelled immediately with {@link Status.Code#Incomplete} returned.
+   * Otherwise, it will be slowed down. The slowdown value is determined by
+   * RocksDB to guarantee it introduces minimum impacts to high priority writes.
+   *
+   * Default: false
+   *
+   * @param lowPri true if the write request should be of lower priority than
+   *     compactions which are behind.
+   *
+   * @return the instance of the current WriteOptions.
+   */
+  public WriteOptions setLowPri(final boolean lowPri) {
+    setLowPri(nativeHandle_, lowPri);
+    return this;
+  }
+
+  /**
+   * Returns true if this write request is of lower priority if compaction is
+   * behind.
+   *
+   * See {@link #setLowPri(boolean)}.
+   *
+   * @return true if this write request is of lower priority, false otherwise.
+   */
+  public boolean lowPri() {
+    return lowPri(nativeHandle_);
+  }
+
   private native static long newWriteOptions();
+  private native static long copyWriteOptions(long handle);
+  @Override protected final native void disposeInternal(final long handle);
+
   private native void setSync(long handle, boolean flag);
   private native boolean sync(long handle);
   private native void setDisableWAL(long handle, boolean flag);
@@ -155,5 +208,6 @@ public class WriteOptions extends RocksObject {
   private native void setNoSlowdown(final long handle,
       final boolean noSlowdown);
   private native boolean noSlowdown(final long handle);
-  @Override protected final native void disposeInternal(final long handle);
+  private native void setLowPri(final long handle, final boolean lowPri);
+  private native boolean lowPri(final long handle);
 }

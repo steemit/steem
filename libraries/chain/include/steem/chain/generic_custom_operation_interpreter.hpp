@@ -127,6 +127,35 @@ void custom_op_from_variant( const fc::variant& var, CustomOperationType& vo )
    }
 }
 
+template< typename OpType >
+class generic_custom_operation_notification : public custom_operation_notification
+{
+   public:
+      generic_custom_operation_notification( const custom_id_type& cid, const OpType& o )
+         : custom_operation_notification(cid), op(o) {}
+
+      const OpType& op;
+};
+
+template< typename OpType >
+const OpType& custom_operation_notification::get_op()const
+{
+   const OpType* maybe_op = maybe_get_op< OpType >();
+   FC_ASSERT( maybe_op );
+   return *maybe_op;
+}
+
+template< typename OpType >
+const OpType* custom_operation_notification::maybe_get_op()const
+{
+   const generic_custom_operation_notification< OpType >* generic_this =
+      dynamic_cast< const generic_custom_operation_notification< OpType >* >( this );
+   const OpType* result = nullptr;
+   if( generic_this )
+      result = &(generic_this->op);
+   return result;
+}
+
 template< typename CustomOperationType >
 class generic_custom_operation_interpreter
    : public custom_operation_interpreter, public evaluator_registry< CustomOperationType >
@@ -167,7 +196,12 @@ class generic_custom_operation_interpreter
          {
             // gcc errors if this-> is not here
             // error message is "declarations in dependent base are not found by unqualified lookup"
+
+            generic_custom_operation_notification< CustomOperationType > cnote( custom_id, inner_o );
+            this->_db.notify_pre_apply_custom_operation( cnote );
             this->get_evaluator( inner_o ).apply( inner_o );
+            this->_db.notify_post_apply_custom_operation( cnote );
+            ++cnote.op_in_custom;
          }
 
          plugin_session.squash();

@@ -5,15 +5,16 @@
 
 #include "db/merge_helper.h"
 
-#include <stdio.h>
 #include <string>
 
 #include "db/dbformat.h"
 #include "monitoring/perf_context_imp.h"
 #include "monitoring/statistics.h"
+#include "port/likely.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/db.h"
 #include "rocksdb/merge_operator.h"
+#include "table/format.h"
 #include "table/internal_iterator.h"
 
 namespace rocksdb {
@@ -22,7 +23,8 @@ MergeHelper::MergeHelper(Env* env, const Comparator* user_comparator,
                          const MergeOperator* user_merge_operator,
                          const CompactionFilter* compaction_filter,
                          Logger* logger, bool assert_valid_internal_key,
-                         SequenceNumber latest_snapshot, int level,
+                         SequenceNumber latest_snapshot,
+                         const SnapshotChecker* snapshot_checker, int level,
                          Statistics* stats,
                          const std::atomic<bool>* shutting_down)
     : env_(env),
@@ -34,6 +36,7 @@ MergeHelper::MergeHelper(Env* env, const Comparator* user_comparator,
       assert_valid_internal_key_(assert_valid_internal_key),
       allow_single_operand_(false),
       latest_snapshot_(latest_snapshot),
+      snapshot_checker_(snapshot_checker),
       level_(level),
       keys_(),
       filter_timer_(env_),
@@ -107,8 +110,11 @@ Status MergeHelper::TimedFullMerge(const MergeOperator* merge_operator,
 //       keys_ stores the list of keys encountered while merging.
 //       operands_ stores the list of merge operands encountered while merging.
 //       keys_[i] corresponds to operands_[i] for each i.
+//
+// TODO: Avoid the snapshot stripe map lookup in CompactionRangeDelAggregator
+// and just pass the StripeRep corresponding to the stripe being merged.
 Status MergeHelper::MergeUntil(InternalIterator* iter,
-                               RangeDelAggregator* range_del_agg,
+                               CompactionRangeDelAggregator* range_del_agg,
                                const SequenceNumber stop_before,
                                const bool at_bottom) {
   // Get a copy of the internal key, before it's invalidated by iter->Next()
@@ -132,7 +138,11 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
   // orig_ikey is backed by original_key if keys_.empty()
   // orig_ikey is backed by keys_.back() if !keys_.empty()
   ParsedInternalKey orig_ikey;
-  ParseInternalKey(original_key, &orig_ikey);
+  bool succ = ParseInternalKey(original_key, &orig_ikey);
+  assert(succ);
+  if (!succ) {
+    return Status::Corruption("Cannot parse key in MergeUntil");
+  }
 
   Status s;
   bool hit_the_next_user_key = false;
@@ -158,8 +168,13 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
       // hit a different user key, stop right here
       hit_the_next_user_key = true;
       break;
-    } else if (stop_before && ikey.sequence <= stop_before) {
-      // hit an entry that's visible by the previous snapshot, can't touch that
+    } else if (stop_before > 0 && ikey.sequence <= stop_before &&
+               LIKELY(snapshot_checker_ == nullptr ||
+                      snapshot_checker_->CheckInSnapshot(ikey.sequence,
+                                                         stop_before) !=
+                          SnapshotCheckerResult::kNotInSnapshot)) {
+      // hit an entry that's possibly visible by the previous snapshot, can't
+      // touch that
       break;
     }
 
@@ -231,8 +246,7 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
       if (filter != CompactionFilter::Decision::kRemoveAndSkipUntil &&
           range_del_agg != nullptr &&
           range_del_agg->ShouldDelete(
-              iter->key(),
-              RangeDelAggregator::RangePositioningMode::kForwardTraversal)) {
+              iter->key(), RangeDelPositioningMode::kForwardTraversal)) {
         filter = CompactionFilter::Decision::kRemove;
       }
       if (filter == CompactionFilter::Decision::kKeep ||
@@ -272,22 +286,24 @@ Status MergeHelper::MergeUntil(InternalIterator* iter,
     return Status::OK();
   }
 
-  // We are sure we have seen this key's entire history if we are at the
-  // last level and exhausted all internal keys of this user key.
-  // NOTE: !iter->Valid() does not necessarily mean we hit the
-  // beginning of a user key, as versions of a user key might be
-  // split into multiple files (even files on the same level)
-  // and some files might not be included in the compaction/merge.
+  // We are sure we have seen this key's entire history if:
+  // at_bottom == true (this does not necessarily mean it is the bottommost
+  // layer, but rather that we are confident the key does not appear on any of
+  // the lower layers, at_bottom == false doesn't mean it does appear, just
+  // that we can't be sure, see Compaction::IsBottommostLevel for details)
+  // AND
+  // we have either encountered another key or end of key history on this
+  // layer.
   //
-  // There are also cases where we have seen the root of history of this
-  // key without being sure of it. Then, we simply miss the opportunity
+  // When these conditions are true we are able to merge all the keys
+  // using full merge.
+  //
+  // For these cases we are not sure about, we simply miss the opportunity
   // to combine the keys. Since VersionSet::SetupOtherInputs() always makes
   // sure that all merge-operands on the same level get compacted together,
   // this will simply lead to these merge operands moving to the next level.
-  //
-  // So, we only perform the following logic (to merge all operands together
-  // without a Put/Delete) if we are certain that we have seen the end of key.
-  bool surely_seen_the_beginning = hit_the_next_user_key && at_bottom;
+  bool surely_seen_the_beginning =
+      (hit_the_next_user_key || !iter->Valid()) && at_bottom;
   if (surely_seen_the_beginning) {
     // do a final merge with nullptr as the existing value and say
     // bye to the merge type (it's now converted to a Put)
@@ -367,7 +383,7 @@ CompactionFilter::Decision MergeHelper::FilterMerge(const Slice& user_key,
   if (compaction_filter_ == nullptr) {
     return CompactionFilter::Decision::kKeep;
   }
-  if (stats_ != nullptr) {
+  if (stats_ != nullptr && ShouldReportDetailedTime(env_, stats_)) {
     filter_timer_.Start();
   }
   compaction_filter_value_.clear();

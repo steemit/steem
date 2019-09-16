@@ -28,8 +28,11 @@ class witness_custom_op_object : public object< witness_custom_op_object_type, w
          c( *this );
       }
 
-      id_type               id;
-      account_name_type     account;
+      witness_custom_op_object() {}
+
+      id_type              id;
+      account_name_type    account;
+      uint32_t             count = 0;
 };
 
 typedef multi_index_container<
@@ -46,5 +49,6 @@ typedef multi_index_container<
 FC_REFLECT( steem::plugins::witness::witness_custom_op_object,
    (id)
    (account)
+   (count)
    )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::witness_custom_op_object, steem::plugins::witness::witness_custom_op_index )

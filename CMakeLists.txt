@@ -42,7 +42,6 @@ LIST(APPEND BOOST_COMPONENTS thread
                              system
                              filesystem
                              program_options
-                             signals
                              serialization
                              chrono
                              unit_test_framework
@@ -61,24 +60,14 @@ if( BUILD_STEEM_TESTNET  )
   SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_TEST_NET" )
 endif()
 
-OPTION( ENABLE_SMT_SUPPORT "Build source with SMT support (ON OR OFF)" OFF )
-MESSAGE( STATUS "ENABLE_SMT_SUPPORT: ${ENABLE_SMT_SUPPORT}" )
-if( ENABLE_SMT_SUPPORT  )
+OPTION( ENABLE_MIRA "Build source with MIRA (ON OR OFF)" OFF )
+MESSAGE( STATUS "ENABLE_MIRA: ${ENABLE_MIRA}" )
+if( ENABLE_MIRA )
   MESSAGE( STATUS "     " )
-  MESSAGE( STATUS "             CONFIGURING FOR SMT SUPPORT             " )
+  MESSAGE( STATUS "             CONFIGURING FOR MIRA             " )
   MESSAGE( STATUS "     " )
-  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTEEM_ENABLE_SMT" )
-  SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSTEEM_ENABLE_SMT" )
-endif()
-
-OPTION( ENABLE_STD_ALLOCATOR_SUPPORT "Build source with STD allocator (ON OR OFF)" OFF )
-MESSAGE( STATUS "ENABLE_STD_ALLOCATOR_SUPPORT: ${ENABLE_STD_ALLOCATOR_SUPPORT}" )
-if( ENABLE_STD_ALLOCATOR_SUPPORT )
-  MESSAGE( STATUS "     " )
-  MESSAGE( STATUS "             CONFIGURING FOR STD ALLOCATOR             " )
-  MESSAGE( STATUS "     " )
-  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_STD_ALLOCATOR" )
-  SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_STD_ALLOCATOR" )
+  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_MIRA" )
+  SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_MIRA" )
 endif()
 
 OPTION( LOW_MEMORY_NODE "Build source for low memory node (ON OR OFF)" OFF )
@@ -154,6 +143,11 @@ IF( WIN32 )
 ENDIF(WIN32)
 
 FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+
+if( NOT( Boost_VERSION LESS 106900 ) )
+   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
+   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+endif()
 
 if( WIN32 )
 
@@ -319,16 +313,10 @@ else()
   MESSAGE( STATUS "\n\n             CONFIGURED FOR STEEM NETWORK             \n\n" )
 endif()
 
-if( ENABLE_SMT_SUPPORT )
-MESSAGE( STATUS "\n\n             CONFIGURED FOR SMT SUPPORT             \n\n" )
+if( ENABLE_MIRA )
+MESSAGE( STATUS "\n\n             CONFIGURED FOR MIRA                  \n\n" )
 else()
-MESSAGE( STATUS "\n\n             CONFIGURED FOR NO SUPPORT OF SMT             \n\n" )
-endif()
-
-if( ENABLE_STD_ALLOCATOR_SUPPORT )
-MESSAGE( STATUS "\n\n             CONFIGURED FOR STD ALLOCATOR SUPPORT             \n\n" )
-else()
-MESSAGE( STATUS "\n\n             CONFIGURED FOR NO SUPPORT OF STD ALLOCATOR             \n\n" )
+MESSAGE( STATUS "\n\n             CONFIGURED FOR BMIC MMAP             \n\n" )
 endif()
 
 if( LOW_MEMORY_NODE )

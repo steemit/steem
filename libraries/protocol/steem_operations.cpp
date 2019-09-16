@@ -11,7 +11,8 @@ namespace steem { namespace protocol {
    void validate_auth_size( const authority& a )
    {
       size_t size = a.account_auths.size() + a.key_auths.size();
-      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP, "Authority membership exceeded. Max: 10 Current: ${n}", ("n", size) );
+      FC_ASSERT( size <= STEEM_MAX_AUTHORITY_MEMBERSHIP,
+         "Authority membership exceeded. Max: ${max} Current: ${n}", ("max", STEEM_MAX_AUTHORITY_MEMBERSHIP)("n", size) );
    }
 
    void account_create_operation::validate() const
@@ -67,9 +68,27 @@ namespace steem { namespace protocol {
       }
    }
 
+   void account_update2_operation::validate() const
+   {
+      validate_account_name( account );
+
+      if ( json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
+      }
+
+      if ( posting_json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(posting_json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(posting_json_metadata), "JSON Metadata not valid JSON" );
+      }
+   }
+
    void comment_operation::validate() const
    {
-      FC_ASSERT( title.size() < 256, "Title larger than size limit" );
+      FC_ASSERT( title.size() < STEEM_COMMENT_TITLE_LIMIT,
+         "Title size limit exceeded. Max: ${max} Current: ${n}", ("max", STEEM_COMMENT_TITLE_LIMIT - 1)("n", title.size()) );
       FC_ASSERT( fc::is_utf8( title ), "Title not formatted in UTF8" );
       FC_ASSERT( body.size() > 0, "Body is empty" );
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
@@ -91,12 +110,10 @@ namespace steem { namespace protocol {
    {
       typedef void result_type;
 
-#ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
          va.validate();
       }
-#endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
       {
          cpb.validate();
@@ -108,7 +125,8 @@ namespace steem { namespace protocol {
       uint32_t sum = 0;
 
       FC_ASSERT( beneficiaries.size(), "Must specify at least one beneficiary" );
-      FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
+      FC_ASSERT( beneficiaries.size() < STEEM_BENEFICIARY_LIMIT,
+         "Cannot specify more than ${max} beneficiaries.", ("max", STEEM_BENEFICIARY_LIMIT - 1) ); // Require size serializtion fits in one byte.
 
       validate_account_name( beneficiaries[0].account );
       FC_ASSERT( beneficiaries[0].weight <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
@@ -122,6 +140,47 @@ namespace steem { namespace protocol {
          sum += beneficiaries[i].weight;
          FC_ASSERT( sum <= STEEM_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
          FC_ASSERT( beneficiaries[i - 1] < beneficiaries[i], "Benficiaries must be specified in sorted order (account ascending)" );
+      }
+   }
+
+   void allowed_vote_assets::add_votable_asset( const asset_symbol_type& symbol, const share_type& max_accepted_payout,
+      bool allow_curation_rewards )
+   {
+      votable_assets[symbol] = votable_asset_options( max_accepted_payout, allow_curation_rewards );
+   }
+
+   bool allowed_vote_assets::is_allowed( const asset_symbol_type& symbol, share_type* max_accepted_payout,
+      bool* allow_curation_rewards ) const
+   {
+      auto foundI = votable_assets.find( symbol );
+
+      if( foundI == votable_assets.end() )
+      {
+         if( max_accepted_payout != nullptr )
+            *max_accepted_payout = 0;
+         if( allow_curation_rewards != nullptr )
+            *allow_curation_rewards = false;
+         return false;
+      }
+
+      if(max_accepted_payout != nullptr)
+         *max_accepted_payout = foundI->second.max_accepted_payout;
+      if(allow_curation_rewards != nullptr)
+         *allow_curation_rewards = foundI->second.allow_curation_rewards;
+
+      return true;
+   }
+
+   void allowed_vote_assets::validate() const
+   {
+      FC_ASSERT( votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS,
+         "Comment votable assets number exceeds allowed limit ${max}.", ("max", SMT_MAX_VOTABLE_ASSETS) );
+      FC_ASSERT( !is_allowed( STEEM_SYMBOL ) && !is_allowed( SBD_SYMBOL ) && !is_allowed( VESTS_SYMBOL ) ,
+         "Invalid core asset symbol specified in votable assets");
+
+      for( auto& v : votable_assets )
+      {
+         if( v.second.beneficiaries.beneficiaries.size() ) v.second.beneficiaries.validate();
       }
    }
 
@@ -175,16 +234,25 @@ namespace steem { namespace protocol {
    void vote_operation::validate() const
    {
       validate_account_name( voter );
-      validate_account_name( author );\
-      FC_ASSERT( abs(weight) <= STEEM_100_PERCENT, "Weight is not a STEEMIT percentage" );
+      validate_account_name( author );
+      FC_ASSERT( abs(weight) <= STEEM_100_PERCENT, "Weight is not a STEEM percentage (-10000 - 10000)" );
       validate_permlink( permlink );
+   }
+
+   void vote2_operation::validate() const
+   {
+      validate_account_name( voter );
+      validate_account_name( author );
+      validate_permlink( permlink );
+      FC_ASSERT( rshares.size() > 0, "Must specify some rshares to vote with" );
+      FC_ASSERT( rshares.size() <= SMT_MAX_VOTABLE_ASSETS + 1, "Cannot vote with more than ${n} SMTs and STEEM", ("n", SMT_MAX_VOTABLE_ASSETS) );
    }
 
    void transfer_operation::validate() const
    { try {
       validate_account_name( from );
       validate_account_name( to );
-      FC_ASSERT( amount.symbol != VESTS_SYMBOL, "transferring of Steem Power (STMP) is not allowed." );
+      FC_ASSERT( amount.symbol.is_vesting() == false, "Transfer of vesting is not allowed." );
       FC_ASSERT( amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)" );
       FC_ASSERT( memo.size() < STEEM_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
@@ -203,7 +271,7 @@ namespace steem { namespace protocol {
    void withdraw_vesting_operation::validate() const
    {
       validate_account_name( account );
-      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
+      FC_ASSERT( vesting_shares.symbol.is_vesting(), "Vesting shares must be a vesting symbol." );
    }
 
    void set_withdraw_vesting_route_operation::validate() const
@@ -327,14 +395,16 @@ namespace steem { namespace protocol {
    void custom_json_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= 32, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH,
+         "Operation ID length exceeded. Max: ${max} Current: ${n}", ("max", STEEM_CUSTOM_OP_ID_MAX_LENGTH)("n", id.size()) );
       FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
       FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
    void custom_binary_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least one account must be specified" );
-      FC_ASSERT( id.size() <= 32, "id is too long" );
+      FC_ASSERT( id.size() <= STEEM_CUSTOM_OP_ID_MAX_LENGTH,
+         "Operation ID length exceeded. Max: ${max} Current: ${n}", ("max", STEEM_CUSTOM_OP_ID_MAX_LENGTH)("n", id.size()) );
       for( const auto& a : required_auths ) a.validate();
    }
 
@@ -670,33 +740,31 @@ namespace steem { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
-#ifdef STEEM_ENABLE_SMT
    void claim_reward_balance2_operation::validate()const
    {
       validate_account_name( account );
       FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
-      FC_ASSERT( reward_tokens.begin()->amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_tokens.begin()->amount > 0, "Cannot claim a negative amount" );
       bool is_substantial_reward = reward_tokens.begin()->amount > 0;
       for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
       {
          FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(),
-                    "Reward tokens have not been inserted in ascending order." );
+                    "Reward tokens have not been inserted in ascending order. cur: ${c} last: ${l}",
+                    ("c", itr->symbol)("l", itl->symbol) );
          FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(),
                     "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
-         FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
+         FC_ASSERT( itr->amount > 0, "Claim must be for something. ${a}", ("a", itr->amount) );
          is_substantial_reward |= itr->amount > 0;
       }
-      FC_ASSERT( is_substantial_reward, "Must claim something." );
    }
-#endif
 
    void delegate_vesting_shares_operation::validate()const
    {
       validate_account_name( delegator );
       validate_account_name( delegatee );
-      FC_ASSERT( delegator != delegatee, "You cannot delegate VESTS to yourself" );
-      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL ), "Delegation must be VESTS" );
-      FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
+      FC_ASSERT( delegator != delegatee,             "You cannot delegate vesting shares to yourself." );
+      FC_ASSERT( vesting_shares.symbol.is_vesting(), "Delegation must be a vesting type." );
+      FC_ASSERT( vesting_shares.amount >= 0,         "Delegation cannot be negative." );
    }
 
 } } // steem::protocol

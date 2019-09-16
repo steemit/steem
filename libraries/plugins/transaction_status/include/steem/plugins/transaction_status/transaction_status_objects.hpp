@@ -1,13 +1,10 @@
 #pragma once
-#include <steem/protocol/transaction.hpp>
 #include <steem/chain/steem_object_types.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/hashed_index.hpp>
+#include <steem/protocol/transaction.hpp>
 
 namespace steem { namespace plugins { namespace transaction_status {
 
 using namespace steem::chain;
-using namespace boost::multi_index;
 
 #ifndef STEEM_TRANSACTION_STATUS_SPACE_ID
 #define STEEM_TRANSACTION_STATUS_SPACE_ID 18
@@ -31,14 +28,14 @@ enum transaction_status
 
 class transaction_status_object : public object< transaction_status_object_type, transaction_status_object >
 {
-   transaction_status_object() = delete;
-
 public:
    template< typename Constructor, typename Allocator >
    transaction_status_object( Constructor&& c, allocator< Allocator > a )
    {
       c( *this );
    }
+
+   transaction_status_object() {}
 
    id_type                     id;
    transaction_id_type         transaction_id;

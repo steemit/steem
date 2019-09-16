@@ -1,5 +1,8 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <appbase/application.hpp>
+
+#include <steem/chain/database.hpp>
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
@@ -42,5 +45,21 @@ class rc_plugin : public appbase::plugin< rc_plugin >
    private:
       std::unique_ptr< detail::rc_plugin_impl > my;
 };
+
+#ifdef IS_TEST_NET
+
+namespace detail {
+
+void use_account_rcs(
+   chain::database& db,
+   const chain::dynamic_global_property_object& gpo,
+   const chain::account_name_type& account_name,
+   int64_t rc,
+   rc_plugin_skip_flags skip,
+   set< chain::account_name_type > whitelist
+);
+
+}
+#endif
 
 } } } // steem::plugins::rc

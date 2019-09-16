@@ -1,9 +1,8 @@
 #pragma once
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/steem_object_types.hpp>
-
-#include <boost/multi_index/composite_key.hpp>
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -100,15 +99,10 @@ struct bucket_object : public object< bucket_object_type, bucket_object >
    bucket_object_details steem;
    bucket_object_details non_steem;
 
-#ifdef STEEM_ENABLE_SMT
    asset_symbol_type symbol = SBD_SYMBOL;
 
    price high()const { return asset( non_steem.high, symbol ) / asset( steem.high, STEEM_SYMBOL ); }
    price low()const { return asset( non_steem.low, symbol ) / asset( steem.low, STEEM_SYMBOL ); }
-#else
-   price high()const { return asset( non_steem.high, SBD_SYMBOL ) / asset( steem.high, STEEM_SYMBOL ); }
-   price low()const { return asset( non_steem.low, SBD_SYMBOL ) / asset( steem.low, STEEM_SYMBOL ); }
-#endif
 };
 
 typedef oid< bucket_object > bucket_id_type;
@@ -121,6 +115,8 @@ struct order_history_object : public object< order_history_object_type, order_hi
    {
       c( *this );
    }
+
+   order_history_object() {}
 
    id_type                          id;
 
@@ -152,7 +148,12 @@ typedef multi_index_container<
    order_history_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< order_history_object, order_history_id_type, &order_history_object::id > >,
-      ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
+      ordered_unique< tag< by_time >,
+         composite_key< order_history_object,
+            member< order_history_object, time_point_sec, &order_history_object::time >,
+            member< order_history_object, order_history_id_type, &order_history_object::id >
+         >
+      >
    >,
    allocator< order_history_object >
 > order_history_index;
@@ -170,9 +171,7 @@ FC_REFLECT( steem::plugins::market_history::bucket_object,
                      (id)
                      (open)(seconds)
                      (steem)
-#ifdef STEEM_ENABLE_SMT
                      (symbol)
-#endif
                      (non_steem)
          )
 

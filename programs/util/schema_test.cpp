@@ -4,6 +4,7 @@ struct votable_asset_info_v1;
 } }
 
 #include <steem/protocol/types_fwd.hpp>
+#include <steem/chain/steem_fwd.hpp>
 
 #include <steem/schema/schema.hpp>
 #include <steem/schema/schema_impl.hpp>

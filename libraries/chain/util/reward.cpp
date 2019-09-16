@@ -40,10 +40,10 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
    try
    {
    FC_ASSERT( ctx.rshares > 0 );
-   FC_ASSERT( ctx.total_reward_shares2 > 0 );
+   FC_ASSERT( ctx.total_claims > 0 );
 
-   u256 rf(ctx.total_reward_fund_steem.amount.value);
-   u256 total_claims = to256( ctx.total_reward_shares2 );
+   u256 rf( ctx.reward_fund.value );
+   u256 total_claims = to256( ctx.total_claims );
 
    //idump( (ctx) );
 
@@ -54,18 +54,11 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
    uint64_t payout = static_cast< uint64_t >( payout_u256 );
 
-   if( is_comment_payout_dust( ctx.current_steem_price, payout ) )
-      payout = 0;
-
-   asset max_steem = to_steem( ctx.current_steem_price, ctx.max_sbd );
-
-   payout = std::min( payout, uint64_t( max_steem.amount.value ) );
-
    return payout;
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve_id& curve, const uint128_t& content_constant )
+uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve_id& curve, const uint128_t& var1 )
 {
    uint128_t result = 0;
 
@@ -73,12 +66,14 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
    {
       case protocol::quadratic:
          {
+            const uint128_t& content_constant = var1;
             uint128_t rshares_plus_s = rshares + content_constant;
             result = rshares_plus_s * rshares_plus_s - content_constant * content_constant;
          }
          break;
       case protocol::bounded_curation:
          {
+            const uint128_t& content_constant = var1;
             uint128_t two_alpha = content_constant * 2;
             result = uint128_t( rshares.lo, 0 ) / ( two_alpha + rshares );
          }
@@ -88,6 +83,18 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
          break;
       case protocol::square_root:
          result = approx_sqrt( rshares );
+         break;
+      case protocol::convergent_linear:
+         {
+            const uint128_t& s = var1;
+            result = ( ( rshares + s ) * ( rshares + s ) - s * s ) / ( rshares + 4 * s );
+         }
+         break;
+      case protocol::convergent_square_root:
+         {
+            const uint128_t& s = var1;
+            result = rshares / approx_sqrt( rshares + 2 * s );
+         }
          break;
    }
 

@@ -1,5 +1,5 @@
 #pragma once
-
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
@@ -11,6 +11,8 @@
 
 #define RESERVE_RATIO_PRECISION ((int64_t)10000)
 #define RESERVE_RATIO_MIN_INCREMENT ((int64_t)5000)
+
+#define WITNESS_CUSTOM_OP_BLOCK_LIMIT 5
 
 namespace steem { namespace plugins { namespace witness {
 

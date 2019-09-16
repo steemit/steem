@@ -60,6 +60,13 @@ struct pre_operation_visitor
       if( acct_itr ) _plugin.cache_auths( *acct_itr );
    }
 
+   void operator()( const account_update2_operation& op )const
+   {
+      _plugin.clear_cache();
+      auto acct_itr = _plugin._db.find< account_authority_object, by_account >( op.account );
+      if( acct_itr ) _plugin.cache_auths( *acct_itr );
+   }
+
    void operator()( const recover_account_operation& op )const
    {
       _plugin.clear_cache();
@@ -113,6 +120,12 @@ struct post_operation_visitor
    }
 
    void operator()( const account_update_operation& op )const
+   {
+      auto acct_itr = _plugin._db.find< account_authority_object, by_account >( op.account );
+      if( acct_itr ) _plugin.update_key_lookup( *acct_itr );
+   }
+
+   void operator()( const account_update2_operation& op )const
    {
       auto acct_itr = _plugin._db.find< account_authority_object, by_account >( op.account );
       if( acct_itr ) _plugin.update_key_lookup( *acct_itr );
@@ -194,7 +207,7 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
       // If the key was not in the authority, add it to the lookup
       if( cached_keys.find( key ) == cached_keys.end() )
       {
-         auto lookup_itr = _db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+         auto lookup_itr = _db.find< key_lookup_object, by_key >( boost::make_tuple( key, a.account ) );
 
          if( lookup_itr == nullptr )
          {
@@ -215,7 +228,7 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    // Loop over the keys that were in authority but are no longer and remove them from the lookup
    for( const auto& key : cached_keys )
    {
-      auto lookup_itr = _db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+      auto lookup_itr = _db.find< key_lookup_object, by_key >( boost::make_tuple( key, a.account ) );
 
       if( lookup_itr != nullptr )
       {
@@ -254,7 +267,7 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
       my->_pre_apply_operation_conn = db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->on_pre_apply_operation( note ); }, *this, 0 );
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->on_post_apply_operation( note ); }, *this, 0 );
 
-      add_plugin_index< key_lookup_index >(db);
+      STEEM_ADD_PLUGIN_INDEX(db, key_lookup_index);
 
       appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), fc::variant_object() );
    }

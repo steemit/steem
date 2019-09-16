@@ -1,9 +1,9 @@
 #pragma once
 
 #include <steem/chain/steem_object_types.hpp>
-#include <steem/protocol/smt_operations.hpp>
+#include <steem/chain/util/manabar.hpp>
 
-#ifdef STEEM_ENABLE_SMT
+#include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace chain {
 
@@ -14,45 +14,61 @@ namespace steem { namespace chain {
  */
 class account_regular_balance_object : public object< account_regular_balance_object_type, account_regular_balance_object >
 {
-   account_regular_balance_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_regular_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_regular_balance_object(Constructor&& c, allocator< Allocator > a)
    {
       c( *this );
    }
 
-   // id_type is actually oid<account_regular_balance_object>
    id_type             id;
-   /// Name of the account, the balance is held for.
-   account_name_type   owner;
-   asset               liquid;   /// 'balance' for STEEM
-   asset               vesting;  /// 'vesting_shares' for VESTS
+   account_name_type   name;
+   asset               liquid;
 
-   /** Set of simple methods that allow unification of
-    *  regular and rewards balance manipulation code.
-    */
-   ///@{
+   asset               vesting_shares;
+   asset               delegated_vesting_shares;
+   asset               received_vesting_shares;
+
+   asset               vesting_withdraw_rate;
+   time_point_sec      next_vesting_withdrawal = fc::time_point_sec::maximum();
+   share_type          withdrawn               = 0;
+   share_type          to_withdraw             = 0;
+
+   util::manabar       voting_manabar;
+   util::manabar       downvote_manabar;
+
+   fc::time_point_sec  last_vote_time;
+
    asset_symbol_type get_liquid_symbol() const
    {
       return liquid.symbol;
    }
-   void clear_balance( asset_symbol_type liquid_symbol )
+
+   void initialize_assets( asset_symbol_type liquid_symbol )
    {
-      owner = "";
-      liquid = asset( 0, liquid_symbol);
-      vesting = asset( 0, liquid_symbol.get_paired_symbol() );
+      liquid                   = asset( 0, liquid_symbol );
+      vesting_shares           = asset( 0, liquid_symbol.get_paired_symbol() );
+      delegated_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
+      received_vesting_shares  = asset( 0, liquid_symbol.get_paired_symbol() );
+      vesting_withdraw_rate    = asset( 0, liquid_symbol.get_paired_symbol() );
    }
-   void add_vesting( const asset& vesting_shares, const asset& vesting_value )
+
+   void add_vesting( const asset& shares, const asset& vesting_value )
    {
       // There's no need to store vesting value (in liquid SMT variant) in regular balance.
-      vesting += vesting_shares;
+      vesting_shares += shares;
    }
-   ///@}
 
    bool validate() const
-   { return liquid.symbol == vesting.symbol.get_paired_symbol(); }
+   {
+      return
+         liquid.symbol         == vesting_shares.symbol.get_paired_symbol() &&
+         vesting_shares.symbol == delegated_vesting_shares.symbol &&
+         vesting_shares.symbol == received_vesting_shares.symbol &&
+         vesting_shares.symbol == vesting_withdraw_rate.symbol;
+   }
 };
 
 /**
@@ -62,63 +78,66 @@ public:
  */
 class account_rewards_balance_object : public object< account_rewards_balance_object_type, account_rewards_balance_object >
 {
-   account_rewards_balance_object() = delete;
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( account_rewards_balance_object );
 
-public:   
+public:
    template <typename Constructor, typename Allocator>
    account_rewards_balance_object(Constructor&& c, allocator< Allocator > a)
    {
       c( *this );
    }
 
-   // id_type is actually oid<account_rewards_balance_object>
    id_type             id;
-   /// Name of the account, the balance is held for.
-   account_name_type   owner;
+   account_name_type   name;
    asset               pending_liquid;          /// 'reward_steem_balance' for pending STEEM
    asset               pending_vesting_shares;  /// 'reward_vesting_balance' for pending VESTS
    asset               pending_vesting_value;   /// 'reward_vesting_steem' for pending VESTS
 
-   /** Set of simple methods that allow unification of
-    *  regular and rewards balance manipulation code.
-    */
-   ///@{
    asset_symbol_type get_liquid_symbol() const
    {
       return pending_liquid.symbol;
    }
-   void clear_balance( asset_symbol_type liquid_symbol )
+
+   void initialize_assets( asset_symbol_type liquid_symbol )
    {
-      owner = "";
-      pending_liquid = asset( 0, liquid_symbol);
+      pending_liquid         = asset( 0, liquid_symbol );
       pending_vesting_shares = asset( 0, liquid_symbol.get_paired_symbol() );
-      pending_vesting_value = asset( 0, liquid_symbol);
+      pending_vesting_value  = asset( 0, liquid_symbol );
    }
+
    void add_vesting( const asset& vesting_shares, const asset& vesting_value )
    {
       pending_vesting_shares += vesting_shares;
-      pending_vesting_value += vesting_value;
+      pending_vesting_value  += vesting_value;
    }
-   ///@}
 
    bool validate() const
    {
-      return pending_liquid.symbol == pending_vesting_shares.symbol.get_paired_symbol() &&
-             pending_liquid.symbol == pending_vesting_value.symbol;
+      return
+         pending_liquid.symbol == pending_vesting_shares.symbol.get_paired_symbol() &&
+         pending_liquid.symbol == pending_vesting_value.symbol;
    }
 };
 
-struct by_owner_liquid_symbol;
+struct by_name_liquid_symbol;
+struct by_next_vesting_withdrawal;
 
 typedef multi_index_container <
    account_regular_balance_object,
    indexed_by <
       ordered_unique< tag< by_id >,
-         member< account_regular_balance_object, account_regular_balance_id_type, &account_regular_balance_object::id>
+         member< account_regular_balance_object, account_regular_balance_id_type, &account_regular_balance_object::id >
       >,
-      ordered_unique<tag<by_owner_liquid_symbol>,
-         composite_key<account_regular_balance_object,
-            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::owner >,
+      ordered_unique< tag< by_name_liquid_symbol >,
+         composite_key< account_regular_balance_object,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
+            const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
+         >
+      >,
+      ordered_unique< tag< by_next_vesting_withdrawal >,
+         composite_key< account_regular_balance_object,
+            member< account_regular_balance_object, time_point_sec, &account_regular_balance_object::next_vesting_withdrawal >,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
             const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
          >
       >
@@ -130,11 +149,11 @@ typedef multi_index_container <
    account_rewards_balance_object,
    indexed_by <
       ordered_unique< tag< by_id >,
-         member< account_rewards_balance_object, account_rewards_balance_id_type, &account_rewards_balance_object::id>
+         member< account_rewards_balance_object, account_rewards_balance_id_type, &account_rewards_balance_object::id >
       >,
-      ordered_unique<tag<by_owner_liquid_symbol>,
-         composite_key<account_rewards_balance_object,
-            member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::owner >,
+      ordered_unique< tag< by_name_liquid_symbol >,
+         composite_key< account_rewards_balance_object,
+            member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::name >,
             const_mem_fun< account_rewards_balance_object, asset_symbol_type, &account_rewards_balance_object::get_liquid_symbol >
          >
       >
@@ -146,14 +165,23 @@ typedef multi_index_container <
 
 FC_REFLECT( steem::chain::account_regular_balance_object,
    (id)
-   (owner)
+   (name)
    (liquid)
-   (vesting)
+   (vesting_shares)
+   (delegated_vesting_shares)
+   (received_vesting_shares)
+   (vesting_withdraw_rate)
+   (next_vesting_withdrawal)
+   (withdrawn)
+   (to_withdraw)
+   (voting_manabar)
+   (downvote_manabar)
+   (last_vote_time)
 )
 
 FC_REFLECT( steem::chain::account_rewards_balance_object,
    (id)
-   (owner)
+   (name)
    (pending_liquid)
    (pending_vesting_shares)
    (pending_vesting_value)
@@ -161,5 +189,3 @@ FC_REFLECT( steem::chain::account_rewards_balance_object,
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_regular_balance_object, steem::chain::account_regular_balance_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_rewards_balance_object, steem::chain::account_rewards_balance_index )
-
-#endif

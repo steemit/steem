@@ -6,7 +6,7 @@ add_library( account_history_rocksdb_plugin
            )
 
 target_link_libraries( account_history_rocksdb_plugin
-   chain_plugin steem_chain steem_protocol json_rpc_plugin rocksdb
+   rocksdb chain_plugin steem_chain steem_protocol json_rpc_plugin rocksdb
    )
 
 target_include_directories( account_history_rocksdb_plugin

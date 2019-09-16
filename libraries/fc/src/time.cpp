@@ -18,13 +18,13 @@ namespace fc {
 
   fc::string time_point_sec::to_non_delimited_iso_string()const
   {
-    const auto ptime = boost::posix_time::from_time_t( time_t( sec_since_epoch() ) );
+    const auto ptime = boost::posix_time::from_time_t( static_cast< int32_t >( sec_since_epoch() ) );
     return boost::posix_time::to_iso_string( ptime );
   }
 
   fc::string time_point_sec::to_iso_string()const
   {
-    const auto ptime = boost::posix_time::from_time_t( time_t( sec_since_epoch() ) );
+    const auto ptime = boost::posix_time::from_time_t( static_cast< int32_t >( sec_since_epoch() ) );
     return boost::posix_time::to_iso_extended_string( ptime );
   }
 
@@ -41,6 +41,9 @@ namespace fc {
           pt = boost::date_time::parse_delimited_time<boost::posix_time::ptime>( s, 'T' );
       else
           pt = boost::posix_time::from_iso_string( s );
+
+      FC_ASSERT( (pt - epoch).total_seconds() <= INT32_MAX, "Datetime overflow" );
+      FC_ASSERT( (pt - epoch).total_seconds() >= INT32_MIN, "Datetime underflow" );
       return fc::time_point_sec( (pt - epoch).total_seconds() );
   } FC_RETHROW_EXCEPTIONS( warn, "unable to convert ISO-formatted string to fc::time_point_sec" ) }
 

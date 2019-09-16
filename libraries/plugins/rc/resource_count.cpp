@@ -148,9 +148,14 @@ struct count_operation_visitor
 
    void operator()( const vote_operation& op )const
    {
-      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
       state_bytes_count += _w.comment_vote_object_base_size;
       execution_time_count += _e.vote_operation_exec_time;
+   }
+
+   void operator()( const vote2_operation& op )const
+   {
+      state_bytes_count += _w.comment_vote_object_base_size * op.rshares.size();
+      execution_time_count += _e.vote_operation_exec_time * op.rshares.size();
    }
 
    void operator()( const witness_update_operation& op )const
@@ -203,6 +208,11 @@ struct count_operation_visitor
    void operator()( const account_update_operation& )const
    {
       execution_time_count += _e.account_update_operation_exec_time;
+   }
+
+   void operator()( const account_update2_operation& )const
+   {
+      execution_time_count += _e.account_update2_operation_exec_time;
    }
 
    void operator()( const account_witness_proxy_operation& )const
@@ -294,7 +304,6 @@ struct count_operation_visitor
       execution_time_count += _e.witness_set_properties_operation_exec_time;
    }
 
-#ifdef STEEM_ENABLE_SMT
    void operator()( const claim_reward_balance2_operation& op )const
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
@@ -305,18 +314,6 @@ struct count_operation_visitor
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
       execution_time_count += _e.smt_setup_operation_exec_time;
-   }
-
-   void operator()( const smt_cap_reveal_operation& op )const
-   {
-      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
-      execution_time_count += _e.smt_cap_reveal_operation_exec_time;
-   }
-
-   void operator()( const smt_refund_operation& op )const
-   {
-      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
-      execution_time_count += _e.smt_refund_operation_exec_time;
    }
 
    void operator()( const smt_setup_emissions_operation& op )const
@@ -347,7 +344,32 @@ struct count_operation_visitor
    {
       FC_TODO( "Change RC state bytes computation to take SMT's into account" )
    }
-#endif
+
+   void operator()( const smt_contribute_operation& op ) const
+   {
+      FC_TODO( "Change RC state bytes computation to take SMT's into account" )
+      execution_time_count += _e.smt_contribute_operation_exec_time;
+   }
+
+   void operator()( const create_proposal_operation& op ) const
+   {
+      state_bytes_count += _w.proposal_object_base_size;
+      state_bytes_count += sizeof( op.subject );
+      state_bytes_count += sizeof( op.permlink );
+      execution_time_count += _e.create_proposal_operation_exec_time;
+   }
+
+   void operator()( const update_proposal_votes_operation& op ) const
+   {
+      state_bytes_count += _w.proposal_vote_object_base_size;
+      state_bytes_count += _w.proposal_vote_object_member_size * op.proposal_ids.size();
+      execution_time_count += _e.update_proposal_votes_operation_exec_time;
+   }
+
+   void operator()(const remove_proposal_operation&) const
+   {
+      execution_time_count += _e.remove_proposal_operation_exec_time;
+   }
 
    void operator()( const recover_account_operation& ) const {}
    void operator()( const pow_operation& ) const {}
@@ -373,6 +395,8 @@ struct count_operation_visitor
    void operator()( const comment_benefactor_reward_operation& ) const {}
    void operator()( const producer_reward_operation& ) const {}
    void operator()( const clear_null_account_balance_operation& ) const {}
+   void operator()( const proposal_pay_operation& ) const {}
+   void operator()( const sps_fund_operation& ) const {}
 
    // Optional Actions
 #ifdef IS_TEST_NET

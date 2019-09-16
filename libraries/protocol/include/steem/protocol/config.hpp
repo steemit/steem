@@ -9,7 +9,7 @@
 // This is checked by get_config_check.sh called from Dockerfile
 
 #ifdef IS_TEST_NET
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 21, 0) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 23, 0) )
 #define STEEM_NETWORK_TYPE                    "testnet"
 
 #define STEEM_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
@@ -38,13 +38,14 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 
 #define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
+#define STEEM_SBD_INIT_SUPPLY                 (int64_t( 7 ) * int64_t( 1000000 ) * int64_t( 1000 ))
 
 /// Allows to limit number of total produced blocks.
 #define TESTNET_BLOCK_LIMIT                   (3000000)
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 20, 6) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 22, 1) )
 #define STEEM_NETWORK_TYPE                    "mainnet"
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
@@ -71,6 +72,7 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
 
 #define STEEM_INIT_SUPPLY                     int64_t(0)
+#define STEEM_SBD_INIT_SUPPLY                 int64_t(0)
 
 #endif
 
@@ -82,6 +84,9 @@
 #define SBD_SYMBOL    (steem::protocol::asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_SBD ) )
 
 #define STEEM_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEM_BLOCKCHAIN_VERSION ) )
+
+#define STEEM_100_PERCENT                     10000
+#define STEEM_1_PERCENT                       (STEEM_100_PERCENT/100)
 
 #define STEEM_BLOCK_INTERVAL                  3
 #define STEEM_BLOCKS_PER_YEAR                 (365*24*60*60/STEEM_BLOCK_INTERVAL)
@@ -117,26 +122,34 @@
 #define STEEM_MAX_VOTE_CHANGES                5
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6 (60*30) /// 30 minutes
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF20 (60*15) /// 15 minutes
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21 (60*5) /// 5 minutes
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
+#define STEEM_DOWNVOTE_POOL_PERCENT_HF21      (25*STEEM_1_PERCENT)
 
 #define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
 #define STEEM_MIN_REPLY_INTERVAL_HF20         (fc::seconds(3)) // 3 seconds
+#define STEEM_MIN_COMMENT_EDIT_INTERVAL       (fc::seconds(3)) // 3 seconds
 #define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
 #define STEEM_POST_WEIGHT_CONSTANT            (uint64_t(4*STEEM_100_PERCENT) * (4*STEEM_100_PERCENT))// (4*STEEM_100_PERCENT) -> 2 posts per 1 days, average 1 every 12 hours
 
 #define STEEM_MAX_ACCOUNT_WITNESS_VOTES       30
 
-#define STEEM_100_PERCENT                     10000
-#define STEEM_1_PERCENT                       (STEEM_100_PERCENT/100)
 #define STEEM_DEFAULT_SBD_INTEREST_RATE       (10*STEEM_1_PERCENT) ///< 10% APR
 
 #define STEEM_INFLATION_RATE_START_PERCENT    (978) // Fixes block 7,000,000 to 9.5%
 #define STEEM_INFLATION_RATE_STOP_PERCENT     (95) // 0.95%
 #define STEEM_INFLATION_NARROWING_PERIOD      (250000) // Narrow 0.01% every 250k blocks
-#define STEEM_CONTENT_REWARD_PERCENT          (75*STEEM_1_PERCENT) //75% of inflation, 7.125% inflation
-#define STEEM_VESTING_FUND_PERCENT            (15*STEEM_1_PERCENT) //15% of inflation, 1.425% inflation
+#define STEEM_CONTENT_REWARD_PERCENT_HF16     (75*STEEM_1_PERCENT) //75% of inflation, 7.125% inflation
+#define STEEM_VESTING_FUND_PERCENT_HF16       (15*STEEM_1_PERCENT) //15% of inflation, 1.425% inflation
+#define STEEM_PROPOSAL_FUND_PERCENT_HF0       (0)
+
+#define STEEM_CONTENT_REWARD_PERCENT_HF21     (65*STEEM_1_PERCENT)
+#define STEEM_PROPOSAL_FUND_PERCENT_HF21      (10*STEEM_1_PERCENT)
+
+#define STEEM_HF21_CONVERGENT_LINEAR_RECENT_CLAIMS (fc::uint128_t(0,503600561838938636ull))
+#define STEEM_CONTENT_CONSTANT_HF21           (fc::uint128_t(0,2000000000000ull))
 
 #define STEEM_MINER_PAY_PERCENT               (STEEM_1_PERCENT) // 1%
 #define STEEM_MAX_RATION_DECAY_RATE           (1000000)
@@ -271,6 +284,7 @@
 
 #define STEEM_INITIAL_VOTE_POWER_RATE (40)
 #define STEEM_REDUCED_VOTE_POWER_RATE (10)
+#define STEEM_VOTES_PER_PERIOD_SMT_HF (50)
 
 #define STEEM_MAX_LIMIT_ORDER_EXPIRATION     (60*60*24*28) // 28 days
 #define STEEM_DELEGATION_RETURN_PERIOD_HF0   (STEEM_CASHOUT_WINDOW_SECONDS)
@@ -305,6 +319,14 @@
 #define STEEM_DEFAULT_ACCOUNT_SUBSIDY_BUDGET (797)
 #define STEEM_DECAY_BACKSTOP_PERCENT         (90 * STEEM_1_PERCENT)
 
+#define STEEM_BLOCK_GENERATION_POSTPONED_TX_LIMIT 5
+#define STEEM_PENDING_TRANSACTION_EXECUTION_LIMIT fc::milliseconds(200)
+
+#define STEEM_CUSTOM_OP_ID_MAX_LENGTH        (32)
+#define STEEM_CUSTOM_OP_DATA_MAX_LENGTH      (8192)
+#define STEEM_BENEFICIARY_LIMIT              (128)
+#define STEEM_COMMENT_TITLE_LIMIT            (256)
+
 /**
  *  Reserved Account IDs with special meaning
  */
@@ -319,9 +341,19 @@
 #define STEEM_PROXY_TO_SELF_ACCOUNT           ""
 /// Represents the canonical root post parent account
 #define STEEM_ROOT_POST_PARENT                (account_name_type())
+/// Represents the account with NO authority which holds resources for payouts according to given proposals
+#define STEEM_TREASURY_ACCOUNT                "steem.dao"
 ///@}
 
-#ifdef STEEM_ENABLE_SMT
+/// STEEM PROPOSAL SYSTEM support
+
+#define STEEM_TREASURY_FEE                         (10 * STEEM_BLOCKCHAIN_PRECISION)
+#define STEEM_PROPOSAL_MAINTENANCE_PERIOD          3600
+#define STEEM_PROPOSAL_MAINTENANCE_CLEANUP         (60*60*24*1) /// 1 day
+#define STEEM_PROPOSAL_SUBJECT_MAX_LENGTH          80
+/// Max number of IDs passed at once to the update_proposal_voter_operation or remove_proposal_operation.
+#define STEEM_PROPOSAL_MAX_IDS_NUMBER              5
+
 
 #define SMT_MAX_VOTABLE_ASSETS 2
 #define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
@@ -332,6 +364,6 @@
 #define SMT_MAX_VOTES_PER_REGENERATION          ((SMT_MAX_NOMINAL_VOTES_PER_DAY * SMT_VESTING_WITHDRAW_INTERVAL_SECONDS) / 86400)
 #define SMT_DEFAULT_VOTES_PER_REGEN_PERIOD      (50)
 #define SMT_DEFAULT_PERCENT_CURATION_REWARDS    (25 * STEEM_1_PERCENT)
-
-#endif /// STEEM_ENABLE_SMT
+#define SMT_INITIAL_VESTING_PER_UNIT            (1000000)
+#define SMT_BALLAST_SUPPLY_PERCENT              (STEEM_1_PERCENT/10)
 

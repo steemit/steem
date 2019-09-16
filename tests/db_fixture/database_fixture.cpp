@@ -2,9 +2,11 @@
 #include <boost/program_options.hpp>
 
 #include <steem/utilities/tempdir.hpp>
+#include <steem/utilities/database_configuration.hpp>
 
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 
 #include <steem/plugins/account_history/account_history_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
@@ -39,7 +41,7 @@ namespace steem { namespace chain {
 using std::cout;
 using std::cerr;
 
-clean_database_fixture::clean_database_fixture()
+clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb )
 {
    try {
    int argc = boost::unit_test::framework::master_test_suite().argc;
@@ -78,7 +80,7 @@ clean_database_fixture::clean_database_fixture()
 
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   open_database();
+   open_database( shared_file_size_in_mb );
 
    generate_block();
    db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor_v() );
@@ -146,7 +148,9 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
       args.shared_file_size = size;
+      args.database_cfg = steem::utilities::default_database_configuration();
       db->open( args );
    }
 
@@ -193,6 +197,7 @@ live_database_fixture::live_database_fixture()
          database::open_args args;
          args.data_dir = _chain_dir;
          args.shared_mem_dir = args.data_dir;
+         args.database_cfg = steem::utilities::default_database_configuration();
          db->open( args );
       }
 
@@ -231,7 +236,6 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
    return fc::ecc::private_key::regenerate( fc::sha256::hash( seed ) );
 }
 
-#ifdef STEEM_ENABLE_SMT
 asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_places, chain::database* db )
 {
    // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
@@ -242,21 +246,29 @@ asset_symbol_type database_fixture::get_new_smt_symbol( uint8_t token_decimal_pl
    // Note that token's precision is needed now, when creating actual symbol.
    return asset_symbol_type::from_nai( new_nai.to_nai(), token_decimal_places );
 }
-#endif
 
-void database_fixture::open_database()
+void database_fixture::open_database( uint16_t shared_file_size_in_mb )
 {
    if( !data_dir )
    {
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
 
+      idump( (data_dir->path()) );
+
       database::open_args args;
       args.data_dir = data_dir->path();
       args.shared_mem_dir = args.data_dir;
       args.initial_supply = INITIAL_TEST_SUPPLY;
-      args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      args.sbd_initial_supply = SBD_INITIAL_TEST_SUPPLY;
+      args.shared_file_size = 1024 * 1024 * shared_file_size_in_mb; // 8MB(default) or more:  file for testing
+      args.database_cfg = steem::utilities::default_database_configuration();
+      args.sps_remove_threshold = 20;
       db->open(args);
+   }
+   else
+   {
+      idump( (data_dir->path()) );
    }
 }
 
@@ -495,7 +507,10 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 {
    try
    {
-      FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      if ( amount.symbol.space() == asset_symbol_type::legacy_space )
+         FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+      else
+         FC_ASSERT( !amount.symbol.is_vesting(), "Can only vest liquid symbol" );
 
       transfer_to_vesting_operation op;
       op.from = from;
@@ -520,12 +535,17 @@ void database_fixture::vest( const string& from, const string& to, const asset& 
 
 void database_fixture::vest( const string& from, const share_type& amount )
 {
+   vest( from, asset( amount, STEEM_SYMBOL ) );
+}
+
+void database_fixture::vest( const string& from, const asset& amount )
+{
    try
    {
       transfer_to_vesting_operation op;
       op.from = from;
       op.to = "";
-      op.amount = asset( amount, STEEM_SYMBOL );
+      op.amount = amount;
 
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -643,17 +663,12 @@ void database_fixture::validate_database()
    try
    {
       db->validate_invariants();
-#ifdef STEEM_ENABLE_SMT
       db->validate_smt_invariants();
-#endif
    }
    FC_LOG_AND_RETHROW();
 }
 
-#ifdef STEEM_ENABLE_SMT
-
-template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+asset_symbol_type database_fixture::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
    uint32_t nai, uint8_t token_decimal_places )
 {
    smt_create_operation op;
@@ -684,8 +699,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string
    return op.symbol;
 }
 
-template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
+asset_symbol_type database_fixture::create_smt( const string& account_name, const fc::ecc::private_key& key,
    uint8_t token_decimal_places )
 {
    asset_symbol_type symbol;
@@ -718,8 +732,7 @@ void set_create_op( smt_create_operation* op, account_name_type control_account,
    sub_set_create_op( op, control_account, db );
 }
 
-template< typename T >
-std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
+std::array<asset_symbol_type, 3> database_fixture::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
 {
    smt_create_operation op0;
    smt_create_operation op1;
@@ -770,16 +783,14 @@ void push_invalid_operation(const operation& invalid_op, const fc::ecc::private_
    STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 }
 
-template< typename T >
-void t_smt_database_fixture< T >::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
+void database_fixture::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
    STEEM_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
 }
 
-template< typename T >
-void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
+void database_fixture::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
    const fc::ecc::private_key& key )
 {
    // Fail due to the same nai & precision.
@@ -792,8 +803,7 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
    push_invalid_operation (op_same_nai, key, this->db );
 }
 
-template< typename T >
-smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const units& steem_unit, const units& token_unit )
+smt_generation_unit database_fixture::get_generation_unit( const units& steem_unit, const units& token_unit )
 {
    smt_generation_unit ret;
 
@@ -803,34 +813,10 @@ smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const unit
    return ret;
 }
 
-template< typename T >
-smt_cap_commitment t_smt_database_fixture< T >::get_cap_commitment( share_type amount, uint128_t nonce )
-{
-   smt_cap_commitment ret;
-   if( nonce == 0)
-      ret.fillin_nonhidden_value( amount );
-   else
-   {
-      smt_revealed_cap reveal;
-      reveal.amount = amount;
-      reveal.nonce = nonce;
-
-      ret.hash = fc::sha256::hash( reveal );
-      ret.lower_bound = SMT_MIN_HARD_CAP_STEEM_UNITS; // See smt_capped_generation_policy::validate
-      ret.upper_bound = STEEM_MAX_SHARE_SUPPLY/10;    // See smt_capped_generation_policy::validate
-   }
-
-   return ret;
-}
-
-template< typename T >
-smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_policy
+smt_capped_generation_policy database_fixture::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_steem_units_commitment,
-   const smt_cap_commitment& hard_cap_steem_units_commitment,
-   uint16_t soft_cap_percent,
    uint32_t min_unit_ratio,
    uint32_t max_unit_ratio
 )
@@ -840,39 +826,174 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
    ret.pre_soft_cap_unit = pre_soft_cap_unit;
    ret.post_soft_cap_unit = post_soft_cap_unit;
 
-   ret.min_steem_units_commitment = min_steem_units_commitment;
-   ret.hard_cap_steem_units_commitment = hard_cap_steem_units_commitment;
-
-   ret.soft_cap_percent = soft_cap_percent;
-
    ret.min_unit_ratio = min_unit_ratio;
    ret.max_unit_ratio = max_unit_ratio;
 
    return ret;
 }
 
-template asset_symbol_type t_smt_database_fixture< clean_database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
 
-template asset_symbol_type t_smt_database_fixture< database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
+void sps_proposal_database_fixture::plugin_prepare()
+{
+   int argc = boost::unit_test::framework::master_test_suite().argc;
+   char** argv = boost::unit_test::framework::master_test_suite().argv;
+   for( int i=1; i<argc; i++ )
+   {
+      const std::string arg = argv[i];
+      if( arg == "--record-assert-trip" )
+         fc::enable_record_assert_trip = true;
+      if( arg == "--show-test-names" )
+         std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+   }
 
-template void t_smt_database_fixture< clean_database_fixture >::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
-template void t_smt_database_fixture< clean_database_fixture >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
-template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   init_account_pub_key = init_account_priv_key.get_public_key();
 
-template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
-template smt_cap_commitment t_smt_database_fixture< clean_database_fixture >::get_cap_commitment( share_type amount, uint128_t nonce );
-template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
-(
-   const smt_generation_unit& pre_soft_cap_unit,
-   const smt_generation_unit& post_soft_cap_unit,
-   const smt_cap_commitment& min_steem_units_commitment,
-   const smt_cap_commitment& hard_cap_steem_units_commitment,
-   uint16_t soft_cap_percent,
-   uint32_t min_unit_ratio,
-   uint32_t max_unit_ratio
-);
+   db_plugin->logging = false;
+   appbase::app().initialize<
+      steem::plugins::debug_node::debug_node_plugin
+   >( argc, argv );
 
-#endif
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
+   BOOST_REQUIRE( db );
+
+   open_database();
+
+   generate_block();
+   db->set_hardfork( STEEM_NUM_HARDFORKS );
+   generate_block();
+
+
+   validate_database();
+}
+
+int64_t sps_proposal_database_fixture::create_proposal( std::string creator, std::string receiver,
+                           time_point_sec start_date, time_point_sec end_date,
+                           asset daily_pay, const fc::ecc::private_key& key )
+{
+   signed_transaction tx;
+   create_proposal_operation op;
+
+   op.creator = creator;
+   op.receiver = receiver;
+
+   op.start_date = start_date;
+   op.end_date = end_date;
+
+   op.daily_pay = daily_pay;
+
+   static uint32_t cnt = 0;
+   op.subject = std::to_string( cnt );
+
+   const std::string permlink = "permlink" + std::to_string( cnt );
+   post_comment(creator, permlink, "title", "body", "test", key);
+
+   op.permlink = permlink;
+
+   tx.operations.push_back( op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, key );
+   db->push_transaction( tx, 0 );
+   tx.signatures.clear();
+   tx.operations.clear();
+
+   const auto& proposal_idx = db-> template get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   auto itr = proposal_idx.end();
+   BOOST_REQUIRE( proposal_idx.begin() != itr );
+   --itr;
+   BOOST_REQUIRE( creator == itr->creator );
+
+   //An unique subject is generated by cnt
+   ++cnt;
+
+   return itr->proposal_id;
+}
+
+void sps_proposal_database_fixture::vote_proposal( std::string voter, const std::vector< int64_t >& id_proposals, bool approve, const fc::ecc::private_key& key )
+{
+   update_proposal_votes_operation op;
+
+   op.voter = voter;
+   op.proposal_ids.insert(id_proposals.cbegin(), id_proposals.cend());
+   op.approve = approve;
+
+   signed_transaction tx;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, key );
+   db->push_transaction( tx, 0 );
+}
+
+bool sps_proposal_database_fixture::exist_proposal( int64_t id )
+{
+   const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   return proposal_idx.find( id ) != proposal_idx.end();
+}
+
+const proposal_object* sps_proposal_database_fixture::find_proposal( int64_t id )
+{
+   const auto& proposal_idx = db->get_index< proposal_index >().indices(). template get< by_proposal_id >();
+   auto found = proposal_idx.find( id );
+
+   if( found != proposal_idx.end() )
+      return &(*found);
+   else
+      return nullptr;
+}
+
+void sps_proposal_database_fixture::remove_proposal(account_name_type _deleter, flat_set<int64_t> _proposal_id, const fc::ecc::private_key& _key)
+{
+   remove_proposal_operation rp;
+   rp.proposal_owner = _deleter;
+   rp.proposal_ids   = _proposal_id;
+
+   signed_transaction trx;
+   trx.operations.push_back( rp );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( trx, _key );
+   db->push_transaction( trx, 0 );
+   trx.signatures.clear();
+   trx.operations.clear();
+}
+
+bool sps_proposal_database_fixture::find_vote_for_proposal(const std::string& _user, int64_t _proposal_id)
+{
+      const auto& proposal_vote_idx = db->get_index< proposal_vote_index >().indices(). template get< by_voter_proposal >();
+      auto found_vote = proposal_vote_idx.find( boost::make_tuple(_user, _proposal_id) );
+      return found_vote != proposal_vote_idx.end() ;
+}
+
+uint64_t sps_proposal_database_fixture::get_nr_blocks_until_maintenance_block()
+{
+   auto block_time = db->head_block_time();
+
+   auto next_maintenance_time = db->get_dynamic_global_properties().next_maintenance_time;
+   auto ret = ( next_maintenance_time - block_time ).to_seconds() / STEEM_BLOCK_INTERVAL;
+
+   FC_ASSERT( next_maintenance_time >= block_time );
+
+   return ret;
+}
+
+void sps_proposal_database_fixture::post_comment( std::string _authro, std::string _permlink, std::string _title, std::string _body, std::string _parent_permlink, const fc::ecc::private_key& _key)
+{
+   generate_blocks( db->head_block_time() + STEEM_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEM_BLOCK_INTERVAL ), true );
+   comment_operation comment;
+
+   comment.author = _authro;
+   comment.permlink = _permlink;
+   comment.title = _title;
+   comment.body = _body;
+   comment.parent_permlink = _parent_permlink;
+
+   signed_transaction trx;
+   trx.operations.push_back( comment );
+   trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( trx, _key );
+   db->push_transaction( trx, 0 );
+   trx.signatures.clear();
+   trx.operations.clear();
+}
 
 json_rpc_database_fixture::json_rpc_database_fixture()
 {

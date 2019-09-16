@@ -13,10 +13,16 @@
 #include <memory>
 #include <string.h>
 
+#include "port/jemalloc_helper.h"
+
+
 namespace rocksdb {
 
 #ifdef ROCKSDB_JEMALLOC
-#include "jemalloc/jemalloc.h"
+
+#ifdef JEMALLOC_NO_RENAME
+#define malloc_stats_print je_malloc_stats_print
+#endif
 
 typedef struct {
   char* cur;
@@ -34,19 +40,20 @@ static void GetJemallocStatus(void* mstat_arg, const char* status) {
   snprintf(mstat->cur, buf_size, "%s", status);
   mstat->cur += status_len;
 }
-#endif  // ROCKSDB_JEMALLOC
-
 void DumpMallocStats(std::string* stats) {
-#ifdef ROCKSDB_JEMALLOC
+  if (!HasJemalloc()) {
+    return;
+  }
   MallocStatus mstat;
   const unsigned int kMallocStatusLen = 1000000;
   std::unique_ptr<char[]> buf{new char[kMallocStatusLen + 1]};
   mstat.cur = buf.get();
   mstat.end = buf.get() + kMallocStatusLen;
-  je_malloc_stats_print(GetJemallocStatus, &mstat, "");
+  malloc_stats_print(GetJemallocStatus, &mstat, "");
   stats->append(buf.get());
+}
+#else
+void DumpMallocStats(std::string*) {}
 #endif  // ROCKSDB_JEMALLOC
-}
-
-}
+}  // namespace rocksdb
 #endif  // !ROCKSDB_LITE

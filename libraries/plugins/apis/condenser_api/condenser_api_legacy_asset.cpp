@@ -17,6 +17,11 @@ uint32_t string_to_asset_num( const char* p, uint8_t decimals )
       break;
    }
 
+   if(  *p == '@' )
+   {
+      return asset_symbol_type::from_nai_string( p, decimals ).asset_num;
+   }
+
    // [A-Z]
    uint32_t asset_num = 0;
    switch( *p )
@@ -100,7 +105,7 @@ std::string asset_num_to_string( uint32_t asset_num )
       case STEEM_ASSET_NUM_VESTS:
          return "VESTS";
       default:
-         return "UNKN"; // SMTs will return this symbol if returned as a legacy asset
+         return asset_symbol_type::from_asset_num( asset_num ).to_nai_string(); // SMTs will return precisionless NAI string
    }
 }
 
@@ -159,10 +164,24 @@ legacy_asset legacy_asset::from_string( const string& from )
 
          int64_t prec = precision( result.symbol );
 
+         //Max amount = 9223372036854775.807 STEEM/SBD
+         //`inpart` * `prec` can cause overflow, better is to emulate multiplication using additional zeros
+         auto _prec = std::to_string( prec );
+         if( !_prec.empty() )
+            intpart += _prec.substr( 1 );
+
          result.amount = fc::to_int64( intpart );
-         result.amount.value *= prec;
-         result.amount.value += fc::to_int64( fractpart );
-         result.amount.value -= prec;
+
+         int64_t _new_value = fc::to_int64( fractpart ) - prec;
+
+         //adding `_new_value` can cause overflow, better is to check sum before addition
+         int64_t check = result.amount.value + _new_value;
+         bool overflow_a = result.amount.value > 0 && _new_value > 0 && check < 0;
+         bool overflow_b = result.amount.value < 0 && _new_value < 0 && check > 0;
+         if( overflow_a || overflow_b )
+            FC_THROW_EXCEPTION( fc::parse_error_exception, "Couldn't parse int64_t" );
+         else
+            result.amount.value += _new_value;
       }
       else
       {

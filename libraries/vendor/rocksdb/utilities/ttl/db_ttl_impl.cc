@@ -259,8 +259,8 @@ Status DBWithTTLImpl::Write(const WriteOptions& opts, WriteBatch* updates) {
     explicit Handler(Env* env) : env_(env) {}
     WriteBatch updates_ttl;
     Status batch_rewrite_status;
-    virtual Status PutCF(uint32_t column_family_id, const Slice& key,
-                         const Slice& value) override {
+    Status PutCF(uint32_t column_family_id, const Slice& key,
+                 const Slice& value) override {
       std::string value_with_ts;
       Status st = AppendTS(value, &value_with_ts, env_);
       if (!st.ok()) {
@@ -271,8 +271,8 @@ Status DBWithTTLImpl::Write(const WriteOptions& opts, WriteBatch* updates) {
       }
       return Status::OK();
     }
-    virtual Status MergeCF(uint32_t column_family_id, const Slice& key,
-                           const Slice& value) override {
+    Status MergeCF(uint32_t column_family_id, const Slice& key,
+                   const Slice& value) override {
       std::string value_with_ts;
       Status st = AppendTS(value, &value_with_ts, env_);
       if (!st.ok()) {
@@ -283,14 +283,11 @@ Status DBWithTTLImpl::Write(const WriteOptions& opts, WriteBatch* updates) {
       }
       return Status::OK();
     }
-    virtual Status DeleteCF(uint32_t column_family_id,
-                            const Slice& key) override {
+    Status DeleteCF(uint32_t column_family_id, const Slice& key) override {
       WriteBatchInternal::Delete(&updates_ttl, column_family_id, key);
       return Status::OK();
     }
-    virtual void LogData(const Slice& blob) override {
-      updates_ttl.PutLogData(blob);
-    }
+    void LogData(const Slice& blob) override { updates_ttl.PutLogData(blob); }
 
    private:
     Env* env_;
@@ -307,6 +304,17 @@ Status DBWithTTLImpl::Write(const WriteOptions& opts, WriteBatch* updates) {
 Iterator* DBWithTTLImpl::NewIterator(const ReadOptions& opts,
                                      ColumnFamilyHandle* column_family) {
   return new TtlIterator(db_->NewIterator(opts, column_family));
+}
+
+void DBWithTTLImpl::SetTtl(ColumnFamilyHandle *h, int32_t ttl) {
+  std::shared_ptr<TtlCompactionFilterFactory> filter;
+  Options opts;
+  opts = GetOptions(h);
+  filter = std::static_pointer_cast<TtlCompactionFilterFactory>(
+                                       opts.compaction_filter_factory);
+  if (!filter)
+    return;
+  filter->SetTtl(ttl);
 }
 
 }  // namespace rocksdb

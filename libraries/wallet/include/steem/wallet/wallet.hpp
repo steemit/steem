@@ -1066,6 +1066,77 @@ class wallet_api
          condenser_api::legacy_asset reward_sbd,
          condenser_api::legacy_asset reward_vests,
          bool broadcast );
+
+      /**
+       * Create worker proposal
+       * @param creator    - the account that creates the proposal,
+       * @param receiver   - the account that will be funded,
+       * @param start_date - start date of proposal,
+       * @param end_date   - end date of proposal,
+       * @param daily_pay  - the amount of SBD that is being requested to be paid out daily,
+       * @param subject    - briefly description of proposal of its title,
+       * @param url        - link to page with description of proposal.
+       */
+      condenser_api::legacy_signed_transaction create_proposal( account_name_type creator,
+                           account_name_type receiver,
+                           time_point_sec start_date,
+                           time_point_sec end_date,
+                           condenser_api::legacy_asset daily_pay,
+                           string subject,
+                           string url,
+                           bool broadcast );
+      /**
+       * Update existing worker proposal(s)
+       * @param voter     - the account that votes,
+       * @param proposals - array with proposal ids,
+       * @param approve   - set if proposal(s) should be approved or not.
+       */
+      condenser_api::legacy_signed_transaction update_proposal_votes(account_name_type voter,
+                                                                     flat_set< int64_t > proposals,
+                                                                     bool approve,
+                                                                     bool broadcast );
+      /**
+       * List proposals
+       * @param start      - starting value for querying results,
+       * @param limit      - query limit,
+       * @param order_by   - name a field for sorting operation,
+       * @param order_type - set print order (ascending, descending)
+       * @param status     - list only results with given status (all, inactive, active, expired, votable),
+       */
+      condenser_api::list_proposals_return list_proposals( fc::variant start,
+                                                           uint32_t limit,
+                                                           database_api::sort_order_type order_by,
+                                                           database_api::order_direction_type order_type = database_api::descending,
+                                                           database_api::proposal_status status = database_api::all );
+
+      /**
+       * Find proposal with given id
+       * @param _ids - array with ids of wanted proposals to be founded.
+       */
+      condenser_api::find_proposals_return find_proposals( vector< int64_t > proposal_ids );
+
+      /**
+       * List proposal votes
+       * @param start      - starting value for querying results,
+       * @param limit      - query limit,
+       * @param order_by   - name a field for sorting operation,
+       * @param order_type - set print order (ascending, descending)
+       * @param status     - list only results with given status (all, inactive, active, expired, votable),
+       */
+      condenser_api::list_proposal_votes_return list_proposal_votes( fc::variant start,
+                                                                     uint32_t limit,
+                                                                     database_api::sort_order_type order_by,
+                                                                     database_api::order_direction_type order_type = database_api::descending,
+                                                                     database_api::proposal_status status = database_api::all );
+
+      /**
+       * Remove given proposal
+       * @param deleter   - authorized account,
+       * @param ids       - proposal ids to be removed.
+       */
+      condenser_api::legacy_signed_transaction remove_proposal( account_name_type deleter,
+                                                                flat_set< int64_t > ids,
+                                                                bool broadcast );
 };
 
 struct plain_keys {
@@ -1169,6 +1240,14 @@ FC_API( steem::wallet::wallet_api,
 
         (get_active_witnesses)
         (get_transaction)
+
+        ///worker proposal api
+        (create_proposal)
+        (update_proposal_votes)
+        (list_proposals)
+        (find_proposals)
+        (list_proposal_votes)
+        (remove_proposal)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )

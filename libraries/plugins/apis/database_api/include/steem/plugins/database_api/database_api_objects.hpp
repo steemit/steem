@@ -6,6 +6,7 @@
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
+#include <steem/chain/sps_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/database.hpp>
@@ -164,7 +165,6 @@ struct api_account_object
       id( a.id ),
       name( a.name ),
       memo_key( a.memo_key ),
-      json_metadata( to_string( a.json_metadata ) ),
       proxy( a.proxy ),
       last_account_update( a.last_account_update ),
       created( a.created ),
@@ -177,6 +177,7 @@ struct api_account_object
       post_count( a.post_count ),
       can_vote( a.can_vote ),
       voting_manabar( a.voting_manabar ),
+      downvote_manabar( a.downvote_manabar ),
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -205,6 +206,7 @@ struct api_account_object
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
       last_root_post( a.last_root_post ),
+      last_post_edit( a.last_post_edit ),
       last_vote_time( a.last_vote_time ),
       post_bandwidth( a.post_bandwidth ),
       pending_claimed_accounts( a.pending_claimed_accounts )
@@ -219,11 +221,18 @@ struct api_account_object
       active = authority( auth.active );
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
-#ifdef STEEM_ENABLE_SMT
+#ifndef IS_LOW_MEM
+      const auto* maybe_meta = db.find< account_metadata_object, by_account >( id );
+      if( maybe_meta )
+      {
+         json_metadata = to_string( maybe_meta->json_metadata );
+         posting_json_metadata = to_string( maybe_meta->posting_json_metadata );
+      }
+#endif
+
       const auto& by_control_account_index = db.get_index<smt_token_index>().indices().get<by_control_account>();
       auto smt_obj_itr = by_control_account_index.find( name );
       is_smt = smt_obj_itr != by_control_account_index.end();
-#endif
    }
 
 
@@ -237,6 +246,7 @@ struct api_account_object
    authority         posting;
    public_key_type   memo_key;
    string            json_metadata;
+   string            posting_json_metadata;
    account_name_type proxy;
 
    time_point_sec    last_owner_update;
@@ -253,6 +263,7 @@ struct api_account_object
 
    bool              can_vote = false;
    util::manabar     voting_manabar;
+   util::manabar     downvote_manabar;
 
    asset             balance;
    asset             savings_balance;
@@ -292,6 +303,7 @@ struct api_account_object
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+   time_point_sec    last_post_edit;
    time_point_sec    last_vote_time;
    uint32_t          post_bandwidth = 0;
 
@@ -526,7 +538,78 @@ struct api_hardfork_property_object
    fc::time_point_sec            next_hardfork_time;
 };
 
+struct api_smt_token_object
+{
+   api_smt_token_object( const smt_token_object& token, const database& db ) : token( token )
+   {
+      const smt_ico_object* ico = db.find< chain::smt_ico_object, chain::by_symbol >( token.liquid_symbol );
+      if ( ico != nullptr )
+         this->ico = *ico;
+   }
 
+   smt_token_object                token;
+   fc::optional< smt_ico_object >  ico;
+};
+
+enum proposal_status
+{
+   all,
+   inactive,
+   active,
+   expired,
+   votable
+};
+
+proposal_status get_proposal_status( const proposal_object& po, const time_point_sec current_time );
+
+typedef uint64_t api_id_type;
+
+struct api_proposal_object
+{
+   api_proposal_object() = default;
+
+   api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
+      id(po.id),
+      proposal_id(po.proposal_id),
+      creator(po.creator),
+      receiver(po.receiver),
+      start_date(po.start_date),
+      end_date(po.end_date),
+      daily_pay(po.daily_pay),
+      subject(to_string(po.subject)),
+      permlink(to_string(po.permlink)),
+      total_votes(po.total_votes),
+      status(get_proposal_status(po,current_time))
+   {}
+
+   api_id_type       id;
+
+   api_id_type       proposal_id;
+   account_name_type creator;
+   account_name_type receiver;
+   time_point_sec    start_date;
+   time_point_sec    end_date;
+   asset             daily_pay;
+   string            subject;
+   string            permlink;
+   uint64_t          total_votes = 0;
+   proposal_status   status = proposal_status::all;
+};
+
+struct api_proposal_vote_object
+{
+   api_proposal_vote_object() = default;
+
+   api_proposal_vote_object( const proposal_vote_object& pvo, const database& db ) :
+      id( pvo.id ),
+      voter( pvo.voter ),
+      proposal( db.get< proposal_object, by_id >( pvo.proposal_id ), db.head_block_time() )
+   {}
+
+   proposal_vote_id_type   id;
+   account_name_type       voter;
+   api_proposal_object     proposal;
+};
 
 struct order
 {
@@ -563,10 +646,10 @@ FC_REFLECT( steem::plugins::database_api::api_comment_vote_object,
           )
 
 FC_REFLECT( steem::plugins::database_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(downvote_manabar)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -576,7 +659,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(last_vote_time)
+             (last_post)(last_root_post)(last_post_edit)(last_vote_time)
              (post_bandwidth)(pending_claimed_accounts)
              (is_smt)
           )
@@ -659,6 +742,39 @@ FC_REFLECT( steem::plugins::database_api::api_hardfork_property_object,
             (current_hardfork_version)
             (next_hardfork)
             (next_hardfork_time)
+          )
+
+FC_REFLECT( steem::plugins::database_api::api_smt_token_object,
+   (token)
+   (ico)
+)
+
+FC_REFLECT_ENUM( steem::plugins::database_api::proposal_status,
+                  (all)
+                  (inactive)
+                  (active)
+                  (expired)
+                  (votable)
+               )
+
+FC_REFLECT( steem::plugins::database_api::api_proposal_object,
+            (id)
+            (proposal_id)
+            (creator)
+            (receiver)
+            (start_date)
+            (end_date)
+            (daily_pay)
+            (subject)
+            (permlink)
+            (total_votes)
+            (status)
+          )
+
+FC_REFLECT( steem::plugins::database_api::api_proposal_vote_object,
+            (id)
+            (voter)
+            (proposal)
           )
 
 FC_REFLECT( steem::plugins::database_api::order, (order_price)(real_price)(steem)(sbd)(created) );
