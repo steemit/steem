@@ -564,20 +564,9 @@ namespace steem { namespace protocol {
    {
       validate_account_name( owner );
 
-      FC_ASSERT( amount_to_sell.symbol == exchange_rate.base.symbol, "Sell asset must be the base of the price" );
       exchange_rate.validate();
 
-      FC_ASSERT(  ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) )
-               || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) )
-               || (
-                     amount_to_sell.symbol.space() == asset_symbol_type::smt_nai_space
-                     && is_asset_type( exchange_rate.quote, STEEM_SYMBOL )
-                  )
-               || (
-                     is_asset_type( amount_to_sell, STEEM_SYMBOL )
-                     && exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space
-                  ),
-               "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
+      FC_ASSERT( amount_to_sell.symbol.is_vesting() == false, "Cannot create a limit order for vesting types." );
 
       FC_ASSERT( ( amount_to_sell * exchange_rate ).amount > 0, "Amount to sell cannot round to 0 when traded" );
    }
