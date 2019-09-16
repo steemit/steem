@@ -29,7 +29,7 @@ using namespace steem;
 using namespace steem::chain;
 using namespace steem::protocol;
 
-BOOST_FIXTURE_TEST_SUITE( smt_operation_time_tests, smt_database_fixture )
+BOOST_FIXTURE_TEST_SUITE( smt_operation_time_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( smt_refunds )
 {

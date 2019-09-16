@@ -668,8 +668,7 @@ void database_fixture::validate_database()
    FC_LOG_AND_RETHROW();
 }
 
-template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
+asset_symbol_type database_fixture::create_smt_with_nai( const string& account_name, const fc::ecc::private_key& key,
    uint32_t nai, uint8_t token_decimal_places )
 {
    smt_create_operation op;
@@ -700,8 +699,7 @@ asset_symbol_type t_smt_database_fixture< T >::create_smt_with_nai( const string
    return op.symbol;
 }
 
-template< typename T >
-asset_symbol_type t_smt_database_fixture< T >::create_smt( const string& account_name, const fc::ecc::private_key& key,
+asset_symbol_type database_fixture::create_smt( const string& account_name, const fc::ecc::private_key& key,
    uint8_t token_decimal_places )
 {
    asset_symbol_type symbol;
@@ -734,8 +732,7 @@ void set_create_op( smt_create_operation* op, account_name_type control_account,
    sub_set_create_op( op, control_account, db );
 }
 
-template< typename T >
-std::array<asset_symbol_type, 3> t_smt_database_fixture< T >::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
+std::array<asset_symbol_type, 3> database_fixture::create_smt_3(const char* control_account_name, const fc::ecc::private_key& key)
 {
    smt_create_operation op0;
    smt_create_operation op1;
@@ -786,16 +783,14 @@ void push_invalid_operation(const operation& invalid_op, const fc::ecc::private_
    STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 }
 
-template< typename T >
-void t_smt_database_fixture< T >::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
+void database_fixture::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
 {
    // Fail due to precision too big.
    smt_create_operation op_precision;
    STEEM_REQUIRE_THROW( set_create_op( &op_precision, control_account_name, STEEM_ASSET_MAX_DECIMALS + 1, *this->db ), fc::assert_exception );
 }
 
-template< typename T >
-void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
+void database_fixture::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
    const fc::ecc::private_key& key )
 {
    // Fail due to the same nai & precision.
@@ -808,8 +803,7 @@ void t_smt_database_fixture< T >::create_conflicting_smt( const asset_symbol_typ
    push_invalid_operation (op_same_nai, key, this->db );
 }
 
-template< typename T >
-smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const units& steem_unit, const units& token_unit )
+smt_generation_unit database_fixture::get_generation_unit( const units& steem_unit, const units& token_unit )
 {
    smt_generation_unit ret;
 
@@ -819,8 +813,7 @@ smt_generation_unit t_smt_database_fixture< T >::get_generation_unit( const unit
    return ret;
 }
 
-template< typename T >
-smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_policy
+smt_capped_generation_policy database_fixture::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
    const smt_generation_unit& post_soft_cap_unit,
@@ -839,22 +832,6 @@ smt_capped_generation_policy t_smt_database_fixture< T >::get_capped_generation_
    return ret;
 }
 
-template asset_symbol_type t_smt_database_fixture< clean_database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
-
-template asset_symbol_type t_smt_database_fixture< database_fixture >::create_smt( const string& account_name, const fc::ecc::private_key& key, uint8_t token_decimal_places );
-
-template void t_smt_database_fixture< clean_database_fixture >::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
-template void t_smt_database_fixture< clean_database_fixture >::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
-template std::array<asset_symbol_type, 3> t_smt_database_fixture< clean_database_fixture >::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key );
-
-template smt_generation_unit t_smt_database_fixture< clean_database_fixture >::get_generation_unit( const units& steem_unit, const units& token_unit );
-template smt_capped_generation_policy t_smt_database_fixture< clean_database_fixture >::get_capped_generation_policy
-(
-   const smt_generation_unit& pre_soft_cap_unit,
-   const smt_generation_unit& post_soft_cap_unit,
-   uint32_t min_unit_ratio,
-   uint32_t max_unit_ratio
-);
 
 void sps_proposal_database_fixture::plugin_prepare()
 {
