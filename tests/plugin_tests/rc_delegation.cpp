@@ -4,6 +4,7 @@
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/smt_objects.hpp>
 #include <steem/protocol/steem_operations.hpp>
 
 #include <steem/plugins/rc/rc_objects.hpp>
@@ -18,6 +19,52 @@ using namespace steem::plugins::rc;
 
 BOOST_FIXTURE_TEST_SUITE( rc_delegation, clean_database_fixture )
 
+BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_validate )
+{
+   try{
+      SMT_SYMBOL( alice, 3, db );
+
+      delegate_to_pool_operation op;
+      op.from_account = "alice";
+      op.to_pool = "bob";
+      op.amount = asset( 1, VESTS_SYMBOL );
+      op.validate();
+
+      op.amount.symbol = STEEM_SYMBOL;
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.amount.symbol = SBD_SYMBOL;
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.amount.symbol = alice_symbol;
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.amount.symbol = alice_symbol.get_paired_symbol();
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.amount.symbol = VESTS_SYMBOL;
+      op.to_pool = "bob-";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.to_pool = "@@";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.to_pool = "@@000000000";
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.to_pool = alice_symbol.to_nai_string();
+      op.validate();
+
+      op.to_pool = alice_symbol.get_paired_symbol().to_nai_string();
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.to_pool = "bob";
+      op.from_account = alice_symbol.to_nai_string();
+      BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_apply )
 {
    try
@@ -26,8 +73,10 @@ BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_apply )
       ACTORS( (alice)(bob)(dave) )
 
       vest( STEEM_INIT_MINER_NAME, "alice", ASSET( "10.000 TESTS" ) );
+      vest( STEEM_INIT_MINER_NAME, "bob", ASSET( "10.000 TESTS" ) );
 
       int64_t alice_vests = alice.vesting_shares.amount.value;
+      int64_t bob_vests = bob.vesting_shares.amount.value;
       signed_transaction tx;
 
       delegate_to_pool_operation op;
@@ -102,6 +151,110 @@ BOOST_AUTO_TEST_CASE( rc_delegate_to_pool_apply )
       edge = db->find< rc_indel_edge_object, by_edge >( boost::make_tuple( account_name_type( "alice" ), VESTS_SYMBOL, account_name_type( "dave" ) ) );
       BOOST_REQUIRE( edge != nullptr );
       BOOST_REQUIRE( edge->amount.amount.value == vests_to_dave - 1 );
+
+      generate_block();
+      auto alice_symbol = create_smt( "alice", alice_private_key, 3 );
+      SMT_SYMBOL( bob, 3, db );
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- Test failure delegating to non-existent SMT" );
+
+      op.from_account = "bob";
+      op.to_pool = bob_symbol.to_nai_string();
+      op.amount = asset( bob_vests / 10, VESTS_SYMBOL );
+      custom_op.json = fc::json::to_string( rc_plugin_operation( op ) );
+      custom_op.required_auths.clear();
+      custom_op.required_auths.insert( "bob" );
+      tx.clear();
+      tx.operations.push_back( custom_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, bob_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure delegating to SMT in setup phase" );
+
+      op.to_pool = alice_symbol.to_nai_string();
+      custom_op.json = fc::json::to_string( rc_plugin_operation( op ) );
+      tx.clear();
+      tx.operations.push_back( custom_op );
+      sign( tx, bob_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure delegating to SMT in setup_completed phase" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::setup_completed;
+         });
+      });
+
+      generate_block();
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure delegating to SMT in ico phase" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::ico;
+         });
+      });
+
+      generate_block();
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure delegating to SMT in launch_failed phase" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_failed;
+         });
+      });
+
+      generate_block();
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success delegating to SMT in ico_completed phase" );
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::ico_completed;
+         });
+      });
+
+      generate_block();
+      db->push_transaction( tx, 0 );
+
+      edge = db->find< rc_indel_edge_object, by_edge >( boost::make_tuple( account_name_type( "bob" ), VESTS_SYMBOL, account_name_type( alice_symbol.to_nai_string() ) ) );
+      BOOST_REQUIRE( edge != nullptr );
+      BOOST_REQUIRE( edge->amount.amount.value == op.amount.amount.value );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success delegating to SMT in setup_success phase" );
+
+      op.amount = asset( bob_vests / 5, VESTS_SYMBOL );
+      custom_op.json = fc::json::to_string( rc_plugin_operation( op ) );
+      tx.clear();
+      tx.operations.push_back( custom_op );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      edge = db->find< rc_indel_edge_object, by_edge >( boost::make_tuple( account_name_type( "bob" ), VESTS_SYMBOL, account_name_type( alice_symbol.to_nai_string() ) ) );
+      BOOST_REQUIRE( edge != nullptr );
+      BOOST_REQUIRE( edge->amount.amount.value == op.amount.amount.value );
+
    }
    FC_LOG_AND_RETHROW()
 }
