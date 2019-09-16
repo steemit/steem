@@ -51,6 +51,7 @@ inline void validate_tick_pricing( const price& p )
    else if ( p.base.symbol == STEEM_SYMBOL )
    {
       FC_ASSERT( p.quote.symbol.space() == asset_symbol_type::smt_nai_space, "Only tokens can be paired with STEEM as the base symbol." );
+      FC_ASSERT( p.quote.symbol.is_vesting() == false, "Quote symbol cannot be a vesting symbol." );
    }
    else
    {

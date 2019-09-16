@@ -566,28 +566,7 @@ namespace steem { namespace protocol {
 
       exchange_rate.validate();
 
-      if ( amount_to_sell.symbol.space() == asset_symbol_type::legacy_space )
-      {
-         // We must allow SBD_SYMBOL and STEEM_SYMBOL in both positions to support limit orders prior to
-         // the introduction of Tick Pricing Rules at STEEM_SMT_HARDFORK.
-         // Tick Pricing Rules are enforced in evaluators after STEEM_SMT_HARDFORK is applied.
-         FC_ASSERT(
-            ( exchange_rate.base.symbol == STEEM_SYMBOL && exchange_rate.quote.symbol == SBD_SYMBOL ) ||
-            ( exchange_rate.base.symbol == SBD_SYMBOL && exchange_rate.quote.symbol == STEEM_SYMBOL ) ||
-            ( exchange_rate.base.symbol == STEEM_SYMBOL && exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space ),
-            "Valid exchange rates are SBD:STEEM, STEEM:SBD, STEEM:SMT. Current: ${ex}", ("ex", exchange_rate) );
-
-      }
-      else
-      {
-         // We can enforce Tick Pricing Rules because it will be introduced with Smart Media Tokens.
-         FC_ASSERT(
-            exchange_rate.base.symbol == STEEM_SYMBOL && exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space,
-            "Valid exchange rates are STEEM:SMT. Current: ${ex}", ("ex", exchange_rate) );
-         FC_ASSERT( exchange_rate.quote.symbol == amount_to_sell.symbol,
-            "Amount for sale does not match the exchange rate quote symbol. Quote symbol: ${quote}, Sell symbol: ${sell}",
-               ("quote", exchange_rate.quote.symbol)("sell", amount_to_sell.symbol) );
-      }
+      FC_ASSERT( amount_to_sell.symbol.is_vesting() == false, "Cannot create a limit order for vesting types." );
 
       FC_ASSERT( ( amount_to_sell * exchange_rate ).amount > 0, "Amount to sell cannot round to 0 when traded" );
    }

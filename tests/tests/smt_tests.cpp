@@ -210,6 +210,24 @@ BOOST_AUTO_TEST_CASE( tick_pricing_rules_validation )
    BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
    tick_price.quote = asset( 10, symbol );
 
+   BOOST_TEST_MESSAGE( " -- Test failure when VESTS are the base symbol." );
+   tick_price.quote = asset( 10, VESTS_SYMBOL );
+   tick_price.base  = asset( 10, STEEM_SYMBOL );
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Test failure when VESTS are the quote symbol." );
+   tick_price = ~tick_price;
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Test failure when SMT vesting symbol is the base symbol." );
+   tick_price.quote = asset( 10, symbol.get_paired_symbol() );
+   tick_price.base  = asset( 10, STEEM_SYMBOL );
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " -- Test failure when SMT vesting symbol is the quote symbol." );
+   tick_price = ~tick_price;
+   BOOST_REQUIRE_THROW( validate_tick_pricing( tick_price ), fc::assert_exception );
+
    BOOST_TEST_MESSAGE( " -- Test failure SBD must be the base symbol when trading SBDs" );
    tick_price.quote = asset( 10, SBD_SYMBOL );
    tick_price.base  = asset( 10, STEEM_SYMBOL );
