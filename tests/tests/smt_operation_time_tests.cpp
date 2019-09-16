@@ -1587,19 +1587,19 @@ BOOST_AUTO_TEST_CASE( smt_rewards )
       BOOST_REQUIRE( rf.recent_claims == alice_smt.recent_claims );
       BOOST_REQUIRE( rf.reward_balance.amount == alice_smt.reward_balance.amount );
 
-      const auto& alice_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+      const auto& alice_smt_balance = db->get< account_rewards_balance_object, by_name_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
       const auto& alice_reward_balance = db->get_account( "alice" );
       BOOST_REQUIRE( alice_reward_balance.reward_vesting_steem.amount == alice_smt_balance.pending_vesting_value.amount );
 
-      const auto& bob_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
+      const auto& bob_smt_balance = db->get< account_rewards_balance_object, by_name_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
       const auto& bob_reward_balance = db->get_account( "bob" );
       BOOST_REQUIRE( bob_reward_balance.reward_vesting_steem.amount == bob_smt_balance.pending_vesting_value.amount );
 
-      const auto& charlie_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "charlie", alice_symbol ) );
+      const auto& charlie_smt_balance = db->get< account_rewards_balance_object, by_name_liquid_symbol >( boost::make_tuple( "charlie", alice_symbol ) );
       const auto& charlie_reward_balance = db->get_account( "charlie" );
       BOOST_REQUIRE( charlie_reward_balance.reward_vesting_steem.amount == charlie_smt_balance.pending_vesting_value.amount );
 
-      const auto& dave_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
+      const auto& dave_smt_balance = db->get< account_rewards_balance_object, by_name_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
       const auto& dave_reward_balance = db->get_account( "dave" );
       BOOST_REQUIRE( dave_reward_balance.reward_vesting_steem.amount == dave_smt_balance.pending_vesting_value.amount );
 
