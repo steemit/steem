@@ -3638,7 +3638,7 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
 
       if( token.symbol.space() == asset_symbol_type::smt_nai_space )
       {
-         const auto* bal = _db.find< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( op.account, token.symbol.get_liquid_symbol() ) );
+         const auto* bal = _db.find< account_rewards_balance_object, by_name_liquid_symbol >( boost::make_tuple( op.account, token.symbol.get_liquid_symbol() ) );
 
          FC_ASSERT( bal != nullptr, "Account ${a} has no rewards balance for SMT ${s}", ("a", op.account)("s", token.symbol) );
          if( token.symbol.is_vesting() )
