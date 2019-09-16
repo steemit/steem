@@ -213,6 +213,58 @@ asset_symbol_type asset_symbol_type::get_paired_symbol() const
    }
 }
 
+asset_symbol_type asset_symbol_type::get_vesting_symbol()const
+{
+   switch( space() )
+   {
+      case legacy_space:
+      {
+         switch( asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+            case STEEM_ASSET_NUM_VESTS:
+               return VESTS_SYMBOL;
+            case STEEM_ASSET_NUM_SBD:
+               FC_ASSERT( false, "SBD does not have a vesting symbol" );
+            default:
+               FC_ASSERT( false, "Unknown asset symbol" );
+         }
+      }
+      case smt_nai_space:
+      {
+         return from_asset_num( asset_num | SMT_ASSET_NUM_VESTING_MASK );
+      }
+      default:
+         FC_ASSERT( false, "Unknown asset_symbol" );
+   }
+}
+
+asset_symbol_type asset_symbol_type::get_liquid_symbol()const
+{
+   switch( space() )
+   {
+      case legacy_space:
+      {
+         switch( asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+            case STEEM_ASSET_NUM_VESTS:
+               return STEEM_SYMBOL;
+            case STEEM_ASSET_NUM_SBD:
+               return SBD_SYMBOL;
+            default:
+               FC_ASSERT( false, "Unknown asset symbol" );
+         }
+      }
+      case smt_nai_space:
+      {
+         return from_asset_num( asset_num & ~SMT_ASSET_NUM_VESTING_MASK );
+      }
+      default:
+         FC_ASSERT( false, "Unknown asset_symbol" );
+   }
+}
+
 asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
 {
    asset_symbol_type::asset_symbol_space s = legacy_space;

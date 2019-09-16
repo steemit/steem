@@ -1133,7 +1133,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
 
       BOOST_REQUIRE( token.market_maker.steem_balance == asset( 75000000, STEEM_SYMBOL ) );
       BOOST_REQUIRE( token.market_maker.token_balance == asset( 1500000000, symbol ) );
-      BOOST_REQUIRE( token.rewards_fund == asset( 3000000000, symbol ) );
+      BOOST_REQUIRE( token.reward_balance == asset( 3000000000, symbol ) );
 
       validate_database();
 
@@ -1234,6 +1234,378 @@ BOOST_AUTO_TEST_CASE( smt_vesting_withdrawals )
    BOOST_REQUIRE( balance_obj->vesting_shares.amount.value == ( original_vesting - op.vesting_shares ).amount.value );
 
    validate_database();
+}
+
+BOOST_AUTO_TEST_CASE( recent_claims_decay )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: recent_rshares_2decay" );
+      ACTORS( (alice)(bob)(charlie) )
+      generate_block();
+
+      auto alice_symbol = create_smt( "alice", alice_private_key, 3 );
+      auto bob_symbol = create_smt( "bob", bob_private_key, 3 );
+      auto charlie_symbol = create_smt( "charlie", charlie_private_key, 3 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      uint64_t alice_recent_claims = 1000000ull;
+      uint64_t bob_recent_claims = 1000000ull;
+      uint64_t charlie_recent_claims = 1000000ull;
+      time_point_sec last_claims_update = db->head_block_time();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto alice_vests = db.create_vesting( db.get_account( "alice" ), asset( 100000, alice_symbol ), false );
+         auto bob_vests = db.create_vesting( db.get_account( "bob" ), asset( 100000, bob_symbol ), false );
+         auto now = db.head_block_time();
+
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+            smt.current_supply = 100000;
+            smt.total_vesting_shares = alice_vests.amount;
+            smt.total_vesting_fund_smt = 100000;
+            smt.votes_per_regeneration_period = 50;
+            smt.vote_regeneration_period_seconds = 5*24*60*60;
+            smt.recent_claims = uint128_t( 0, alice_recent_claims );
+            smt.last_reward_update = now;
+         });
+
+         db.modify( db.get< smt_token_object, by_symbol >( bob_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+            smt.current_supply = 100000;
+            smt.total_vesting_shares = bob_vests.amount;
+            smt.total_vesting_fund_smt = 100000;
+            smt.votes_per_regeneration_period = 50;
+            smt.vote_regeneration_period_seconds = 5*24*60*60;
+            smt.recent_claims = uint128_t( 0, bob_recent_claims );
+            smt.last_reward_update = now;
+            smt.author_reward_curve = curve_id::linear;
+         });
+
+         db.modify( db.get< smt_token_object, by_symbol >( charlie_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+            smt.current_supply = 0;
+            smt.total_vesting_shares = 0;
+            smt.total_vesting_fund_smt = 0;
+            smt.votes_per_regeneration_period = 50;
+            smt.vote_regeneration_period_seconds = 5*24*60*60;
+            smt.recent_claims = uint128_t( 0, charlie_recent_claims );
+            smt.last_reward_update = now;
+         });
+      });
+      generate_block();
+
+      comment_operation comment;
+      vote2_operation vote;
+      signed_transaction tx;
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "foo";
+      comment.body = "bar";
+      allowed_vote_assets ava;
+      ava.votable_assets[ alice_symbol ] = votable_asset_options();
+      ava.votable_assets[ bob_symbol ] = votable_asset_options();
+      comment_options_operation comment_opts;
+      comment_opts.author = "alice";
+      comment_opts.permlink = "test";
+      comment_opts.extensions.insert( ava );
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.rshares[ STEEM_SYMBOL ] = 10000 + STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = -5000 - STEEM_VOTE_DUST_THRESHOLD;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      auto alice_vshares = util::evaluate_reward_curve( db->get_comment( "alice", string( "test" ) ).net_rshares.value,
+         db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ).author_reward_curve,
+         db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ).content_constant );
+
+      generate_blocks( 5 );
+
+      comment.author = "bob";
+      ava.votable_assets.clear();
+      ava.votable_assets[ bob_symbol ] = votable_asset_options();
+      comment_opts.author = "bob";
+      comment_opts.extensions.clear();
+      comment_opts.extensions.insert( ava );
+      vote.voter = "bob";
+      vote.author = "bob";
+      vote.rshares.clear();
+      vote.rshares[ STEEM_SYMBOL ] = 10000 + STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ bob_symbol ] = 5000 + STEEM_VOTE_DUST_THRESHOLD;
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time );
+
+      {
+         const auto& post_rf = db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares );
+
+         fc::microseconds decay_time = STEEM_RECENT_RSHARES_DECAY_TIME_HF19;
+         const auto& alice_rf = db->get< smt_token_object, by_symbol >( alice_symbol );
+         alice_recent_claims -= ( ( db->head_block_time() - last_claims_update ).to_seconds() * alice_recent_claims ) / decay_time.to_seconds();
+
+         BOOST_REQUIRE( alice_rf.recent_claims.to_uint64() == alice_recent_claims );
+         BOOST_REQUIRE( alice_rf.last_reward_update == db->head_block_time() );
+
+         const auto& bob_rf = db->get< smt_token_object, by_symbol >( bob_symbol );
+         BOOST_REQUIRE( bob_rf.recent_claims.to_uint64() == bob_recent_claims );
+         BOOST_REQUIRE( bob_rf.last_reward_update == last_claims_update );
+
+         const auto& charlie_rf = db->get< smt_token_object, by_symbol >( charlie_symbol );
+         BOOST_REQUIRE( charlie_rf.recent_claims.to_uint64() == charlie_recent_claims );
+         BOOST_REQUIRE( charlie_rf.last_reward_update == last_claims_update );
+
+         validate_database();
+      }
+
+      auto bob_cashout_time = db->get_comment( "bob", string( "test" ) ).cashout_time;
+      auto bob_vshares = util::evaluate_reward_curve( db->get_comment( "bob", string( "test" ) ).net_rshares.value,
+         db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ).author_reward_curve,
+         db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME ).content_constant );
+
+      generate_block();
+
+      while( db->head_block_time() < bob_cashout_time )
+      {
+         alice_vshares -= ( alice_vshares * STEEM_BLOCK_INTERVAL ) / STEEM_RECENT_RSHARES_DECAY_TIME_HF19.to_seconds();
+         const auto& post_rf = db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
+
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares );
+
+         generate_block();
+      }
+
+      {
+         alice_vshares -= ( alice_vshares * STEEM_BLOCK_INTERVAL ) / STEEM_RECENT_RSHARES_DECAY_TIME_HF19.to_seconds();
+         const auto& post_rf = db->get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
+
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares + bob_vshares );
+
+         const auto& alice_rf = db->get< smt_token_object, by_symbol >( alice_symbol );
+         BOOST_REQUIRE( alice_rf.recent_claims.to_uint64() == alice_recent_claims );
+
+         const auto& bob_rf = db->get< smt_token_object, by_symbol >( bob_symbol );
+         fc::microseconds decay_time = STEEM_RECENT_RSHARES_DECAY_TIME_HF19;
+         bob_recent_claims -= ( ( db->head_block_time() - last_claims_update ).to_seconds() * bob_recent_claims ) / decay_time.to_seconds();
+         bob_recent_claims += util::evaluate_reward_curve(
+            vote.rshares[ bob_symbol ] - STEEM_VOTE_DUST_THRESHOLD,
+            bob_rf.author_reward_curve,
+            bob_rf.content_constant ).to_uint64();
+
+         BOOST_REQUIRE( bob_rf.recent_claims.to_uint64() == bob_recent_claims );
+         BOOST_REQUIRE( bob_rf.last_reward_update == db->head_block_time() );
+
+         const auto& charlie_rf = db->get< smt_token_object, by_symbol >( charlie_symbol );
+         BOOST_REQUIRE( charlie_rf.recent_claims.to_uint64() == charlie_recent_claims );
+         BOOST_REQUIRE( charlie_rf.last_reward_update == last_claims_update );
+
+         validate_database();
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_rewards )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(charlie)(dave) )
+      fund( "alice", 100000 );
+      vest( "alice", 100000 );
+      fund( "bob", 100000 );
+      vest( "bob", 100000 );
+      fund( "charlie", 100000 );
+      vest( "charlie", 100000 );
+      fund( "dave", 100000 );
+      vest( "dave", 100000 );
+
+      auto alice_symbol = create_smt( "alice", alice_private_key, 3 );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      uint64_t recent_claims = 10000000000ull;
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto alice_smt_vests = db.create_vesting( db.get_account( "alice" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "bob" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "charlie" ), asset( 1000000, alice_symbol ), false );
+         alice_smt_vests     += db.create_vesting( db.get_account( "dave" ), asset( 1000000, alice_symbol ), false );
+         auto now = db.head_block_time();
+
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [&]( smt_token_object& smt )
+         {
+            smt.phase = smt_phase::launch_success;
+            smt.current_supply = 4000000;
+            smt.total_vesting_shares = alice_smt_vests.amount;
+            smt.total_vesting_fund_smt = 4000000;
+            smt.votes_per_regeneration_period = 50;
+            smt.vote_regeneration_period_seconds = 5*24*60*60;
+            smt.recent_claims = uint128_t( 0, recent_claims );
+            smt.author_reward_curve = curve_id::convergent_linear;
+            smt.curation_reward_curve = convergent_square_root;
+            smt.content_constant = STEEM_CONTENT_CONSTANT_HF21;
+            smt.percent_curation_rewards = 50 * STEEM_1_PERCENT;
+            smt.last_reward_update = now;
+         });
+
+         db.modify( db.get( reward_fund_id_type() ), [&]( reward_fund_object& rfo )
+         {
+            rfo.recent_claims = uint128_t( 0, recent_claims );
+            rfo.last_update = now;
+         });
+      });
+      generate_block();
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "foo";
+      comment.body = "bar";
+      allowed_vote_assets ava;
+      ava.votable_assets[ alice_symbol ] = votable_asset_options();
+      comment_options_operation comment_opts;
+      comment_opts.author = "alice";
+      comment_opts.permlink = "test";
+      comment_opts.percent_steem_dollars = 0;
+      comment_opts.extensions.insert( ava );
+      vote2_operation vote;
+      vote.voter = "alice";
+      vote.author = comment.author;
+      vote.permlink = comment.permlink;
+      vote.rshares[ STEEM_SYMBOL ] = 100ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      comment.author = "bob";
+      comment_opts.author = "bob";
+      vote.voter = "bob";
+      vote.author = comment.author;
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( comment_opts );
+      tx.operations.push_back( vote );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->head_block_time() + ( STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21 / 2 ), true );
+
+      tx.clear();
+      vote.voter = "bob";
+      vote.rshares[ STEEM_SYMBOL ] = 50ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, bob_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->head_block_time() + STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF21, true );
+
+      tx.clear();
+      vote.voter = "charlie";
+      vote.rshares[ STEEM_SYMBOL ] = 50ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, charlie_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->get_comment( comment.author, comment.permlink ).cashout_time - ( STEEM_UPVOTE_LOCKOUT_SECONDS / 2 ), true );
+
+      tx.clear();
+      vote.voter = "dave";
+      vote.author = "alice";
+      vote.rshares[ STEEM_SYMBOL ] = 100ull * STEEM_VOTE_DUST_THRESHOLD;
+      vote.rshares[ alice_symbol ] = vote.rshares[ STEEM_SYMBOL ];
+      tx.operations.push_back( vote );
+      sign( tx, dave_private_key );
+      db->push_transaction( tx, 0 );
+
+      generate_blocks( db->get_comment( comment.author, comment.permlink ).cashout_time - STEEM_BLOCK_INTERVAL, true );
+
+      share_type reward_fund = 10000000;
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto now = db.head_block_time();
+
+         db.modify( db.get< smt_token_object, by_symbol >( alice_symbol ), [=]( smt_token_object& smt )
+         {
+            smt.recent_claims = uint128_t( 0, recent_claims );
+            smt.reward_balance = asset( reward_fund, alice_symbol );
+            smt.current_supply += reward_fund;
+            smt.last_reward_update = now;
+         });
+
+         share_type reward_delta = 0;
+
+         db.modify( db.get( reward_fund_id_type() ), [&]( reward_fund_object& rfo )
+         {
+            reward_delta = reward_fund - rfo.reward_balance.amount - 60; //60 adjusts for inflation
+            rfo.reward_balance += asset( reward_delta, STEEM_SYMBOL );
+            rfo.recent_claims = uint128_t( 0, recent_claims );
+            rfo.last_update = now;
+         });
+
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply += asset( reward_delta, STEEM_SYMBOL );
+         });
+      });
+
+      generate_block();
+
+      const auto& rf = db->get( reward_fund_id_type() );
+      const auto& alice_smt = db->get< smt_token_object, by_symbol >( alice_symbol );
+
+      BOOST_REQUIRE( rf.recent_claims == alice_smt.recent_claims );
+      BOOST_REQUIRE( rf.reward_balance.amount == alice_smt.reward_balance.amount );
+
+      const auto& alice_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "alice", alice_symbol ) );
+      const auto& alice_reward_balance = db->get_account( "alice" );
+      BOOST_REQUIRE( alice_reward_balance.reward_vesting_steem.amount == alice_smt_balance.pending_vesting_value.amount );
+
+      const auto& bob_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "bob", alice_symbol ) );
+      const auto& bob_reward_balance = db->get_account( "bob" );
+      BOOST_REQUIRE( bob_reward_balance.reward_vesting_steem.amount == bob_smt_balance.pending_vesting_value.amount );
+
+      const auto& charlie_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "charlie", alice_symbol ) );
+      const auto& charlie_reward_balance = db->get_account( "charlie" );
+      BOOST_REQUIRE( charlie_reward_balance.reward_vesting_steem.amount == charlie_smt_balance.pending_vesting_value.amount );
+
+      const auto& dave_smt_balance = db->get< account_rewards_balance_object, by_owner_liquid_symbol >( boost::make_tuple( "dave", alice_symbol ) );
+      const auto& dave_reward_balance = db->get_account( "dave" );
+      BOOST_REQUIRE( dave_reward_balance.reward_vesting_steem.amount == dave_smt_balance.pending_vesting_value.amount );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()

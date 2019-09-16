@@ -332,7 +332,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
       payout_action.market_maker_tokens = market_maker_tokens;
       payout_action.market_maker_steem  = market_maker_steem;
-      payout_action.rewards_fund = rewards;
+      payout_action.reward_balance = rewards;
 
       db.push_required_action( payout_action );
       action_scheduled = true;

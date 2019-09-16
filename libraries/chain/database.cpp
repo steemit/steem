@@ -5,6 +5,7 @@
 #include <steem/chain/block_summary_object.hpp>
 #include <steem/chain/compound.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
+#include <steem/chain/comment_rewards.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
@@ -20,6 +21,7 @@
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
 #include <steem/chain/shared_db_merkle.hpp>
+#include <steem/chain/vesting.hpp>
 #include <steem/chain/witness_schedule.hpp>
 
 #include <steem/chain/util/asset.hpp>
@@ -81,13 +83,6 @@ FC_REFLECT( steem::chain::db_schema, (types)(object_types)(operation_type)(custo
 namespace steem { namespace chain {
 
 using boost::container::flat_set;
-
-struct reward_fund_context
-{
-   uint128_t   recent_claims = 0;
-   asset       reward_balance = asset( 0, STEEM_SYMBOL );
-   share_type  steem_awarded = 0;
-};
 
 class database_impl
 {
@@ -1208,128 +1203,6 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
    return assets;
 }
 
-
-// Create vesting, then a caller-supplied callback after determining how many shares to create, but before
-// we modify the database.
-// This allows us to implement virtual op pre-notifications in the Before function.
-template< typename Before >
-asset create_vesting2( database& db, const account_object& to_account, asset liquid, bool to_reward_balance, Before&& before_vesting_callback )
-{
-   try
-   {
-      auto calculate_new_vesting = [ liquid ] ( price vesting_share_price ) -> asset
-         {
-         /**
-          *  The ratio of total_vesting_shares / total_vesting_fund_steem should not
-          *  change as the result of the user adding funds
-          *
-          *  V / C  = (V+Vn) / (C+Cn)
-          *
-          *  Simplifies to Vn = (V * Cn ) / C
-          *
-          *  If Cn equals o.amount, then we must solve for Vn to know how many new vesting shares
-          *  the user should receive.
-          *
-          *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
-          */
-         asset new_vesting = liquid * ( vesting_share_price );
-         return new_vesting;
-         };
-
-      if( liquid.symbol.space() == asset_symbol_type::smt_nai_space )
-      {
-         FC_ASSERT( liquid.symbol.is_vesting() == false );
-
-         const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
-
-         if ( to_reward_balance )
-            FC_ASSERT( token.allow_voting == true, "Cannot create vests for the reward balance when voting is disabled. Please report this as it should not be triggered." );
-
-         price vesting_share_price = to_reward_balance ? token.get_reward_vesting_share_price() : token.get_vesting_share_price();
-
-         // Calculate new vesting from provided liquid using share price.
-         asset new_vesting = calculate_new_vesting( vesting_share_price );
-         before_vesting_callback( new_vesting );
-
-         // Add new vesting to owner's balance.
-         if( to_reward_balance )
-            db.adjust_reward_balance( to_account, liquid, new_vesting );
-         else
-            db.adjust_balance( to_account, new_vesting );
-
-         // Update global vesting pool numbers.
-         db.modify( token, [&]( smt_token_object& smt_object )
-         {
-            if( to_reward_balance )
-            {
-               smt_object.pending_rewarded_vesting_shares += new_vesting.amount;
-               smt_object.pending_rewarded_vesting_smt += liquid.amount;
-            }
-            else
-            {
-               smt_object.total_vesting_fund_smt += liquid.amount;
-               smt_object.total_vesting_shares += new_vesting.amount;
-            }
-         } );
-
-         // Note: SMT vesting does not impact witness voting.
-
-         return new_vesting;
-      }
-
-      FC_ASSERT( liquid.symbol == STEEM_SYMBOL );
-      // ^ A novelty, needed but risky in case someone managed to slip SBD/TESTS here in blockchain history.
-      // Get share price.
-      const auto& cprops = db.get_dynamic_global_properties();
-      price vesting_share_price = to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price();
-      // Calculate new vesting from provided liquid using share price.
-      asset new_vesting = calculate_new_vesting( vesting_share_price );
-      before_vesting_callback( new_vesting );
-      // Add new vesting to owner's balance.
-      if( to_reward_balance )
-      {
-         db.adjust_reward_balance( to_account, liquid, new_vesting );
-      }
-      else
-      {
-         if( db.has_hardfork( STEEM_HARDFORK_0_20__2539 ) )
-         {
-            db.modify( to_account, [&]( account_object& a )
-            {
-               util::update_manabar(
-                  cprops,
-                  a,
-                  STEEM_VOTING_MANA_REGENERATION_SECONDS,
-                  db.has_hardfork( STEEM_HARDFORK_0_21__3336 ),
-                  new_vesting.amount.value );
-            });
-         }
-
-         db.adjust_balance( to_account, new_vesting );
-      }
-      // Update global vesting pool numbers.
-      db.modify( cprops, [&]( dynamic_global_property_object& props )
-      {
-         if( to_reward_balance )
-         {
-            props.pending_rewarded_vesting_shares += new_vesting;
-            props.pending_rewarded_vesting_steem += liquid;
-         }
-         else
-         {
-            props.total_vesting_fund_steem += liquid;
-            props.total_vesting_shares += new_vesting;
-         }
-      } );
-      // Update witness voting numbers.
-      if( !to_reward_balance )
-         db.adjust_proxied_witness_votes( to_account, new_vesting.amount );
-
-      return new_vesting;
-   }
-   FC_CAPTURE_AND_RETHROW( (to_account.name)(liquid) )
-}
-
 /**
  * @param to_account - the account to receive the new vesting shares
  * @param liquid     - STEEM or liquid SMT to be converted to vesting shares
@@ -1880,10 +1753,10 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
       else if( c.total_vote_weight > 0 )
       {
          const auto& cvidx = get_index< comment_vote_index, by_comment_symbol_voter >();
-         auto itr = cvidx.lower_bound( c.id );
+         auto itr = cvidx.lower_bound( boost::make_tuple( c.id, STEEM_SYMBOL ) );
 
          std::set< const comment_vote_object*, cmp > proxy_set;
-         while( itr != cvidx.end() && itr->comment == c.id )
+         while( itr != cvidx.end() && itr->comment == c.id && itr->symbol == STEEM_SYMBOL )
          {
             proxy_set.insert( &( *itr ) );
             ++itr;
@@ -1925,10 +1798,9 @@ void fill_comment_reward_context_local_state( util::comment_reward_context& ctx,
 {
    ctx.rshares = comment.net_rshares;
    ctx.reward_weight = comment.reward_weight;
-   ctx.max_sbd = comment.max_accepted_payout;
 }
 
-share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment, bool forward_curation_remainder )
+share_type database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment, const price& current_steem_price, bool forward_curation_remainder )
 {
    try
    {
@@ -1945,8 +1817,17 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             ctx.content_constant = rf.content_constant;
          }
 
-         const share_type reward = util::get_rshare_reward( ctx );
-         uint128_t reward_tokens = uint128_t( reward.value );
+         uint64_t reward = util::get_rshare_reward( ctx );
+
+         // If it is payout dust
+         if( util::to_sbd( current_steem_price, asset( reward, STEEM_SYMBOL ) ) < STEEM_MIN_PAYOUT_SBD )
+            reward = 0;
+
+         uint64_t max_steem = util::to_steem( current_steem_price, comment.max_accepted_payout ).amount.value;
+
+         reward = std::min( reward, max_steem );
+
+         uint128_t reward_tokens = uint128_t( reward );
 
          if( reward_tokens > 0 )
          {
@@ -2068,9 +1949,9 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
       push_virtual_operation( comment_payout_update_operation( comment.author, to_string( comment.permlink ) ) );
 
-      const auto& vote_idx = get_index< comment_vote_index, by_comment_voter_symbol >();
-      auto vote_itr = vote_idx.lower_bound( comment.id );
-      while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )
+      const auto& vote_idx = get_index< comment_vote_index, by_comment_symbol_voter >();
+      auto vote_itr = vote_idx.lower_bound( boost::make_tuple( comment.id, STEEM_SYMBOL ) );
+      while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id && vote_itr->symbol == STEEM_SYMBOL )
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;
@@ -2101,9 +1982,15 @@ void database::process_comment_cashout()
    if( !has_hardfork( STEEM_FIRST_CASHOUT_TIME ) )
       return;
 
+   if( has_hardfork( STEEM_SMT_HARDFORK ) )
+   {
+      process_comment_rewards( *this );
+      return;
+   }
+
    const auto& gpo = get_dynamic_global_properties();
    util::comment_reward_context ctx;
-   ctx.current_steem_price = get_feed_history().current_median_history;
+   const price current_steem_price = get_feed_history().current_median_history;
 
    vector< reward_fund_context > funds;
    vector< share_type > steem_awarded;
@@ -2175,12 +2062,12 @@ void database::process_comment_cashout()
       if( has_hardfork( STEEM_HARDFORK_0_17__771 ) )
       {
          auto fund_id = get_reward_fund( *current ).id._id;
-         ctx.total_reward_shares2 = funds[ fund_id ].recent_claims;
-         ctx.total_reward_fund_steem = funds[ fund_id ].reward_balance;
+         ctx.total_claims = funds[ fund_id ].recent_claims;
+         ctx.reward_fund = funds[ fund_id ].reward_balance.amount;
 
          bool forward_curation_remainder = !has_hardfork( STEEM_HARDFORK_0_20__1877 );
 
-         funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current, forward_curation_remainder );
+         funds[ fund_id ].tokens_awarded += cashout_comment_helper( ctx, *current, current_steem_price, forward_curation_remainder );
       }
       else
       {
@@ -2188,10 +2075,10 @@ void database::process_comment_cashout()
          while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
          {
             const auto& comment = *itr; ++itr;
-            ctx.total_reward_shares2 = gpo.total_reward_shares2;
-            ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
+            ctx.total_claims = gpo.total_reward_shares2;
+            ctx.reward_fund = gpo.total_reward_fund_steem.amount;
 
-            auto reward = cashout_comment_helper( ctx, comment );
+            auto reward = cashout_comment_helper( ctx, comment, current_steem_price );
 
             if( reward > 0 )
             {
@@ -2214,7 +2101,7 @@ void database::process_comment_cashout()
          modify( get< reward_fund_object, by_id >( reward_fund_id_type( i ) ), [&]( reward_fund_object& rfo )
          {
             rfo.recent_claims = funds[ i ].recent_claims;
-            rfo.reward_balance -= asset( funds[ i ].steem_awarded, STEEM_SYMBOL );
+            rfo.reward_balance -= asset( funds[ i ].tokens_awarded, STEEM_SYMBOL );
          });
       }
    }
@@ -5631,8 +5518,8 @@ void database::validate_smt_invariants()const
          if ( itr->market_maker.token_balance.amount > 0 )
             theMap[ itr->liquid_symbol ].liquid += itr->market_maker.token_balance;
 
-         if ( itr->rewards_fund.amount > 0 )
-            theMap[ itr->liquid_symbol ].liquid += itr->rewards_fund;
+         if ( itr->reward_balance.amount > 0 )
+            theMap[ itr->liquid_symbol ].liquid += itr->reward_balance;
       }
 
       // - Escrow & savings - no support of SMT is expected.

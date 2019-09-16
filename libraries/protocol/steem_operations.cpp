@@ -744,18 +744,18 @@ namespace steem { namespace protocol {
    {
       validate_account_name( account );
       FC_ASSERT( reward_tokens.empty() == false, "Must claim something." );
-      FC_ASSERT( reward_tokens.begin()->amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_tokens.begin()->amount > 0, "Cannot claim a negative amount" );
       bool is_substantial_reward = reward_tokens.begin()->amount > 0;
       for( auto itl = reward_tokens.begin(), itr = itl+1; itr != reward_tokens.end(); ++itl, ++itr )
       {
          FC_ASSERT( itl->symbol.to_nai() <= itr->symbol.to_nai(),
-                    "Reward tokens have not been inserted in ascending order." );
+                    "Reward tokens have not been inserted in ascending order. cur: ${c} last: ${l}",
+                    ("c", itr->symbol)("l", itl->symbol) );
          FC_ASSERT( itl->symbol.to_nai() != itr->symbol.to_nai(),
                     "Duplicate symbol ${s} inserted into claim reward operation container.", ("s", itl->symbol) );
-         FC_ASSERT( itr->amount >= 0, "Cannot claim a negative amount" );
+         FC_ASSERT( itr->amount > 0, "Claim must be for something. ${a}", ("a", itr->amount) );
          is_substantial_reward |= itr->amount > 0;
       }
-      FC_ASSERT( is_substantial_reward, "Must claim something." );
    }
 
    void delegate_vesting_shares_operation::validate()const

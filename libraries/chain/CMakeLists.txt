@@ -19,6 +19,7 @@ add_library( steem_chain
 
              witness_schedule.cpp
              fork_database.cpp
+             comment_rewards.cpp
 
              shared_authority.cpp
              block_log.cpp
