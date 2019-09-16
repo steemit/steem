@@ -566,8 +566,6 @@ namespace steem { namespace protocol {
 
       exchange_rate.validate();
 
-      FC_ASSERT( amount_to_sell.symbol.is_vesting() == false, "Cannot create a limit order for vesting types." );
-
       if ( amount_to_sell.symbol.space() == asset_symbol_type::legacy_space )
       {
          // We must allow SBD_SYMBOL and STEEM_SYMBOL in both positions to support limit orders prior to
