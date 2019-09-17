@@ -8,6 +8,7 @@ add_library( steem_chain
              index.cpp
              statefile/load_state.cpp
              statefile/save_state.cpp
+             statefile/statefile.cpp
 
              smt_evaluator.cpp
              sps_evaluator.cpp

@@ -8,6 +8,10 @@
 #include <string>
 #include <vector>
 
+#define SHA256_PREFIX "f1220"
+#define FORMAT_BINARY "bin"
+#define FORMAT_JSON   "json"
+
 namespace steem { namespace chain {
 
 class database;
@@ -26,11 +30,16 @@ namespace statefile {
 
 struct steem_version_info
 {
+   steem_version_info( const database& db );
+   steem_version_info() {}
+
    std::string                          db_format_version;
    std::string                          network_type;
    std::map< std::string, std::string > object_schemas;
    std::map< std::string, fc::variant > config;
    std::string                          chain_id;
+
+   //bool compatible()
 };
 
 struct object_section
@@ -38,6 +47,8 @@ struct object_section
    std::string                   object_type;
    std::string                   format;
    int64_t                       object_count = 0;
+   int64_t                       next_id = -1;
+   std::string                   schema;
 };
 
 typedef fc::static_variant< object_section > section_header;
@@ -72,7 +83,7 @@ struct state_format_info
 };
 
 write_state_result write_state( const database& db, const std::string& state_filename, const state_format_info& state_format );
-void init_genesis_from_state( const database& db, const std::string& state_filename );
+void init_genesis_from_state( database& db, const std::string& state_filename );
 
 } } }
 
@@ -93,6 +104,8 @@ FC_REFLECT( steem::chain::statefile::object_section,
    (object_type)
    (format)
    (object_count)
+   (next_id)
+   (schema)
    )
 
 FC_REFLECT_TYPENAME( steem::chain::statefile::section_header )

@@ -8,6 +8,8 @@
 
 #include <steem/chain/database.hpp>
 
+#include <iostream>
+
 namespace steem { namespace chain {
 
 using steem::schema::abstract_schema;
@@ -23,6 +25,7 @@ struct index_info
 
    virtual void for_each_object_id( const database& db, std::function< void(int64_t) > cb ) = 0;
    virtual std::shared_ptr< abstract_object > create_object_from_binary( database& db, const std::vector<char>& binary_object ) = 0;
+   virtual std::shared_ptr< abstract_object > create_object_from_binary( database& db, std::ifstream& binary_stream ) = 0;
    virtual std::shared_ptr< abstract_object > create_object_from_json( database& db, const std::string& json_object ) = 0;
    virtual std::shared_ptr< abstract_object > get_object_from_db( const database& db, int64_t id ) = 0;
    virtual int64_t count( const database& db ) = 0;
@@ -78,9 +81,9 @@ struct index_info_impl
    virtual std::shared_ptr< abstract_schema > get_schema() override
    {   return _schema;   }
 
-   virtual void for_each_object_id( const database& db, std::function< void(int64_t) > cb )
+   virtual void for_each_object_id( const database& db, std::function< void(int64_t) > cb ) override
    {
-      const auto& idx = db.get_index< MultiIndexType >().indices().get< by_id >();
+      const auto& idx = db.template get_index< MultiIndexType, by_id >();
       auto it = idx.begin();
       while( it != idx.end() )
       {
@@ -89,7 +92,7 @@ struct index_info_impl
       }
    }
 
-   virtual std::shared_ptr< abstract_object > create_object_from_binary( database& db, const std::vector<char>& binary_object )
+   virtual std::shared_ptr< abstract_object > create_object_from_binary( database& db, const std::vector<char>& binary_object ) override
    {
       return std::static_pointer_cast< abstract_object >(
              std::make_shared< index_object_impl< value_type > >(
@@ -99,7 +102,17 @@ struct index_info_impl
              } ) ) );
    }
 
-   virtual std::shared_ptr< abstract_object > create_object_from_json( database& db, const std::string& json_object )
+   virtual std::shared_ptr< abstract_object > create_object_from_binary( database& db, std::ifstream& binary_stream ) override
+   {
+      return std::static_pointer_cast< abstract_object >(
+             std::make_shared< index_object_impl< value_type > >(
+             db.create< value_type >( [&]( value_type& new_obj )
+             {
+                fc::raw::unpack( binary_stream, new_obj );
+             } ) ) );
+   }
+
+   virtual std::shared_ptr< abstract_object > create_object_from_json( database& db, const std::string& json_object ) override
    {
       fc::variant v = fc::json::from_string( json_object, fc::json::strict_parser );
       return std::static_pointer_cast< abstract_object >(
@@ -110,7 +123,7 @@ struct index_info_impl
              } ) ) );
    }
 
-   virtual std::shared_ptr< abstract_object > get_object_from_db( const database& db, int64_t id )
+   virtual std::shared_ptr< abstract_object > get_object_from_db( const database& db, int64_t id ) override
    {
       return std::static_pointer_cast< abstract_object >(
              std::make_shared< index_object_impl< value_type > >(
@@ -118,9 +131,9 @@ struct index_info_impl
              ) );
    }
 
-   virtual int64_t count( const database& db )
+   virtual int64_t count( const database& db ) override
    {
-      const auto& idx = db.get_index< MultiIndexType >().indices().get< by_id >();
+      const auto& idx = db.template get_index< MultiIndexType, by_id >();
       return int64_t( idx.size() );
    }
 

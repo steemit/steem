@@ -22,28 +22,6 @@ namespace steem { namespace chain { namespace statefile {
 // Section footer : JSON object that lists hash/offset of section header
 // Footer         : JSON object that lists hash/offset of all sections
 
-// db_format_version : Must match STEEM_DB_FORMAT_VERSION
-// network_type      : Must match STEEM_NETWORK_TYPE
-// chain_id          : Must match requested chain ID and value of embedded GPO
-
-steem_version_info compute_embedded_version( const database& db )
-{
-   steem_version_info vinfo;
-   vinfo.db_format_version = STEEM_DB_FORMAT_VERSION;
-   vinfo.network_type = STEEM_NETWORK_TYPE;
-   db.for_each_index_extension< index_info >( [&]( std::shared_ptr< index_info > info )
-   {
-      std::shared_ptr< abstract_schema > sch = info->get_schema();
-      std::string schema_name, str_schema;
-      sch->get_name( schema_name );
-      sch->get_str_schema( str_schema );
-      vinfo.object_schemas.emplace( schema_name, str_schema );
-   } );
-
-   vinfo.chain_id = db.get_chain_id().str();
-   return vinfo;
-}
-
 /**
  * abstract_sink is an abstract output stream for the state file.
  */
@@ -108,6 +86,8 @@ class object_serializer
       void start_threads();
       void stop_threads();
       void write_table( const database& db, std::shared_ptr< index_info > info, abstract_sink& sink );
+
+      const state_format_info& get_format()const { return _format; }
 
    private:
 
@@ -195,7 +175,10 @@ void object_serializer::convert_thread_main()
       {
          std::vector<char> temp_data;
          obj->to_binary( temp_data );
+         // Not sure if we need need to pack the length at the front. fc::raw::pack/unpack can handle it regardless
          std::vector<char> temp_len_plus_data = fc::raw::pack_to_vector( temp_data );
+
+         // This being a string is problematic. Having binary values of 0 in the string is likely
          result = std::make_shared< std::string >( temp_len_plus_data.begin(), temp_len_plus_data.end() );
       }
       else
@@ -240,8 +223,8 @@ void object_serializer::start_threads()
    boost::thread::attributes attrs;
    attrs.set_stack_size( _thread_stack_size );
 
-   size_t num_threads = boost::thread::hardware_concurrency()+1;
-   for( size_t i=0; i<num_threads; i++ )
+   size_t num_threads = boost::thread::hardware_concurrency() + 1;
+   for( size_t i = 0; i < num_threads; i++ )
    {
       _serialization_threads.emplace_back( attrs, [this]() { convert_thread_main(); } );
    }
@@ -288,9 +271,16 @@ void object_section_producer::get_section_header( section_header& header )
 {
    object_section oheader;
    std::shared_ptr< abstract_schema > sch = info->get_schema();
-   std::string schema_name;
    sch->get_name( oheader.object_type );
-   oheader.format = "json";
+   sch->get_str_schema( oheader.schema );
+   if( ser.get_format().is_binary )
+   {
+      oheader.format = FORMAT_BINARY;
+   }
+   else
+   {
+      oheader.format = FORMAT_JSON;
+   }
    oheader.object_count = info->count( db );
    header = oheader;
 }
@@ -320,7 +310,7 @@ void sink_impl::end_section( section_footer& footer )
    // so we just unconditionally add this prefix when writing and require/strip it
    // when reading.
    //
-   footer.hash = "f1220" + enc_section.result().str();
+   footer.hash = SHA256_PREFIX + enc_section.result().str();
    footer.begin_offset = begin_section_offset;
    footer.end_offset = size;
    begin_section_offset = 0;
@@ -330,7 +320,7 @@ void sink_impl::end_section( section_footer& footer )
 void sink_impl::end_toplevel( section_footer& footer )
 {
    FC_ASSERT( in_toplevel == true );
-   footer.hash = "f1220" + enc_toplevel.result().str();
+   footer.hash = SHA256_PREFIX + enc_toplevel.result().str();
    footer.begin_offset = 0;
    footer.end_offset = size;
    in_toplevel = false;
@@ -338,7 +328,7 @@ void sink_impl::end_toplevel( section_footer& footer )
 
 void sink_impl::end_file( section_footer& footer )
 {
-   footer.hash = "f1220" + enc_file.result().str();
+   footer.hash = SHA256_PREFIX + enc_file.result().str();
    footer.begin_offset = 0;
    footer.end_offset = size;
 }
@@ -371,7 +361,7 @@ write_state_result write_state( const database& db, const std::string& state_fil
 
    state_header top_header;
    state_footer top_footer;
-   top_header.version = compute_embedded_version( db );
+   top_header.version = steem_version_info( db );
 
    std::vector< object_section_producer > producers;
 
@@ -390,7 +380,7 @@ write_state_result write_state( const database& db, const std::string& state_fil
    top_header_json.push_back('\n');
    sink.write( top_header_json );
 
-   for( size_t i=0; i<producers.size(); i++ )
+   for( size_t i = 0; i < producers.size(); i++ )
    {
       sink.begin_section();
       std::string section_header_json = fc::json::to_string( top_header.sections[i] );
