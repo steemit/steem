@@ -786,7 +786,7 @@ FC_REFLECT( steem::plugins::database_api::find_limit_orders_args,
    (account) )
 
 FC_REFLECT( steem::plugins::database_api::get_order_book_args,
-   (limit) )
+   (limit)(market) )
 
 FC_REFLECT( steem::plugins::database_api::list_proposals_args,
    (start)(limit)(order)(order_direction)(status) )
