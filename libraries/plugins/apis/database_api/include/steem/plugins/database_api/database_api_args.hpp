@@ -435,7 +435,8 @@ typedef list_limit_orders_return find_limit_orders_return;
 
 struct get_order_book_args
 {
-   uint32_t          limit;
+   uint32_t                                          limit;
+   std::pair< asset_symbol_type, asset_symbol_type > market;
 };
 
 typedef order_book get_order_book_return;

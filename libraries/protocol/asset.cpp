@@ -1,5 +1,5 @@
 #include <steem/protocol/asset.hpp>
-
+#include <steem/protocol/validation.hpp>
 #include <fc/io/json.hpp>
 
 #include <boost/rational.hpp>
@@ -369,6 +369,76 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
          FC_ASSERT( base.amount > share_type(0) );
          FC_ASSERT( quote.amount > share_type(0) );
          FC_ASSERT( base.symbol != quote.symbol );
+      } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
+
+      std::string price::as_decimal() const
+      { try {
+         std::string decimal_price;
+
+         static const auto tick_to_decimal = []( const int64_t base, const int64_t quote ) -> std::string
+         {
+            std::string decimal_str = boost::lexical_cast< std::string >( base );
+
+            int64_t num_zeros = 0;
+            for ( auto a = quote; a > 9; )
+            {
+               a /= 10;
+               num_zeros++;
+            }
+
+            int64_t num_digits = 0;
+            for ( auto d = base; d > 0; )
+            {
+               d /= 10;
+               num_digits++;
+            }
+
+            auto pos = num_digits - num_zeros;
+            if ( pos < 0 )
+            {
+               std::string prepend = "0.";
+               for ( ; pos < 0; pos++ )
+               {
+                  prepend += "0";
+               }
+               decimal_str = prepend + decimal_str;
+            }
+            else
+            {
+               decimal_str.insert( pos, "." );
+            }
+
+            return decimal_str;
+         };
+
+         if ( is_tick_pricing( *this ) )
+         {
+            decimal_price = tick_to_decimal( base.amount.value, quote.amount.value );
+         }
+         else if ( is_tick_pricing( ~*this ) )
+         {
+            decimal_price = tick_to_decimal( quote.amount.value, base.amount.value );
+         }
+         else
+         {
+            double approx_real_price;
+            if ( ( base.symbol == SBD_SYMBOL && quote.symbol == STEEM_SYMBOL ) || ( base.symbol == STEEM_SYMBOL && quote.symbol.space() == asset_symbol_type::smt_nai_space ) )
+               approx_real_price = static_cast< double >( base.amount.value ) / static_cast< double >( quote.amount.value );
+            else
+               approx_real_price = static_cast< double >( quote.amount.value ) / static_cast< double >( base.amount.value );
+            decimal_price = boost::lexical_cast< std::string >( approx_real_price );
+            decimal_price += "?";
+         }
+
+         return decimal_price;
+      } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
+
+      double price::as_real() const
+      { try {
+         auto decimal_price = as_decimal();
+         if ( decimal_price.back() == '?' )
+            decimal_price.pop_back();
+         return boost::lexical_cast< double >( decimal_price );
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
