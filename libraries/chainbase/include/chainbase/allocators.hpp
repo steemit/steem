@@ -50,7 +50,7 @@ namespace chainbase {
 
    template<typename T>
    using t_vector = typename std::conditional< _ENABLE_MIRA,
-                              std::vector<T, allocator<T> >,
+                              boost::container::vector<T, allocator<T> >,
                               bip::vector<T, allocator<T> >
                               >::type;
 
@@ -68,7 +68,7 @@ namespace chainbase {
 
    template< typename T >
    using t_deque = typename std::conditional< _ENABLE_MIRA,
-                  std::deque< T, allocator< T > >,
+                  boost::container::deque< T, allocator< T > >,
                   bip::deque< T, allocator< T > >
                   >::type;
 }
