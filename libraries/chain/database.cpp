@@ -270,60 +270,66 @@ uint32_t database::reindex( const open_args& args )
          skip_validate_invariants |
          skip_block_log;
 
-      with_write_lock( [&]()
+      idump( (head_block_num()) );
+
+      auto last_block_num = _block_log.head()->block_num();
+
+      if( head_block_num() < last_block_num )
       {
-         _block_log.set_locking( false );
-         auto itr = _block_log.read_block( 0 );
-         auto last_block_num = _block_log.head()->block_num();
-         if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
-            last_block_num = args.stop_replay_at;
-         if( args.benchmark.first > 0 )
+         with_write_lock( [&]()
          {
-            args.benchmark.second( 0, get_abstract_index_cntr() );
-         }
-
-         while( itr.first.block_num() != last_block_num )
-         {
-            auto cur_block_num = itr.first.block_num();
-            if( cur_block_num % 100000 == 0 )
+            _block_log.set_locking( false );
+            auto itr = _block_log.read_block( _block_log.get_block_pos( head_block_num() + 1 ) );
+            if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
+               last_block_num = args.stop_replay_at;
+            if( args.benchmark.first > 0 )
             {
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
-#ifdef ENABLE_MIRA
-               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
-#else
-               (get_free_memory() >> 20) << "M free"
-#endif
-               << ")\n";
-
-               //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
-               //rocksdb::get_perf_context()->Reset();
+               args.benchmark.second( 0, get_abstract_index_cntr() );
             }
-            apply_block( itr.first, skip_flags );
 
-            if( cur_block_num % 100000 == 0 )
+            while( itr.first.block_num() != last_block_num )
             {
-               //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
-               if( cur_block_num % 1000000 == 0 )
+               auto cur_block_num = itr.first.block_num();
+               if( cur_block_num % 100000 == 0 )
                {
-                  dump_lb_call_counts();
+                  std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
+   #ifdef ENABLE_MIRA
+                  get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
+   #else
+                  (get_free_memory() >> 20) << "M free"
+   #endif
+                  << ")\n";
+
+                  //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
+                  //rocksdb::get_perf_context()->Reset();
                }
+               apply_block( itr.first, skip_flags );
+
+               if( cur_block_num % 100000 == 0 )
+               {
+                  //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+                  if( cur_block_num % 1000000 == 0 )
+                  {
+                     dump_lb_call_counts();
+                  }
+               }
+
+               if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
+                  args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
+               itr = _block_log.read_block( itr.second );
             }
 
-            if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
-               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
-            itr = _block_log.read_block( itr.second );
-         }
+            apply_block( itr.first, skip_flags );
+            note.last_block_number = itr.first.block_num();
 
-         apply_block( itr.first, skip_flags );
-         note.last_block_number = itr.first.block_num();
+            if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
+               args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
+            set_revision( head_block_num() );
+            _block_log.set_locking( true );
 
-         if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
-            args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
-         set_revision( head_block_num() );
-         _block_log.set_locking( true );
-
-         //get_index< account_index >().indices().print_stats();
-      });
+            //get_index< account_index >().indices().print_stats();
+         });
+      }
 
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );

@@ -38,6 +38,7 @@ struct steem_version_info
    std::map< std::string, std::string > object_schemas;
    std::map< std::string, fc::variant > config;
    std::string                          chain_id;
+   int32_t                              head_block_num;
 
    //bool compatible()
 };
@@ -69,6 +70,7 @@ struct section_footer
 struct state_footer : public section_footer
 {
    std::vector< section_footer >      section_footers;
+   int64_t                            footer_begin;
 };
 
 struct write_state_result
@@ -93,6 +95,7 @@ FC_REFLECT( steem::chain::statefile::steem_version_info,
    (object_schemas)
    (config)
    (chain_id)
+   (head_block_num)
    )
 
 FC_REFLECT( steem::chain::statefile::state_header,
@@ -119,4 +122,5 @@ FC_REFLECT( steem::chain::statefile::section_footer,
 FC_REFLECT_DERIVED( steem::chain::statefile::state_footer,
    (steem::chain::statefile::section_footer),
    (section_footers)
+   (footer_begin)
    )

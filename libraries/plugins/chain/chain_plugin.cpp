@@ -597,7 +597,7 @@ void chain_plugin::plugin_startup()
       {
          db_open_args.genesis_func = std::make_shared< std::function<void( database& )> >( [&]( database& db )
          {
-            statefile::init_genesis_from_state( db, my->from_state );
+            statefile::init_genesis_from_state( db, ( app().data_dir() / my->from_state ).string() );
          } );
       }
       uint32_t last_block_number = my->db.reindex( db_open_args );
@@ -619,7 +619,7 @@ void chain_plugin::plugin_startup()
          if( my->to_state != "" )
          {
             ilog( "Saving blockchain state" );
-            auto result = statefile::write_state( my->db, my->to_state, my->state_format );
+            auto result = statefile::write_state( my->db, ( app().data_dir() / my->to_state ).string(), my->state_format );
             ilog( "Blockchain state successful, size=${n} hash=${h}", ("n", result.size)("h", result.hash) );
          }
          exit(EXIT_SUCCESS);

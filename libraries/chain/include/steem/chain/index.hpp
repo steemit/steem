@@ -29,6 +29,8 @@ struct index_info
    virtual std::shared_ptr< abstract_object > create_object_from_json( database& db, const std::string& json_object ) = 0;
    virtual std::shared_ptr< abstract_object > get_object_from_db( const database& db, int64_t id ) = 0;
    virtual int64_t count( const database& db ) = 0;
+   virtual int64_t next_id( const database& db ) = 0;
+   virtual void set_next_id( database&db, int64_t next_id ) = 0;
 };
 
 struct abstract_object
@@ -135,6 +137,18 @@ struct index_info_impl
    {
       const auto& idx = db.template get_index< MultiIndexType, by_id >();
       return int64_t( idx.size() );
+   }
+
+   virtual int64_t next_id( const database& db ) override
+   {
+      const auto& idx = db.template get_index< MultiIndexType >();
+      return idx.next_id();
+   }
+
+   virtual void set_next_id( database& db, int64_t next_id ) override
+   {
+      auto& idx = db.template get_mutable_index< MultiIndexType >();
+      idx.set_next_id( next_id );
    }
 
    std::shared_ptr< abstract_schema > _schema;

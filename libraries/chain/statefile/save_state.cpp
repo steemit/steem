@@ -58,7 +58,7 @@ class sink_impl : public abstract_sink
       virtual void write( const std::string& s );
       void begin_section();
       void end_section(section_footer& footer);
-      void end_toplevel(section_footer& footer);
+      void end_toplevel(state_footer& footer);
       void end_file(section_footer& footer);
 
    private:
@@ -175,11 +175,8 @@ void object_serializer::convert_thread_main()
       {
          std::vector<char> temp_data;
          obj->to_binary( temp_data );
-         // Not sure if we need need to pack the length at the front. fc::raw::pack/unpack can handle it regardless
-         std::vector<char> temp_len_plus_data = fc::raw::pack_to_vector( temp_data );
 
-         // This being a string is problematic. Having binary values of 0 in the string is likely
-         result = std::make_shared< std::string >( temp_len_plus_data.begin(), temp_len_plus_data.end() );
+         result = std::make_shared< std::string >( temp_data.begin(), temp_data.end() );
       }
       else
       {
@@ -282,6 +279,7 @@ void object_section_producer::get_section_header( section_header& header )
       oheader.format = FORMAT_JSON;
    }
    oheader.object_count = info->count( db );
+   oheader.next_id = info->next_id( db );
    header = oheader;
 }
 
@@ -317,12 +315,13 @@ void sink_impl::end_section( section_footer& footer )
    in_section = false;
 }
 
-void sink_impl::end_toplevel( section_footer& footer )
+void sink_impl::end_toplevel( state_footer& footer )
 {
    FC_ASSERT( in_toplevel == true );
    footer.hash = SHA256_PREFIX + enc_toplevel.result().str();
    footer.begin_offset = 0;
    footer.end_offset = size;
+   footer.footer_begin = out.tellp();
    in_toplevel = false;
 }
 
@@ -407,6 +406,8 @@ write_state_result write_state( const database& db, const std::string& state_fil
    std::string top_footer_json = fc::json::to_string( top_footer );
    top_footer_json.push_back('\n');
    sink.write( top_footer_json );
+   std::vector< char > footer_begin_vec = fc::raw::pack_to_vector( top_footer.footer_begin );
+   sink.write( std::string( footer_begin_vec.begin(), footer_begin_vec.end() ) );
    out.flush();
    out.close();
 
