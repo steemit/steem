@@ -33,6 +33,46 @@ inline void validate_smt_symbol( const asset_symbol_type& symbol )
 }
 
 /**
+ * Determine if a price complies with Tick Pricing Rules.
+ *
+ * - For prices involving Steem Dollars (SBD), the base asset must be SBD.
+ * - For prices involving SMT assets, the base asset must be STEEM.
+ * - The quote must be a power of 10.
+ *
+ * \param  price The price to check for Tick Pricing compliance
+ * \return true  If price conforms to Tick Pricing Rules
+ */
+inline bool is_tick_pricing( const price& p )
+{
+   if ( p.base.symbol == SBD_SYMBOL )
+   {
+      if ( p.quote.symbol != STEEM_SYMBOL )
+         return false;
+   }
+   else if ( p.base.symbol == STEEM_SYMBOL )
+   {
+      if ( p.quote.symbol.space() != asset_symbol_type::smt_nai_space )
+         return false;
+
+      if ( p.quote.symbol.is_vesting() )
+         return false;
+   }
+   else
+   {
+      return false;
+   }
+
+   share_type tmp = p.quote.amount;
+   while ( tmp > 9 && tmp % 10 == 0 )
+      tmp /= 10;
+
+   if ( tmp != 1 )
+      return false;
+
+   return true;
+}
+
+/**
  * Validate a price complies with Tick Pricing Rules.
  *
  * - For prices involving Steem Dollars (SBD), the base asset must be SBD.

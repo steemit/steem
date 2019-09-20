@@ -383,6 +383,78 @@ BOOST_AUTO_TEST_CASE( tick_pricing_rules )
    BOOST_REQUIRE( db->get_balance( "bob", SBD_SYMBOL )   == asset( 1000000 + 1000000, SBD_SYMBOL ) );
 }
 
+BOOST_AUTO_TEST_CASE( price_as_decimal_and_real )
+{
+   BOOST_TEST_MESSAGE( "Testing: price_as_decimal_and_real" );
+
+   const auto symbol = get_new_smt_symbol( 3, this->db );
+
+   const auto float_cmp = []( double a, double b, double epsilon = 0.00005f ) -> bool
+   {
+      return ( std::fabs( a - b ) < epsilon );
+   };
+
+   price p;
+   p.base  = asset( 123456, SBD_SYMBOL );
+   p.quote = asset( 1000, STEEM_SYMBOL );
+
+   BOOST_TEST_MESSAGE( " -- Testing SBD:STEEM pairing with Tick Pricing Rules" );
+
+   BOOST_REQUIRE( p.as_decimal() == "123.456" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 123.456f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing SBD:STEEM inverse pairing with Tick Pricing Rules" );
+
+   p = ~p;
+
+   BOOST_REQUIRE( p.as_decimal() == "123.456" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 123.456f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing STEEM:SMT pairing with Tick Pricing Rules" );
+
+   p.base  = asset( 123, STEEM_SYMBOL );
+   p.quote = asset( 10000, symbol );
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0123" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0123f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing STEEM:SMT inverse pairing with Tick Pricing Rules" );
+
+   p = ~p;
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0123" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0123f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing STEEM:SMT pairing without Tick Pricing Rules" );
+
+   p.base  = asset( 123, STEEM_SYMBOL );
+   p.quote = asset( 10001, symbol );
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0122987701229877?" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0122987701229877f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing STEEM:SMT inverse pairing without Tick Pricing Rules" );
+
+   p = ~p;
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0122987701229877?" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0122987701229877f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing SBD:STEEM pairing without Tick Pricing Rules" );
+
+   p.base  = asset( 123, SBD_SYMBOL );
+   p.quote = asset( 10001, STEEM_SYMBOL );
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0122987701229877?" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0122987701229877f ) );
+
+   BOOST_TEST_MESSAGE( " -- Testing SBD:STEEM inverse pairing without Tick Pricing Rules" );
+
+   p = ~p;
+
+   BOOST_REQUIRE( p.as_decimal() == "0.0122987701229877?" );
+   BOOST_REQUIRE( float_cmp( p.as_real(), 0.0122987701229877f ) );
+}
 /*
  * SMT legacy tests
  *

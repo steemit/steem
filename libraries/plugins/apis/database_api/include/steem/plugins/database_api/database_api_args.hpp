@@ -436,6 +436,8 @@ typedef list_limit_orders_return find_limit_orders_return;
 struct get_order_book_args
 {
    uint32_t          limit;
+   asset_symbol_type base;
+   asset_symbol_type quote;
 };
 
 typedef order_book get_order_book_return;
@@ -785,7 +787,7 @@ FC_REFLECT( steem::plugins::database_api::find_limit_orders_args,
    (account) )
 
 FC_REFLECT( steem::plugins::database_api::get_order_book_args,
-   (limit) )
+   (limit)(base)(quote) )
 
 FC_REFLECT( steem::plugins::database_api::list_proposals_args,
    (start)(limit)(order)(order_direction)(status) )

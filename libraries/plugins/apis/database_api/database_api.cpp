@@ -1441,44 +1441,54 @@ DEFINE_API_IMPL( database_api_impl, find_limit_orders )
 
 
 /* Order Book */
-
 DEFINE_API_IMPL( database_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
    get_order_book_return result;
 
-   auto max_sell = price::max( SBD_SYMBOL, STEEM_SYMBOL );
-   auto max_buy = price::max( STEEM_SYMBOL, SBD_SYMBOL );
+   std::pair< asset_symbol_type, asset_symbol_type > market{ args.base, args.quote };
+
+   auto max_sell = price::max( std::get< 0 >( market ), std::get< 1 >( market ) );
+   auto max_buy  = price::max( std::get< 1 >( market ), std::get< 0 >( market ) );
 
    const auto& limit_price_idx = _db.get_index< chain::limit_order_index >().indices().get< chain::by_price >();
-   auto sell_itr = limit_price_idx.lower_bound( max_sell );
-   auto buy_itr  = limit_price_idx.lower_bound( max_buy );
-   auto end = limit_price_idx.end();
+   auto sell_itr               = limit_price_idx.lower_bound( max_sell );
+   auto buy_itr                = limit_price_idx.lower_bound( max_buy );
+   auto end                    = limit_price_idx.end();
 
-   while( sell_itr != end && sell_itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < args.limit )
+   while (
+      sell_itr != end &&
+      sell_itr->sell_price.base.symbol  == std::get< 0 >( market ) &&
+      sell_itr->sell_price.quote.symbol == std::get< 1 >( market ) &&
+      result.bids.size() < args.limit )
    {
       auto itr = sell_itr;
       order cur;
-      cur.order_price = itr->sell_price;
-      cur.real_price  = 0.0;
-      // cur.real_price  = (cur.order_price).to_real();
-      cur.sbd = itr->for_sale;
-      cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
-      cur.created = itr->created;
-      result.bids.push_back( cur );
+      cur.order_price   = itr->sell_price;
+      cur.decimal_price = itr->sell_price.as_decimal();
+      cur.real_price    = itr->sell_price.as_real();
+      cur.for_sale      = itr->amount_for_sale();
+      cur.to_receive    = itr->amount_to_receive();
+      cur.created       = itr->created;
+      result.bids.push_back( std::move( cur ) );
       ++sell_itr;
    }
-   while( buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < args.limit )
+
+   while (
+      buy_itr != end &&
+      buy_itr->sell_price.base.symbol  == std::get< 1 >( market ) &&
+      buy_itr->sell_price.quote.symbol == std::get< 0 >( market ) &&
+      result.asks.size() < args.limit )
    {
       auto itr = buy_itr;
       order cur;
-      cur.order_price = itr->sell_price;
-      cur.real_price = 0.0;
-      // cur.real_price  = (~cur.order_price).to_real();
-      cur.steem   = itr->for_sale;
-      cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
-      cur.created = itr->created;
-      result.asks.push_back( cur );
+      cur.order_price   = itr->sell_price;
+      cur.decimal_price = itr->sell_price.as_decimal();
+      cur.real_price    = itr->sell_price.as_real();
+      cur.for_sale      = itr->amount_for_sale();
+      cur.to_receive    = itr->amount_to_receive();
+      cur.created       = itr->created;
+      result.asks.push_back( std::move( cur ) );
       ++buy_itr;
    }
 
