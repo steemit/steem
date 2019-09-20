@@ -1446,15 +1446,21 @@ DEFINE_API_IMPL( database_api_impl, get_order_book )
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
    get_order_book_return result;
 
-   auto max_sell = price::max( std::get< 0 >( args.market ), std::get< 1 >( args.market ) );
-   auto max_buy  = price::max( std::get< 1 >( args.market ), std::get< 0 >( args.market ) );
+   std::pair< asset_symbol_type, asset_symbol_type > market{ args.base, args.quote };
+
+   auto max_sell = price::max( std::get< 0 >( market ), std::get< 1 >( market ) );
+   auto max_buy  = price::max( std::get< 1 >( market ), std::get< 0 >( market ) );
 
    const auto& limit_price_idx = _db.get_index< chain::limit_order_index >().indices().get< chain::by_price >();
    auto sell_itr               = limit_price_idx.lower_bound( max_sell );
    auto buy_itr                = limit_price_idx.lower_bound( max_buy );
    auto end                    = limit_price_idx.end();
 
-   while ( sell_itr != end && sell_itr->sell_price.base.symbol == std::get< 0 >( args.market ) && result.bids.size() < args.limit )
+   while (
+      sell_itr != end &&
+      sell_itr->sell_price.base.symbol  == std::get< 0 >( market ) &&
+      sell_itr->sell_price.quote.symbol == std::get< 1 >( market ) &&
+      result.bids.size() < args.limit )
    {
       auto itr = sell_itr;
       order cur;
@@ -1468,7 +1474,11 @@ DEFINE_API_IMPL( database_api_impl, get_order_book )
       ++sell_itr;
    }
 
-   while ( buy_itr != end && buy_itr->sell_price.base.symbol == std::get< 1 >( args.market ) && result.asks.size() < args.limit )
+   while (
+      buy_itr != end &&
+      buy_itr->sell_price.base.symbol  == std::get< 1 >( market ) &&
+      buy_itr->sell_price.quote.symbol == std::get< 0 >( market ) &&
+      result.asks.size() < args.limit )
    {
       auto itr = buy_itr;
       order cur;
