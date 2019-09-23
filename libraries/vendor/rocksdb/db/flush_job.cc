@@ -417,7 +417,7 @@ Status FlushJob::WriteLevel0Table() {
   stats.bytes_written = meta_.fd.GetFileSize();
   MeasureTime(stats_, FLUSH_TIME, stats.micros);
   cfd_->internal_stats()->AddCompactionStats(0 /* level */, stats);
-  cfd_->internal_stats()->AddCFStats(InternalCFStatsType::BYTES_FLUSHED,
+  cfd_->internal_stats()->AddCFStats(InternalStats::BYTES_FLUSHED,
                                      meta_.fd.GetFileSize());
   RecordFlushIOStats();
   return s;
