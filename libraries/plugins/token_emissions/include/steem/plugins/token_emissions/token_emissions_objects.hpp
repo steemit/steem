@@ -26,14 +26,26 @@ public:
    token_emissions_object() {}
 
    id_type                     id;
+   asset_symbol_type           symbol;
+   fc::time_point_sec          last_emission;
+   fc::time_point_sec          next_emission;
 };
 
 typedef oid< token_emissions_object > token_emissions_object_id_type;
 
+struct by_next_emission_symbol;
+
 typedef multi_index_container<
    token_emissions_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< token_emissions_object, token_emissions_object_id_type, &token_emissions_object::id > >
+      ordered_unique< tag< by_id >, member< token_emissions_object, token_emissions_object_id_type, &token_emissions_object::id > >,
+      ordered_unique< tag< by_next_emission_symbol >,
+         composite_key< token_emissions_object,
+            member< token_emissions_object, fc::time_point_sec, &token_emissions_object::next_emission >,
+            member< token_emissions_object, asset_symbol_type, &token_emissions_object::symbol >
+         >,
+         composite_key_compare< std::less< fc::time_point_sec >, std::less< asset_symbol_type > >
+      >
    >,
    allocator< token_emissions_object >
 > token_emissions_index;
@@ -43,5 +55,5 @@ typedef multi_index_container<
 } } } // steem::plugins::token_emissions
 
 
-FC_REFLECT( steem::plugins::token_emissions::token_emissions_object, (id) )
+FC_REFLECT( steem::plugins::token_emissions::token_emissions_object, (id)(symbol)(last_emission)(next_emission) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::token_emissions::token_emissions_object, steem::plugins::token_emissions::token_emissions_index )

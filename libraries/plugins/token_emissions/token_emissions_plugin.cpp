@@ -32,7 +32,7 @@ void token_emissions_plugin::set_program_options( boost::program_options::option
 
 void token_emissions_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-
+   STEEM_ADD_PLUGIN_INDEX(my->_db, token_emissions_index);
 }
 
 void token_emissions_plugin::plugin_startup()

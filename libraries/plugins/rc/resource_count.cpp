@@ -402,6 +402,7 @@ struct count_operation_visitor
 #ifdef IS_TEST_NET
    void operator()( const example_optional_action& ) const {}
 #endif
+   void operator()( const smt_token_emission_action& ) const {}
 
 
    // TODO:

@@ -2632,6 +2632,8 @@ void database::initialize_evaluators()
    _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator             >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_contributor_payout_evaluator >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_founder_payout_evaluator     >();
+
+   _my->_opt_action_evaluator_registry.register_evaluator< smt_token_emission_evaluator     >();
 }
 
 
