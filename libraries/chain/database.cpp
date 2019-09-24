@@ -106,6 +106,35 @@ database::~database()
    clear_pending();
 }
 
+#ifdef ENABLE_MIRA
+void set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
+{
+   index_delegate_map delegates;
+
+   if ( indices.size() > 0 )
+   {
+      for ( auto& index_name : indices )
+      {
+         if ( db.has_index_delegate( index_name ) )
+            delegates[ index_name ] = db.get_index_delegate( index_name );
+         else
+            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
+      }
+   }
+   else
+   {
+      delegates = db.index_delegates();
+   }
+
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
+   for ( auto const& delegate : delegates )
+   {
+      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
+      delegate.second.set_index_type( db, type, p, cfg );
+   }
+}
+#endif
+
 void database::open( const open_args& args )
 {
    try
@@ -121,7 +150,12 @@ void database::open( const open_args& args )
          with_write_lock( [&]()
          {
             if( args.genesis_func )
-               (*args.genesis_func)( *this );
+            {
+               FC_TODO( "Load directly in to mira instead of bmic first" );
+               set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+               (*args.genesis_func)( *this, args );
+               set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+            }
             else
                init_genesis( args.initial_supply, args.sbd_initial_supply );
          });
@@ -193,35 +227,6 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
-#ifdef ENABLE_MIRA
-void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
-{
-   index_delegate_map delegates;
-
-   if ( indices.size() > 0 )
-   {
-      for ( auto& index_name : indices )
-      {
-         if ( db.has_index_delegate( index_name ) )
-            delegates[ index_name ] = db.get_index_delegate( index_name );
-         else
-            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
-      }
-   }
-   else
-   {
-      delegates = db.index_delegates();
-   }
-
-   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
-   for ( auto const& delegate : delegates )
-   {
-      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
-      delegate.second.set_index_type( db, type, p, cfg );
-   }
-}
-#endif
-
 uint32_t database::reindex( const open_args& args )
 {
    reindex_notification note( args );
@@ -247,7 +252,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Configuring replay to use memory..." );
-         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+         set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 
@@ -338,7 +343,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Migrating state to disk..." );
-         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+         set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 

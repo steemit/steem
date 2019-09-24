@@ -31,6 +31,8 @@ struct index_info
    virtual int64_t count( const database& db ) = 0;
    virtual int64_t next_id( const database& db ) = 0;
    virtual void set_next_id( database&db, int64_t next_id ) = 0;
+   virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
+   virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
 };
 
 struct abstract_object
@@ -149,6 +151,18 @@ struct index_info_impl
    {
       auto& idx = db.template get_mutable_index< MultiIndexType >();
       idx.set_next_id( next_id );
+   }
+
+   virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
+   {
+      auto& idx = db.template get_mutable_index< MultiIndexType >();
+      idx.mutable_indices().begin_bulk_load( p, cfg );
+   }
+
+   virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
+   {
+      auto& idx = db.template get_mutable_index< MultiIndexType >();
+      idx.mutable_indices().end_bulk_load( p, cfg );
    }
 
    std::shared_ptr< abstract_schema > _schema;

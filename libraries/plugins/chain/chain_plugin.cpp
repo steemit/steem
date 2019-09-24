@@ -595,9 +595,9 @@ void chain_plugin::plugin_startup()
       db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
       if( my->from_state != "" )
       {
-         db_open_args.genesis_func = std::make_shared< std::function<void( database& )> >( [&]( database& db )
+         db_open_args.genesis_func = std::make_shared< std::function<void( database&, const database::open_args& )> >( [&]( database& db, const database::open_args& args )
          {
-            statefile::init_genesis_from_state( db, ( app().data_dir() / my->from_state ).string() );
+            statefile::init_genesis_from_state( db, ( app().data_dir() / my->from_state ).string(), args.shared_mem_dir, args.database_cfg );
          } );
       }
       uint32_t last_block_number = my->db.reindex( db_open_args );
@@ -613,7 +613,7 @@ void chain_plugin::plugin_startup()
                ("pm", total_data.peak_mem) );
       }
 
-      if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
+      if( my->stop_replay_at > 0 && my->stop_replay_at <= last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
          if( my->to_state != "" )

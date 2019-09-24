@@ -8,7 +8,7 @@
 
 namespace steem { namespace chain { namespace statefile {
 
-void init_genesis_from_state( database& db, const std::string& state_filename )
+void init_genesis_from_state( database& db, const std::string& state_filename, const boost::filesystem::path& p, const boost::any& cfg )
 {
    std::ifstream input_stream( state_filename, std::ios::binary );
 
@@ -69,17 +69,18 @@ void init_genesis_from_state( database& db, const std::string& state_filename )
       footer_map[ name ] = top_footer.section_footers[i];
    }
 
-   for( const auto& h : header_map )
+   for( const auto& i : index_map )
    {
       vector< char > section_header_bin;
       char c;
 
-      input_stream.seekg( footer_map[ h.first ].begin_offset );
+      object_section header = header_map[ i.first ].get< object_section >();
+
+      input_stream.seekg( footer_map[ i.first ].begin_offset );
       int64_t begin = input_stream.tellg();
 
       std::stringbuf header_buf;
       input_stream.get( header_buf );
-      object_section header = h.second.get< object_section >();
       object_section s_header = fc::json::from_string( header_buf.str() ).as< section_header >().get< object_section >();
       input_stream.read( &c, 1 );
 
@@ -95,6 +96,9 @@ void init_genesis_from_state( database& db, const std::string& state_filename )
       ilog( "Unpacking ${o}. (${n} Objects)", ("o", header.object_type)("n", header.object_count) );
       std::shared_ptr< index_info > idx = index_map[ header.object_type ];
 
+      //if( header.object_count )
+      //   idx->begin_bulk_load( db, p, cfg );
+
       for( int64_t i = 0; i < header.object_count; i++ )
       {
          if( header.format == FORMAT_BINARY )
@@ -109,6 +113,9 @@ void init_genesis_from_state( database& db, const std::string& state_filename )
             input_stream.read( &c, 1 );
          }
       }
+
+      //if( header.object_count )
+      //   idx->end_bulk_load( db, p, cfg );
 
       idx->set_next_id( db, header.next_id );
 

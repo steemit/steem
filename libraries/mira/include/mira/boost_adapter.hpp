@@ -53,6 +53,9 @@ class boost_multi_index_adapter : public boost::multi_index_container< Value, In
 
       template< typename MetaKey, typename MetaValue >
       bool put_metadata( const MetaKey& k, const MetaValue& v ) { return true; }
+
+      void begin_bulk_load( const boost::filesystem::path& p, const boost::any& cfg ) {}
+      void end_bulk_load( const boost::filesystem::path& p, const boost::any& cfg ) {}
 };
 
 } // mira

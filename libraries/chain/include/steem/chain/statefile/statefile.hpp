@@ -3,6 +3,9 @@
 #include <fc/static_variant.hpp>
 #include <fc/reflect/reflect.hpp>
 
+#include <boost/any.hpp>
+#include <boost/filesystem.hpp>
+
 #include <cstdint>
 #include <map>
 #include <string>
@@ -85,7 +88,7 @@ struct state_format_info
 };
 
 write_state_result write_state( const database& db, const std::string& state_filename, const state_format_info& state_format );
-void init_genesis_from_state( database& db, const std::string& state_filename );
+void init_genesis_from_state( database& db, const std::string& state_filename, const boost::filesystem::path& p, const boost::any& cfg );
 
 } } }
 

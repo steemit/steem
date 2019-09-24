@@ -2,6 +2,8 @@
 #include <mira/index_converter.hpp>
 #include <mira/iterator_adapter.hpp>
 
+#include <iostream>
+
 namespace mira {
 
 enum index_type
@@ -402,6 +404,28 @@ struct multi_index_adapter
       return result;
    }
 
+   void begin_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   {
+      return boost::apply_visitor(
+         [&]( auto& index )
+         {
+            index.begin_bulk_load( p, cfg );
+         },
+         _index
+      );
+   }
+
+   void end_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   {
+      return boost::apply_visitor(
+         [&]( auto& index )
+         {
+            index.end_bulk_load( p, cfg );
+         },
+         _index
+      );
+   }
+
    iter_type iterator_to( const value_type& v )
    {
       return boost::apply_visitor(
@@ -478,8 +502,31 @@ struct multi_index_adapter
       return boost::make_reverse_iterator( begin() );
    }
 
-   bool open( const boost::filesystem::path& p, const boost::any& o )
+   bool open( const boost::filesystem::path& p, const boost::any& o, index_type type = index_type::mira )
    {
+      std::cout << "Open\n";
+      if( type == index_type::mira ) std::cout << "mira\n";
+      if( type == index_type::bmic ) std::cout << "bmic\n";
+      if( type != _type )
+      {
+         index_variant new_index;
+
+         switch( type )
+         {
+            case mira:
+               std::cout << "Opening with mira\n";
+               new_index = std::move( mira_type( p, o ) );
+               break;
+            case bmic:
+               std::cout << "Opening with bmic\n";
+               new_index = std::move( bmic_type() );
+               break;
+         }
+
+         _index = std::move( new_index );
+         _type = type;
+      }
+
       return boost::apply_visitor(
          [&p, &o]( auto& index ){ return index.open( p, o ); },
          _index
