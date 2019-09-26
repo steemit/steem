@@ -6,7 +6,7 @@ namespace steem { namespace plugins { namespace token_emissions {
 using namespace steem::chain;
 
 #ifndef STEEM_TOKEN_EMISSIONS_SPACE_ID
-#define STEEM_TOKEN_EMISSIONS_SPACE_ID 19
+#define STEEM_TOKEN_EMISSIONS_SPACE_ID 20
 #endif
 
 enum token_emissions_object_type

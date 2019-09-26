@@ -31,10 +31,10 @@ public:
 
 void token_emissions_impl::on_post_apply_required_action( const required_action_notification& note )
 {
-   if ( _db.is_pending_tx() )
+   if ( note.action.which() != required_automated_action::tag< smt_token_launch_action >::value )
       return;
 
-   if ( note.action.which() != required_automated_action::tag< smt_token_launch_action >::value )
+   if ( _db.is_pending_tx() )
       return;
 
    smt_token_launch_action token_launch = note.action.get< smt_token_launch_action >();
@@ -53,10 +53,10 @@ void token_emissions_impl::on_post_apply_required_action( const required_action_
 
 void token_emissions_impl::on_post_apply_optional_action( const optional_action_notification& note )
 {
-   if ( _db.is_pending_tx() )
+   if ( note.action.which() != optional_automated_action::tag< smt_token_emission_action >::value )
       return;
 
-   if ( note.action.which() != optional_automated_action::tag< smt_token_emission_action >::value )
+   if ( _db.is_pending_tx() )
       return;
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
@@ -109,46 +109,49 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
 token_emissions_plugin::token_emissions_plugin() {}
 token_emissions_plugin::~token_emissions_plugin() {}
 
-void token_emissions_plugin::set_program_options( boost::program_options::options_description& cli, boost::program_options::options_description& cfg )
-{
-}
+void token_emissions_plugin::set_program_options( boost::program_options::options_description& cli, boost::program_options::options_description& cfg ) {}
 
 void token_emissions_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   STEEM_ADD_PLUGIN_INDEX(my->_db, token_emissions_index);
+   try
+   {
+      ilog( "token_emissions: plugin_initialize() begin" );
 
-   my->post_apply_optional_action_connection = my->_db.add_post_apply_optional_action_handler(
-      [&]( const optional_action_notification& note )
-      {
-         try
-         {
-            my->on_post_apply_optional_action( note );
-         } FC_LOG_AND_RETHROW()
-      }, *this, 0 );
+      my = std::make_unique< detail::token_emissions_impl >();
+      STEEM_ADD_PLUGIN_INDEX(my->_db, token_emissions_index);
 
-   my->post_apply_block_connection = my->_db.add_post_apply_block_handler(
-      [&]( const block_notification& note )
-      {
-         try
+      my->post_apply_optional_action_connection = my->_db.add_post_apply_optional_action_handler(
+         [&]( const optional_action_notification& note )
          {
-            my->on_post_apply_block( note );
-         } FC_LOG_AND_RETHROW()
-      }, *this, 0 );
+            try
+            {
+               my->on_post_apply_optional_action( note );
+            } FC_LOG_AND_RETHROW()
+         }, *this, 0 );
 
-   my->post_apply_required_action_connection = my->_db.add_post_apply_required_action_handler(
-      [&]( const required_action_notification& note )
-      {
-         try
+      my->post_apply_block_connection = my->_db.add_post_apply_block_handler(
+         [&]( const block_notification& note )
          {
-            my->on_post_apply_required_action( note );
-         } FC_LOG_AND_RETHROW()
-      }, *this, 0 );
+            try
+            {
+               my->on_post_apply_block( note );
+            } FC_LOG_AND_RETHROW()
+         }, *this, 0 );
+
+      my->post_apply_required_action_connection = my->_db.add_post_apply_required_action_handler(
+         [&]( const required_action_notification& note )
+         {
+            try
+            {
+               my->on_post_apply_required_action( note );
+            } FC_LOG_AND_RETHROW()
+         }, *this, 0 );
+
+      ilog( "token_emissions: plugin_initialize() end" );
+   } FC_CAPTURE_AND_RETHROW()
 }
 
-void token_emissions_plugin::plugin_startup()
-{
-
-}
+void token_emissions_plugin::plugin_startup() {}
 
 void token_emissions_plugin::plugin_shutdown()
 {
