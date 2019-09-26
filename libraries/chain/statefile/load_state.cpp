@@ -63,7 +63,7 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
    state_footer top_footer = fc::json::from_string( footer_buf.str() ).as< state_footer >();
    flat_map< std::string, section_footer > footer_map;
 
-   for( int64_t i = 0; i < top_footer.section_footers.size(); i++ )
+   for( size_t i = 0; i < top_footer.section_footers.size(); i++ )
    {
       std::string& name = top_header.sections[ i ].get< object_section >().object_type;
       footer_map[ name ] = top_footer.section_footers[i];
