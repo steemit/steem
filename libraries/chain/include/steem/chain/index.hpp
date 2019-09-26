@@ -33,6 +33,9 @@ struct index_info
    virtual void set_next_id( database&db, int64_t next_id ) = 0;
    virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
    virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
+#ifdef ENABLE_MIRA
+   virtual void set_index_type( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
+#endif
 };
 
 struct abstract_object
@@ -155,15 +158,26 @@ struct index_info_impl
 
    virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
    {
+#ifdef ENABLE_MIRA
       auto& idx = db.template get_mutable_index< MultiIndexType >();
       idx.mutable_indices().begin_bulk_load( p, cfg );
+#endif
    }
 
    virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
    {
+#ifdef ENABLE_MIRA
       auto& idx = db.template get_mutable_index< MultiIndexType >();
       idx.mutable_indices().end_bulk_load( p, cfg );
+#endif
    }
+
+#ifdef ENABLE_MIRA
+   virtual void set_index_type( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg ) override
+   {
+      db.template get_mutable_index< MultiIndexType >().mutable_indices().set_index_type( type, p, cfg );
+   }
+#endif
 
    std::shared_ptr< abstract_schema > _schema;
 };

@@ -613,6 +613,8 @@ void chain_plugin::plugin_startup()
                ("pm", total_data.peak_mem) );
       }
 
+      idump( (my->stop_replay_at)(last_block_number) );
+
       if( my->stop_replay_at > 0 && my->stop_replay_at <= last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));

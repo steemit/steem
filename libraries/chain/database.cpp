@@ -152,9 +152,7 @@ void database::open( const open_args& args )
             if( args.genesis_func )
             {
                FC_TODO( "Load directly in to mira instead of bmic first" );
-               set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
                (*args.genesis_func)( *this, args );
-               set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
             }
             else
                init_genesis( args.initial_supply, args.sbd_initial_supply );
@@ -279,22 +277,27 @@ uint32_t database::reindex( const open_args& args )
 
       auto last_block_num = _block_log.head()->block_num();
 
+      if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
+         last_block_num = args.stop_replay_at;
+
       if( head_block_num() < last_block_num )
       {
+         _block_log.set_locking( false );
+         if( args.benchmark.first > 0 )
+         {
+            args.benchmark.second( 0, get_abstract_index_cntr() );
+         }
+
+         auto itr = _block_log.read_block( _block_log.get_block_pos( head_block_num() + 1 ) );
+
          with_write_lock( [&]()
          {
-            _block_log.set_locking( false );
-            auto itr = _block_log.read_block( _block_log.get_block_pos( head_block_num() + 1 ) );
-            if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
-               last_block_num = args.stop_replay_at;
-            if( args.benchmark.first > 0 )
-            {
-               args.benchmark.second( 0, get_abstract_index_cntr() );
-            }
+            FC_ASSERT( itr.first.block_num() == head_block_num() + 1 );
 
-            while( itr.first.block_num() != last_block_num )
+            while( itr.first.block_num() < last_block_num )
             {
                auto cur_block_num = itr.first.block_num();
+
                if( cur_block_num % 100000 == 0 )
                {
                   std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
@@ -327,13 +330,13 @@ uint32_t database::reindex( const open_args& args )
             apply_block( itr.first, skip_flags );
             note.last_block_number = itr.first.block_num();
 
-            if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
-               args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
             set_revision( head_block_num() );
-            _block_log.set_locking( true );
-
-            //get_index< account_index >().indices().print_stats();
          });
+
+         if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
+            args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
+
+         _block_log.set_locking( true );
       }
 
       if( _block_log.head()->block_num() )
@@ -352,7 +355,7 @@ uint32_t database::reindex( const open_args& args )
 
       note.reindex_success = true;
 
-      return note.last_block_number;
+      return head_block_num();
    }
    FC_CAPTURE_AND_RETHROW( (args.data_dir)(args.shared_mem_dir) )
 

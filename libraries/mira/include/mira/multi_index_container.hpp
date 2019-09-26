@@ -170,13 +170,14 @@ public:
 
       while( first != last )
       {
-         super::insert_rocksdb_( *(const_cast<value_type*>(first.operator->())) );
+         super::insert_rocksdb_( *first );
          ++first;
          ++_entry_count;
+
+         super::commit_first_key_update();
       }
 
       super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
-      super::commit_first_key_update();
       super::_write_buffer.Clear();
 
       close();
@@ -625,7 +626,7 @@ primary_iterator erase( primary_iterator position )
       return insert_( v );
    }
 
-   bool insert_( value_type& v )
+   bool insert_( const value_type& v )
    {
       bool status = super::insert_rocksdb_( v );
 

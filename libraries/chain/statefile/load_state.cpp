@@ -69,6 +69,9 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
       footer_map[ name ] = top_footer.section_footers[i];
    }
 
+   char buffer[ 1024 ];
+   fc::sha256::encoder enc;
+
    for( const auto& i : index_map )
    {
       vector< char > section_header_bin;
@@ -96,8 +99,9 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
       ilog( "Unpacking ${o}. (${n} Objects)", ("o", header.object_type)("n", header.object_count) );
       std::shared_ptr< index_info > idx = index_map[ header.object_type ];
 
-      //if( header.object_count )
-      //   idx->begin_bulk_load( db, p, cfg );
+#ifdef ENABLE_MIRA
+      idx->set_index_type( db, mira::index_type::bmic, p, cfg );
+#endif
 
       for( int64_t i = 0; i < header.object_count; i++ )
       {
@@ -114,9 +118,10 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
          }
       }
 
-      //if( header.object_count )
-      //   idx->end_bulk_load( db, p, cfg );
-
+      FC_TODO( "Put index conversion in parallel thread" )
+#ifdef ENABLE_MIRA
+      idx->set_index_type( db, mira::index_type::mira, p, cfg );
+#endif
       idx->set_next_id( db, header.next_id );
 
       int64_t end = input_stream.tellg();
@@ -129,7 +134,22 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
          ("o", header.object_type) );
       FC_ASSERT( s_footer.end_offset == end, "Begin offset mismatch for ${o}",
          ("o", header.object_type) );
-      FC_TODO( "Compare hashes" );
+
+      int64_t total = end - begin;
+      int64_t read = 0;
+      input_stream.seekg( begin );
+      enc.reset();
+
+      while( read < total )
+      {
+         int64_t to_read = std::min( total - read, (int64_t)1024 );
+         input_stream.read( buffer, to_read );
+         read += 1024;
+         enc.write( buffer, to_read );
+      }
+
+      FC_ASSERT( s_footer.hash == SHA256_PREFIX + enc.result().str(), "Incorrect hash for ${o}. Expectd: ${e} Actual: ${a}",
+         ("o", header.object_type)("e", s_footer.hash)("a", SHA256_PREFIX + enc.result().str()) );
    }
 }
 

@@ -2,8 +2,6 @@
 #include <mira/index_converter.hpp>
 #include <mira/iterator_adapter.hpp>
 
-#include <iostream>
-
 namespace mira {
 
 enum index_type
@@ -504,9 +502,6 @@ struct multi_index_adapter
 
    bool open( const boost::filesystem::path& p, const boost::any& o, index_type type = index_type::mira )
    {
-      std::cout << "Open\n";
-      if( type == index_type::mira ) std::cout << "mira\n";
-      if( type == index_type::bmic ) std::cout << "bmic\n";
       if( type != _type )
       {
          index_variant new_index;
@@ -514,11 +509,9 @@ struct multi_index_adapter
          switch( type )
          {
             case mira:
-               std::cout << "Opening with mira\n";
                new_index = std::move( mira_type( p, o ) );
                break;
             case bmic:
-               std::cout << "Opening with bmic\n";
                new_index = std::move( bmic_type() );
                break;
          }
