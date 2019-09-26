@@ -56,16 +56,60 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    auto _last_emission = last_emission( db, symbol );
 
    if ( _last_emission != nullptr )
+      return _last_emission->schedule_end_time();
+
+   return {};
+}
+
+fc::optional< time_point_sec > next_emission_time( const database& db, const asset_symbol_type& symbol, time_point_sec time )
+{
+   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_time >();
+   const auto range = idx.equal_range( symbol );
+
+   for ( auto itr = range.first; itr != range.second && time <= itr->schedule_end_time(); ++itr )
    {
-      // A maximum interval count indicates we should emit indefinitely
-      if ( _last_emission->interval_count == SMT_EMIT_INDEFINITELY )
-         return time_point_sec::maximum();
-      else
-         // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
-         return _last_emission->schedule_time + fc::seconds( uint64_t( _last_emission->interval_seconds ) * uint64_t( _last_emission->interval_count ) );
+      if ( time > itr->schedule_end_time() )
+         continue;
+
+      for ( time_point_sec emission_time = itr->schedule_time; emission_time <= itr->schedule_end_time(); emission_time += fc::seconds( itr->interval_seconds ) )
+      {
+         if ( emission_time > time )
+         {
+            return emission_time;
+         }
+      }
    }
 
    return {};
+}
+
+std::vector< emission_data > emissions_in_range(
+   const database& db,
+   const asset_symbol_type& symbol,
+   const time_point_sec& start_time,
+   const time_point_sec& end_time )
+{
+   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_time >();
+   const auto range = idx.equal_range( symbol );
+
+   std::vector< emission_data > emissions;
+
+   for ( auto itr = range.first; itr != range.second && end_time <= itr->schedule_end_time(); ++itr )
+   {
+      if ( start_time > itr->schedule_end_time() )
+         continue;
+
+      for ( time_point_sec emission_time = itr->schedule_time; emission_time <= itr->schedule_end_time(); emission_time += fc::seconds( itr->interval_seconds ) )
+      {
+         if ( emission_time >= start_time && emission_time <= end_time )
+         {
+            emission_data emission = std::make_pair( emission_time, &*itr );
+            emissions.push_back( emission );
+         }
+      }
+   }
+
+   return emissions;
 }
 
 namespace ico {

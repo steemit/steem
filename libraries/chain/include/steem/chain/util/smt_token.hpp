@@ -7,10 +7,14 @@
 
 namespace steem { namespace chain { namespace util { namespace smt {
 
+typedef std::pair< time_point_sec, const smt_token_emissions_object* > emission_data;
+
 const smt_token_object* find_token( const database& db, uint32_t nai );
 const smt_token_object* find_token( const database& db, asset_symbol_type symbol, bool precision_agnostic = false );
 const smt_token_emissions_object* last_emission( const database& db, const asset_symbol_type& symbol );
 fc::optional< time_point_sec > last_emission_time( const database& db, const asset_symbol_type& symbol );
+fc::optional< time_point_sec > next_emission_time( const database& db, const asset_symbol_type& symbol, time_point_sec time = time_point_sec() );
+std::vector< emission_data > emissions_in_range( const database& db, const asset_symbol_type& symbol, const time_point_sec& start_time, const time_point_sec& end_time );
 
 namespace ico {
 

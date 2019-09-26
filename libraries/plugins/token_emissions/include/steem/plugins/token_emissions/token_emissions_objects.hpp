@@ -27,18 +27,20 @@ public:
 
    id_type                     id;
    asset_symbol_type           symbol;
-   fc::time_point_sec          last_emission;
-   fc::time_point_sec          next_emission;
+   fc::time_point_sec          last_emission = fc::time_point_sec();
+   fc::time_point_sec          next_emission = fc::time_point_sec();
 };
 
 typedef oid< token_emissions_object > token_emissions_object_id_type;
 
+struct by_symbol;
 struct by_next_emission_symbol;
 
 typedef multi_index_container<
    token_emissions_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< token_emissions_object, token_emissions_object_id_type, &token_emissions_object::id > >,
+      ordered_unique< tag< by_id >,     member< token_emissions_object, token_emissions_object_id_type, &token_emissions_object::id > >,
+      ordered_unique< tag< by_symbol >, member< token_emissions_object, asset_symbol_type, &token_emissions_object::symbol > >,
       ordered_unique< tag< by_next_emission_symbol >,
          composite_key< token_emissions_object,
             member< token_emissions_object, fc::time_point_sec, &token_emissions_object::next_emission >,

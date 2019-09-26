@@ -167,6 +167,17 @@ public:
    uint32_t                              lep_rel_amount_numerator = 0;
    uint32_t                              rep_rel_amount_numerator = 0;
    uint8_t                               rel_amount_denom_bits = 0;
+
+   time_point_sec schedule_end_time() const
+   {
+      time_point_sec end_time = time_point_sec::maximum();
+
+      if ( interval_count != SMT_EMIT_INDEFINITELY )
+         // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
+         end_time = schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) );
+
+      return end_time;
+   }
 };
 
 class smt_contribution_object : public object< smt_contribution_object_type, smt_contribution_object >
