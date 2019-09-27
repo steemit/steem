@@ -366,6 +366,9 @@ write_state_result write_state( const database& db, const std::string& state_fil
 
    object_serializer ser( state_format );
    ser.start_threads();
+   // Grab plugin options
+   fill_plugin_options( top_header.plugin_options );
+
    // Grab the object sections
    db.for_each_index_extension< index_info >(
    [&]( std::shared_ptr< index_info > info )

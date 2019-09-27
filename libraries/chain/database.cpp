@@ -277,8 +277,8 @@ uint32_t database::reindex( const open_args& args )
 
       auto last_block_num = _block_log.head()->block_num();
 
-      if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
-         last_block_num = args.stop_replay_at;
+      if( args.stop_at_block > 0 && args.stop_at_block < last_block_num )
+         last_block_num = args.stop_at_block;
 
       if( head_block_num() < last_block_num )
       {

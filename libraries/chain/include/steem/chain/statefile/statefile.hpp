@@ -42,8 +42,6 @@ struct steem_version_info
    std::map< std::string, fc::variant > config;
    std::string                          chain_id;
    int32_t                              head_block_num;
-
-   //bool compatible()
 };
 
 struct object_section
@@ -59,8 +57,9 @@ typedef fc::static_variant< object_section > section_header;
 
 struct state_header
 {
-   steem_version_info              version;
-   std::vector< section_header >   sections;
+   steem_version_info                     version;
+   std::map< std::string, std::string >   plugin_options;
+   std::vector< section_header >          sections;
 };
 
 struct section_footer
@@ -90,6 +89,8 @@ struct state_format_info
 write_state_result write_state( const database& db, const std::string& state_filename, const state_format_info& state_format );
 void init_genesis_from_state( database& db, const std::string& state_filename, const boost::filesystem::path& p, const boost::any& cfg );
 
+void fill_plugin_options( fc::map< std::string, std::string >& plugin_options );
+
 } } }
 
 FC_REFLECT( steem::chain::statefile::steem_version_info,
@@ -103,6 +104,7 @@ FC_REFLECT( steem::chain::statefile::steem_version_info,
 
 FC_REFLECT( steem::chain::statefile::state_header,
    (version)
+   (plugin_options)
    (sections)
    )
 

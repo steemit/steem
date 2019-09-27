@@ -135,7 +135,7 @@ namespace steem { namespace chain {
             std::shared_ptr< std::function< void( database&, const open_args& ) > > genesis_func;
 
             // The following fields are only used on reindexing
-            uint32_t stop_replay_at = 0;
+            uint32_t stop_at_block = 0;
             TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 

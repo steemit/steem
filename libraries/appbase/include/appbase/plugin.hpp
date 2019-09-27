@@ -43,6 +43,7 @@ namespace appbase {
          virtual void initialize(const variables_map& options) = 0;
          virtual void startup() = 0;
          virtual void shutdown() = 0;
+         virtual void get_impacted_options( boost::any& cfg )const {}
 
       protected:
          typedef std::function<void(abstract_plugin&)> plugin_processor;

@@ -317,4 +317,12 @@ const variables_map& application::get_args() const
    return my->_args;
 }
 
+void application::for_each_plugin( std::function< void(const abstract_plugin&) > cb ) const
+{
+   for( auto& p : plugins )
+   {
+      cb( *(p.second) );
+   }
+}
+
 } /// namespace appbase

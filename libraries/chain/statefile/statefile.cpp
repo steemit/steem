@@ -3,6 +3,8 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
 
+#include <appbase/application.hpp>
+
 namespace steem { namespace chain { namespace statefile {
 
 // db_format_version : Must match STEEM_DB_FORMAT_VERSION
@@ -24,6 +26,17 @@ steem_version_info::steem_version_info( const database& db )
 
    chain_id = db.get_chain_id().str();
    head_block_num = db.revision();
+}
+
+void fill_plugin_options( fc::map< std::string, fc::string >& plugin_options )
+{
+   appbase::app().for_each_plugin( [&]( const abstract_plugin& p )
+   {
+      boost::any opts;
+      p.get_impacted_options( opts );
+      if( !opts.empty() )
+         plugin_options[ p.get_name() ] = fc::json::to_string( boost::any_cast< fc::variant_object >( opts ) );
+   });
 }
 
 } } } // steem::chain::statefile
