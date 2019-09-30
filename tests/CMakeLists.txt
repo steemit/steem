@@ -180,7 +180,6 @@ add_boost_test( chain_test
    operation_time_tests/convert_delay
    operation_time_tests/steem_inflation
    operation_time_tests/sbd_interest
-   operation_time_tests/liquidity_rewards
    operation_time_tests/post_rate_limit
    operation_time_tests/comment_freeze
    operation_time_tests/sbd_stability
@@ -294,7 +293,6 @@ add_boost_test( chain_test
    smt_operation_tests/smt_delegate_vesting_shares_apply
    smt_operation_tests/vote2_authorities
    smt_operation_tests/vote2_apply
-   smt_operation_time_tests/smt_liquidity_rewards
    smt_operation_time_tests/smt_refunds
    smt_operation_time_tests/smt_ico_payouts
    smt_operation_time_tests/smt_ico_payouts_special_destinations
@@ -310,6 +308,9 @@ add_boost_test( chain_test
    smt_tests/setup_authorities
    smt_tests/setup_apply
    smt_tests/smt_create_apply
+   smt_tests/tick_pricing_rules_validation
+   smt_tests/tick_pricing_rules
+   smt_tests/price_as_decimal_and_real
    undo_tests/undo_basic
    undo_tests/undo_object_disapear
    undo_tests/undo_key_collision
@@ -334,6 +335,7 @@ add_boost_test( plugin_test
    json_rpc/positive_validation
    json_rpc/semantics_validation
    market_history/mh_test
+   smt_market_history/smt_mh_test
    transaction_status/transaction_status_test
    rc_delegation/rc_delegate_to_pool_apply
    rc_delegation/rc_delegate_to_pool_apply

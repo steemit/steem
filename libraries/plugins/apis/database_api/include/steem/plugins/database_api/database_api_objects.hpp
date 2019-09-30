@@ -614,9 +614,10 @@ struct api_proposal_vote_object
 struct order
 {
    price                order_price;
-   double               real_price; // dollars per steem
-   share_type           steem;
-   share_type           sbd;
+   std::string          decimal_price;
+   double               real_price;
+   asset                for_sale;
+   asset                to_receive;
    fc::time_point_sec   created;
 };
 
@@ -777,6 +778,6 @@ FC_REFLECT( steem::plugins::database_api::api_proposal_vote_object,
             (proposal)
           )
 
-FC_REFLECT( steem::plugins::database_api::order, (order_price)(real_price)(steem)(sbd)(created) );
+FC_REFLECT( steem::plugins::database_api::order, (order_price)(decimal_price)(real_price)(for_sale)(to_receive)(created) );
 
 FC_REFLECT( steem::plugins::database_api::order_book, (asks)(bids) );

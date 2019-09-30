@@ -130,6 +130,9 @@ namespace steem { namespace protocol {
       price max()const { return price::max( base.symbol, quote.symbol ); }
       price min()const { return price::min( base.symbol, quote.symbol ); }
 
+      std::string as_decimal()const;
+      double      as_real()const;
+
       bool is_null()const;
       void validate()const;
 
