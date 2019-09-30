@@ -1,4 +1,5 @@
 #include <steem/plugins/chain/statefile/statefile.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
@@ -32,13 +33,17 @@ steem_version_info::steem_version_info( const database& db )
 
 void fill_plugin_options( fc::map< std::string, fc::string >& plugin_options )
 {
-   appbase::app().for_each_plugin( [&]( const appbase::abstract_plugin& p )
+   for( const auto& plugin_opts : appbase::app().get_plugin< chain_plugin >().get_state_options() )
    {
-      boost::any opts;
-      p.get_impacted_options( opts );
-      if( !opts.empty() )
-         plugin_options[ p.get_name() ] = fc::json::to_string( boost::any_cast< fc::variant_object >( opts ) );
-   });
+      plugin_options[ plugin_opts.first ] = fc::json::to_string( plugin_opts.second );
+   }
+   //appbase::app().for_each_plugin( [&]( const appbase::abstract_plugin& p )
+   //{
+   //   boost::any opts;
+   //   p.get_impacted_options( opts );
+   //   if( !opts.empty() )
+   //      plugin_options[ p.get_name() ] = fc::json::to_string( boost::any_cast< fc::variant_object >( opts ) );
+   //});
 }
 
 } } } } // steem::plugins::chain::statefile

@@ -182,7 +182,7 @@ bool transaction_status_impl::state_is_valid()
 
    if ( latest_tx.valid() )
       upper_bound_is_valid = _db.find< transaction_status_object, by_trx_id >( *latest_tx ) != nullptr;
-   
+
    return lower_bound_is_valid && upper_bound_is_valid;
 }
 

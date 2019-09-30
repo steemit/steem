@@ -108,8 +108,7 @@ class chain_plugin_impl
       boost::lockfree::queue< write_context* > write_queue;
       int16_t                          write_lock_hold_time = 500;
 
-      vector< string >                 loaded_plugins;
-      fc::mutable_variant_object       plugin_state_opts;
+      flat_map< string, fc::variant_object > plugin_state_opts;
       bfs::path                        database_cfg;
 
       database  db;
@@ -707,8 +706,12 @@ void chain_plugin::plugin_shutdown()
 
 void chain_plugin::report_state_options( const string& plugin_name, const fc::variant_object& opts )
 {
-   my->loaded_plugins.push_back( plugin_name );
-   my->plugin_state_opts( opts );
+   my->plugin_state_opts[ plugin_name ] = opts;
+}
+
+flat_map< string, fc::variant_object >& chain_plugin::get_state_options() const
+{
+   return my->plugin_state_opts;
 }
 
 bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip )

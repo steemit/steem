@@ -740,7 +740,8 @@ void account_history_rocksdb_plugin::impl::collectOptions(const boost::program_o
    if(_blacklisted_op_list.empty() == false)
       ilog( "Account History: blacklisting ops ${o}", ("o", _blacklisted_op_list) );
 
-   appbase::app().get_plugin< chain::chain_plugin >().report_state_options( _self.name(), state_opts );
+   // Account History RocksDB does not impact index state
+   // appbase::app().get_plugin< chain::chain_plugin >().report_state_options( _self.name(), state_opts );
 }
 
 inline bool account_history_rocksdb_plugin::impl::isTrackedAccount(const account_name_type& name) const
