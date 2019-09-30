@@ -2,10 +2,10 @@
 
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/transaction_object.hpp>
-#include <steem/chain/statefile/statefile.hpp>
 
 #include <steem/plugins/chain/abstract_block_producer.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/statefile/statefile.hpp>
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
@@ -99,7 +99,7 @@ class chain_plugin_impl
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
       std::string                      from_state = "";
       std::string                      to_state = "";
-      steem::chain::statefile::state_format_info     state_format;
+      statefile::state_format_info     state_format;
 
       uint32_t allow_future_time = 5;
 

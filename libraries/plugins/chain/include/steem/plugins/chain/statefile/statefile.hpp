@@ -15,11 +15,13 @@
 #define FORMAT_BINARY "bin"
 #define FORMAT_JSON   "json"
 
-namespace steem { namespace chain {
+namespace steem {
 
-class database;
+namespace chain{ class database; } // fwd declare database
 
-namespace statefile {
+namespace plugins { namespace chain { namespace statefile {
+
+using steem::chain::database;
 
 // Version        : Must precisely match what is output by embedded code.
 // Header         : JSON object that lists sections
@@ -91,9 +93,9 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
 
 void fill_plugin_options( fc::map< std::string, std::string >& plugin_options );
 
-} } }
+} } } } // namespace steem::plugins::chain::statefile
 
-FC_REFLECT( steem::chain::statefile::steem_version_info,
+FC_REFLECT( steem::plugins::chain::statefile::steem_version_info,
    (db_format_version)
    (network_type)
    (object_schemas)
@@ -102,13 +104,13 @@ FC_REFLECT( steem::chain::statefile::steem_version_info,
    (head_block_num)
    )
 
-FC_REFLECT( steem::chain::statefile::state_header,
+FC_REFLECT( steem::plugins::chain::statefile::state_header,
    (version)
    (plugin_options)
    (sections)
    )
 
-FC_REFLECT( steem::chain::statefile::object_section,
+FC_REFLECT( steem::plugins::chain::statefile::object_section,
    (object_type)
    (format)
    (object_count)
@@ -116,16 +118,16 @@ FC_REFLECT( steem::chain::statefile::object_section,
    (schema)
    )
 
-FC_REFLECT_TYPENAME( steem::chain::statefile::section_header )
+FC_REFLECT_TYPENAME( steem::plugins::chain::statefile::section_header )
 
-FC_REFLECT( steem::chain::statefile::section_footer,
+FC_REFLECT( steem::plugins::chain::statefile::section_footer,
    (hash)
    (begin_offset)
    (end_offset)
    )
 
-FC_REFLECT_DERIVED( steem::chain::statefile::state_footer,
-   (steem::chain::statefile::section_footer),
+FC_REFLECT_DERIVED( steem::plugins::chain::statefile::state_footer,
+   (steem::plugins::chain::statefile::section_footer),
    (section_footers)
    (footer_begin)
    )

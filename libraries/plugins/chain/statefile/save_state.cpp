@@ -3,7 +3,7 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/statefile/statefile.hpp>
+#include <steem/plugins/chain/statefile/statefile.hpp>
 
 #include <boost/thread/future.hpp>
 #include <boost/thread/sync_bounded_queue.hpp>
@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
-namespace steem { namespace chain { namespace statefile {
+namespace steem { namespace plugins { namespace chain { namespace statefile {
+
+using steem::chain::index_info;
 
 // Version        : Must precisely match what is output by embedded code.
 // Header         : JSON object that lists sections
@@ -169,7 +171,7 @@ void object_serializer::convert_thread_main()
       }
 
       // TODO exception handling
-      std::shared_ptr< abstract_object > obj = work->info->get_object_from_db( *(work->db), work->id );
+      std::shared_ptr< steem::chain::abstract_object > obj = work->info->get_object_from_db( *(work->db), work->id );
       std::shared_ptr< std::string > result;
       if( _format.is_binary )
       {
@@ -267,7 +269,7 @@ class object_section_producer : public section_producer
 void object_section_producer::get_section_header( section_header& header )
 {
    object_section oheader;
-   std::shared_ptr< abstract_schema > sch = info->get_schema();
+   std::shared_ptr< schema::abstract_schema > sch = info->get_schema();
    sch->get_name( oheader.object_type );
    sch->get_str_schema( oheader.schema );
    if( ser.get_format().is_binary )
@@ -422,4 +424,4 @@ write_state_result write_state( const database& db, const std::string& state_fil
    return result;
 }
 
-} } }
+} } } } // steem::plugins::chain::statefile

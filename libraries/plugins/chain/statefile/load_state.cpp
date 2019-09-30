@@ -1,12 +1,14 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
-#include <steem/chain/statefile/statefile.hpp>
+#include <steem/plugins/chain/statefile/statefile.hpp>
 
 #include <iostream>
 #include <sstream>
 
-namespace steem { namespace chain { namespace statefile {
+namespace steem { namespace plugins { namespace chain { namespace statefile {
+
+using steem::chain::index_info;
 
 void init_genesis_from_state( database& db, const std::string& state_filename, const boost::filesystem::path& p, const boost::any& cfg )
 {
@@ -170,4 +172,4 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
    } FC_LOG_AND_RETHROW()
 }
 
-} } } // steem::chain::statefile
+} } } } // steem::plugins::chain::statefile
