@@ -61,55 +61,25 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    return {};
 }
 
-fc::optional< time_point_sec > next_emission_time( const database& db, const asset_symbol_type& symbol, time_point_sec time )
+fc::optional< time_point_sec > next_emission_time( const database& db, const asset_symbol_type& symbol, time_point_sec last_emission )
 {
-   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_time >();
-   const auto range = idx.equal_range( symbol );
+   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_end_time >();
+   auto emission = idx.lower_bound( boost::make_tuple( symbol, last_emission ) );
 
-   for ( auto itr = range.first; itr != range.second && time <= itr->schedule_end_time(); ++itr )
+   if( emission != idx.end() && emission->symbol == symbol )
    {
-      if ( time > itr->schedule_end_time() )
-         continue;
+      fc::time_point_sec next_schedule = last_emission + fc::seconds( emission->interval_seconds );
+      if( next_schedule < emission->schedule_end_time() ) return next_schedule;
 
-      for ( time_point_sec emission_time = itr->schedule_time; emission_time <= itr->schedule_end_time(); emission_time += fc::seconds( itr->interval_seconds ) )
+      ++emission;
+      if( emission != idx.end() && emission->symbol == symbol )
       {
-         if ( emission_time > time )
-         {
-            return emission_time;
-         }
+         next_schedule = emission->schedule_time;
+         return next_schedule;
       }
    }
 
    return {};
-}
-
-std::vector< emission_data > emissions_in_range(
-   const database& db,
-   const asset_symbol_type& symbol,
-   const time_point_sec& start_time,
-   const time_point_sec& end_time )
-{
-   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_time >();
-   const auto range = idx.equal_range( symbol );
-
-   std::vector< emission_data > emissions;
-
-   for ( auto itr = range.first; itr != range.second && end_time <= itr->schedule_end_time(); ++itr )
-   {
-      if ( start_time > itr->schedule_end_time() )
-         continue;
-
-      for ( time_point_sec emission_time = itr->schedule_time; emission_time <= itr->schedule_end_time(); emission_time += fc::seconds( itr->interval_seconds ) )
-      {
-         if ( emission_time >= start_time && emission_time <= end_time )
-         {
-            emission_data emission = std::make_pair( emission_time, &*itr );
-            emissions.push_back( emission );
-         }
-      }
-   }
-
-   return emissions;
 }
 
 namespace ico {

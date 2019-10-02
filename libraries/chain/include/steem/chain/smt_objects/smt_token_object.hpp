@@ -95,6 +95,8 @@ public:
    uint128_t            recent_claims;
    time_point_sec       last_reward_update;
 
+   time_point_sec       last_token_emission;
+
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
@@ -266,6 +268,7 @@ typedef multi_index_container <
 > smt_ico_index;
 
 struct by_symbol_time;
+struct by_symbol_end_time;
 
 typedef multi_index_container <
    smt_token_emissions_object,
@@ -276,6 +279,12 @@ typedef multi_index_container <
          composite_key< smt_token_emissions_object,
             member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
             member< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_time >
+         >
+      >,
+      ordered_unique< tag< by_symbol_end_time >,
+         composite_key< smt_token_emissions_object,
+            member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
+            const_mem_fun< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_end_time >
          >
       >
    >,
@@ -314,6 +323,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (reward_balance)
    (recent_claims)
    (last_reward_update)
+   (last_token_emission)
    (allow_downvotes)
    (market_maker)
    (allow_voting)

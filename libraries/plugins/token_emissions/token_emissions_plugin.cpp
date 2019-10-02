@@ -4,6 +4,7 @@
 #include <steem/plugins/token_emissions/token_emissions_objects.hpp>
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
+#include <steem/chain/smt_objects.hpp>
 #include <steem/chain/util/smt_token.hpp>
 #include <steem/protocol/config.hpp>
 
@@ -43,10 +44,11 @@ void token_emissions_impl::on_post_apply_required_action( const required_action_
 
    if ( next_emission )
    {
-      _db.create< token_emissions_object >( [ token_launch, next_emission ]( token_emissions_object& o )
+      _db.create< token_emission_schedule_object >( [ token_launch, next_emission ]( token_emission_schedule_object& o )
       {
-         o.symbol        = token_launch.symbol;
-         o.next_emission = *next_emission;
+         o.symbol = token_launch.symbol;
+         o.next_consensus_emission = *next_emission;
+         o.next_scheduled_emission = *next_emission;
       } );
    }
 }
@@ -61,16 +63,15 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
 
-   auto now  = _db.head_block_time();
-   auto next = util::smt::next_emission_time( _db, emission_action.symbol, now );
+   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_token_emission );
 
-   const auto& emission_obj = _db.get< token_emissions_object, by_symbol >( emission_action.symbol );
+   const auto& emission_obj = _db.get< token_emission_schedule_object, by_symbol >( emission_action.symbol );
    if ( next )
    {
-      _db.modify( emission_obj, [ now, next ]( token_emissions_object& o )
+      _db.modify( emission_obj, [ next ]( token_emission_schedule_object& o )
       {
-         o.last_emission = now;
-         o.next_emission = *next;
+         o.next_consensus_emission = *next;
+         o.next_scheduled_emission = *next;
       } );
    }
    else
@@ -84,22 +85,21 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
    // We're creating token emissions for the upcoming block.
    time_point_sec next_emission_time = note.block.timestamp + STEEM_BLOCK_INTERVAL;
 
-   const auto& idx = _db.get_index< token_emissions_index, by_next_emission_symbol >();
+   const auto& next_emission_schedule_idx = _db.get_index< token_emission_schedule_index, by_next_emission_symbol >();
+   const auto& token_emissions_idx = _db.get_index< smt_token_emissions_index, by_symbol_end_time >();
 
-   for ( auto itr = idx.begin(); itr != idx.end() && itr->next_emission <= next_emission_time; ++itr )
+   for ( auto itr = next_emission_schedule_idx.begin(); itr != next_emission_schedule_idx.end() && itr->next_scheduled_emission <= next_emission_time; ++itr )
    {
-      // By retrieving emissions between the last and the upcoming, we can "catch up" if necessary
-      auto emissions = util::smt::emissions_in_range( _db, itr->symbol, itr->last_emission, next_emission_time );
+      auto emission = token_emissions_idx.lower_bound( boost::make_tuple( itr->symbol, itr->next_consensus_emission ) );
 
-      for ( auto& emission : emissions )
+      if( emission != token_emissions_idx.end() && emission->symbol == itr->symbol )
       {
-         time_point_sec emission_time                       = emission.first;
-         const smt_token_emissions_object* emissions_object = emission.second;
-
-         FC_UNUSED( emission_time );
-         FC_UNUSED( emissions_object );
-
          // Generate smt_token_emission here
+
+         _db.modify( *itr, [emission]( token_emission_schedule_object& o )
+         {
+            o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
+         });
       }
    }
 }
@@ -118,7 +118,7 @@ void token_emissions_plugin::plugin_initialize( const boost::program_options::va
       ilog( "token_emissions: plugin_initialize() begin" );
 
       my = std::make_unique< detail::token_emissions_impl >();
-      STEEM_ADD_PLUGIN_INDEX(my->_db, token_emissions_index);
+      STEEM_ADD_PLUGIN_INDEX(my->_db, token_emission_schedule_index);
 
       my->post_apply_optional_action_connection = my->_db.add_post_apply_optional_action_handler(
          [&]( const optional_action_notification& note )
