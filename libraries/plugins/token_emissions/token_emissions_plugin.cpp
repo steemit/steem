@@ -28,6 +28,9 @@ public:
    boost::signals2::connection   post_apply_required_action_connection;
    boost::signals2::connection   post_apply_optional_action_connection;
    boost::signals2::connection   post_apply_block_connection;
+
+private:
+   flat_map< unit_target_type, share_type > generate_emissions( const smt_token_emissions_object& obj, time_point_sec t );
 };
 
 void token_emissions_impl::on_post_apply_required_action( const required_action_notification& note )
@@ -94,14 +97,52 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
 
       if( emission != token_emissions_idx.end() && emission->symbol == itr->symbol )
       {
-         // Generate smt_token_emission here
+         const auto& token = _db.get< smt_token_object, chain::by_symbol >( itr->symbol );
 
-         _db.modify( *itr, [emission]( token_emission_schedule_object& o )
+         smt_token_emission_action action;
+         action.control_account = token.control_account;
+         action.symbol          = token.liquid_symbol;
+         action.emission_time   = next_emission_time;
+         action.emissions       = generate_emissions( *emission, next_emission_time );
+
+         _db.push_optional_action( action );
+
+         _db.modify( *itr, [ emission ]( token_emission_schedule_object& o )
          {
             o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
          });
       }
    }
+}
+
+flat_map< unit_target_type, share_type > token_emissions_impl::generate_emissions( const smt_token_emissions_object& obj, time_point_sec emission_time )
+{
+   flat_map< unit_target_type, share_type > emissions;
+
+   share_type abs_amount;
+   uint32_t rel_amount_numerator;
+
+   if ( emission_time <= obj.lep_time )
+   {
+      abs_amount = obj.lep_abs_amount;
+      rel_amount_numerator = obj.lep_rel_amount_numerator;
+   }
+   else if ( emission_time >= obj.rep_time )
+   {
+      abs_amount = obj.rep_abs_amount;
+      rel_amount_numerator = obj.rep_rel_amount_numerator;
+   }
+   else
+   {
+
+   }
+
+   for ( auto& e : obj.emissions_unit.token_unit )
+   {
+      emissions[ e.first ] = e.second;
+   }
+
+   return emissions;
 }
 
 } // detail
