@@ -65,17 +65,6 @@ bool is_valid_smt_ico_token_destination( const unit_target_type& unit_target )
    return false;
 }
 
-bool is_valid_smt_emissions_unit_destination( const unit_target_type& unit_target )
-{
-   if ( smt::unit_target::is_market_maker( unit_target ) )
-      return true;
-   if ( smt::unit_target::is_rewards( unit_target ) )
-      return true;
-   if ( smt::unit_target::is_vesting( unit_target ) )
-      return true;
-   return false;
-}
-
 uint32_t smt_generation_unit::steem_unit_sum()const
 {
    uint32_t result = 0;
@@ -105,6 +94,17 @@ void smt_generation_unit::validate()const
    {
       FC_ASSERT( is_valid_unit_target( e.first ) );
       FC_ASSERT( e.second > 0 );
+   }
+}
+
+void smt_emissions_unit::validate() const
+{
+   FC_ASSERT( token_unit.empty() == false, "Emissions token unit cannot be empty" );
+   for ( const auto& e : token_unit )
+   {
+      FC_ASSERT( smt::unit_target::is_valid_emissions_destination( e.first ),
+         "Emissions token unit destination ${n} is invalid", ("n", e.first) );
+      FC_ASSERT( e.second > 0, "Emissions token unit must be greater than 0" );
    }
 }
 
@@ -155,14 +155,7 @@ void smt_setup_emissions_operation::validate()const
    smt_admin_operation_validate( *this );
 
    FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
-   FC_ASSERT( emissions_unit.token_unit.empty() == false, "Emissions token unit cannot be empty" );
-
-   for ( const auto& e : emissions_unit.token_unit )
-   {
-      FC_ASSERT( is_valid_smt_emissions_unit_destination( e.first ),
-         "Emissions token unit destination ${n} is invalid", ("n", e.first) );
-      FC_ASSERT( e.second > 0, "Emissions token unit must be greater than 0" );
-   }
+   emissions_unit.validate();
 
    FC_ASSERT( interval_seconds >= SMT_EMISSION_MIN_INTERVAL_SECONDS,
       "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );

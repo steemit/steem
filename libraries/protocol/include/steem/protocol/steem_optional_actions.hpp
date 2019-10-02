@@ -2,6 +2,7 @@
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/base.hpp>
 #include <steem/protocol/asset.hpp>
+#include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace protocol {
 
@@ -17,9 +18,9 @@ namespace steem { namespace protocol {
 
    struct smt_token_emission_action : public base_operation
    {
-      account_name_type control_account;
-      asset_symbol_type symbol;
-      asset             emission;
+      account_name_type    control_account;
+      asset_symbol_type    symbol;
+      smt_emissions_unit   emissions_unit;
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(control_account); }
@@ -31,4 +32,4 @@ namespace steem { namespace protocol {
 FC_REFLECT( steem::protocol::example_optional_action, (account) )
 #endif
 
-FC_REFLECT( steem::protocol::smt_token_emission_action, (control_account)(symbol)(emission) )
+FC_REFLECT( steem::protocol::smt_token_emission_action, (control_account)(symbol)(emissions_unit) )

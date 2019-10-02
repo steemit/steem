@@ -25,6 +25,8 @@ bool is_vesting_type( const unit_target_type& unit_target );
 
 account_name_type get_unit_target_account( const unit_target_type& unit_target );
 
+bool is_valid_emissions_destination( const unit_target_type& unit_target );
+
 } // steem::protocol::smt::unit_target
 
 } } } // steem::protocol::smt

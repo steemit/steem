@@ -12,13 +12,7 @@ void example_optional_evaluator::do_apply( const example_optional_action& a ) {}
 void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a )
 {
    const auto& token = _db.get< smt_token_object, by_symbol >( a.symbol );
-
-   _db.modify( token, [&]( smt_token_object& o )
-   {
-      o.reward_balance += a.emission;
-   } );
-
-   _db.adjust_supply( a.emission );
+   FC_UNUSED( token );
 }
 
 } } //steem::chain
