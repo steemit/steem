@@ -108,6 +108,14 @@ void smt_emissions_unit::validate() const
    }
 }
 
+uint32_t smt_emissions_unit::token_unit_sum() const
+{
+   uint32_t result = 0;
+   for( const std::pair< unit_target_type, uint16_t >& e : token_unit )
+      result += e.second;
+   return result;
+}
+
 void smt_capped_generation_policy::validate()const
 {
    pre_soft_cap_unit.validate();

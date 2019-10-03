@@ -94,6 +94,7 @@ struct smt_emissions_unit
    flat_map< unit_target_type, uint16_t > token_unit;
 
    void validate()const;
+   uint32_t token_unit_sum()const;
 };
 
 struct smt_setup_emissions_operation : public base_operation
