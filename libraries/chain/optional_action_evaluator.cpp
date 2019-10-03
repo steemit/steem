@@ -1,3 +1,4 @@
+#include <steem/chain/steem_fwd.hpp>
 #include <steem/chain/optional_action_evaluator.hpp>
 #include <steem/chain/smt_objects.hpp>
 
