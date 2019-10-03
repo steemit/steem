@@ -134,9 +134,15 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
          rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
       }
 
-      share_type rel_amount       = ( fc::uint128( token.max_supply ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
-      share_type new_token_supply = std::max( abs_amount, rel_amount );
-      uint32_t   new_token_units  = new_token_supply.value / emission.emissions_unit.token_unit_sum();
+      share_type rel_amount = ( fc::uint128( token.max_supply ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
+
+      share_type new_token_supply;
+      if ( emission.floor_emissions )
+         new_token_supply = std::min( abs_amount, rel_amount );
+      else
+         new_token_supply = std::max( abs_amount, rel_amount );
+
+      uint32_t new_token_units = new_token_supply.value / emission.emissions_unit.token_unit_sum();
 
       for ( auto& e : emission.emissions_unit.token_unit )
          emissions[ e.first ] = e.second * new_token_units;

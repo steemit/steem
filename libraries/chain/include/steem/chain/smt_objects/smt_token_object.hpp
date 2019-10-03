@@ -170,7 +170,7 @@ public:
    uint32_t                              rep_rel_amount_numerator = 0;
    uint8_t                               rel_amount_denom_bits = 0;
 
-   bool                                  floor_emissions = true;
+   bool                                  floor_emissions = false;
 
    time_point_sec schedule_end_time() const
    {

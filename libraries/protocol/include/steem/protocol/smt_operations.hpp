@@ -118,6 +118,7 @@ struct smt_setup_emissions_operation : public base_operation
 
    uint8_t             rel_amount_denom_bits = 0;
    bool                remove = false;
+   bool                floor_emissions = false;
 
    extensions_type     extensions;
 
@@ -268,6 +269,7 @@ FC_REFLECT(
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
    (remove)
+   (floor_emissions)
    (extensions)
    )
 
