@@ -29,9 +29,6 @@ public:
    boost::signals2::connection   post_apply_required_action_connection;
    boost::signals2::connection   post_apply_optional_action_connection;
    boost::signals2::connection   post_apply_block_connection;
-
-private:
-   flat_map< unit_target_type, share_type > generate_emissions( const smt_token_object& token, const smt_token_emissions_object& emission, time_point_sec t );
 };
 
 void token_emissions_impl::on_post_apply_required_action( const required_action_notification& note )
@@ -104,7 +101,7 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
          action.control_account = token.control_account;
          action.symbol          = token.liquid_symbol;
          action.emission_time   = next_emission_time;
-         action.emissions       = generate_emissions( token, *emission, next_emission_time );
+         action.emissions       = util::smt::generate_emissions( token, *emission, next_emission_time );
 
          _db.push_optional_action( action );
 
@@ -114,52 +111,6 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
          });
       }
    }
-}
-
-flat_map< unit_target_type, share_type > token_emissions_impl::generate_emissions( const smt_token_object& token, const smt_token_emissions_object& emission, time_point_sec emission_time )
-{
-   flat_map< unit_target_type, share_type > emissions;
-
-   try
-   {
-      share_type abs_amount;
-      uint64_t rel_amount_numerator;
-
-      if ( emission_time <= emission.lep_time )
-      {
-         abs_amount = emission.lep_abs_amount.amount;
-         rel_amount_numerator = emission.lep_rel_amount_numerator;
-      }
-      else if ( emission_time >= emission.rep_time )
-      {
-         abs_amount = emission.rep_abs_amount.amount;
-         rel_amount_numerator = emission.rep_rel_amount_numerator;
-      }
-      else
-      {
-         fc::uint128 lep_abs_val{ emission.lep_abs_amount.amount.value },
-                     rep_abs_val{ emission.rep_abs_amount.amount.value },
-                     lep_rel_num{ emission.lep_rel_amount_numerator    },
-                     rep_rel_num{ emission.rep_rel_amount_numerator    };
-
-         uint32_t lep_dist    = emission_time.sec_since_epoch() - emission.lep_time.sec_since_epoch();
-         uint32_t rep_dist    = emission.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
-         uint32_t total_dist  = emission.rep_time.sec_since_epoch() - emission.lep_time.sec_since_epoch();
-         abs_amount           = ( ( lep_abs_val * lep_dist + rep_abs_val * rep_dist ) / total_dist ).to_int64();
-         rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
-      }
-
-      share_type rel_amount       = ( fc::uint128( token.max_supply ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
-      share_type new_token_supply = std::max( abs_amount, rel_amount );
-      uint32_t   new_token_units  = new_token_supply.value / emission.emissions_unit.token_unit_sum();
-
-      for ( auto& e : emission.emissions_unit.token_unit )
-         emissions[ e.first ] = e.second * new_token_units;
-
-   }
-   FC_CAPTURE_AND_RETHROW( (token)(emission)(emission_time) );
-
-   return emissions;
 }
 
 } // detail

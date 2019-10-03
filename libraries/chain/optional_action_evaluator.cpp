@@ -24,7 +24,18 @@ void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a 
    FC_ASSERT( *next_emission >= _db.head_block_time(), "Emission for ${t} is occuring before next emission time. Now: ${n} Next Emission Time: ${e}",
       ("t", a.symbol)("n", _db.head_block_time())("e", *next_emission) );
 
-   // TODO: Generate emission and check equality.
+   auto emission_obj = util::smt::get_emission_object( _db, token.liquid_symbol, *next_emission );
+   FC_ASSERT( emission_obj != nullptr, "Unable to find applicable emission object for scheduled emission. Emission time: ${t}", ("t", *next_emission) );
+
+   auto emissions = util::smt::generate_emissions( token, *emission_obj, *next_emission );
+   FC_ASSERT( a.emissions.size() == emissions.size(),
+      "Emission generation size mismatch. Expected: ${e}, Actual: ${a}", ("e", emissions.size())("a", a.emissions.size()) );
+
+   for ( auto& e : a.emissions )
+      FC_ASSERT( a.emissions.at( e.first ) == emissions.at( e.first ),
+         "Emission generation mismatch on unit target '${name}'. Expected: ${a}, Actual: ${b}",
+            ("name", e.first)("a", emissions.at( e.first ))("b", a.emissions.at( e.first )) );
+
    share_type market_maker_tokens = 0;
    share_type reward_tokens = 0;
    share_type vesting_tokens = 0;
