@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/optional_action_evaluator.hpp>
 #include <steem/chain/smt_objects.hpp>
 
@@ -54,6 +56,16 @@ void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a 
       else if( is_vesting( e.first ) )
       {
          vesting_tokens += e.second;
+      }
+      else if( is_vesting_type( e.first ) )
+      {
+         _db.adjust_balance( get_unit_target_account( e.first ), asset( e.second, a.symbol.get_vesting_symbol() ) );
+      }
+      else
+      {
+         // This assertion should never fail
+         FC_ASSERT( is_account_name_type( e.first ), "Invlaid SMT Emission Destination! ${d}", ("d", e.first) );
+         _db.adjust_balance( get_unit_target_account( e.first ), asset( e.second, a.symbol.get_liquid_symbol() ) );
       }
 
       total_new_supply += e.second;
