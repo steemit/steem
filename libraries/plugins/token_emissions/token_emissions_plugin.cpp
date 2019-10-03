@@ -93,7 +93,7 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
    {
       auto emission = token_emissions_idx.lower_bound( boost::make_tuple( itr->symbol, itr->next_consensus_emission ) );
 
-      if( emission != token_emissions_idx.end() && emission->symbol == itr->symbol )
+      if ( emission != token_emissions_idx.end() && emission->symbol == itr->symbol )
       {
          const auto& token = _db.get< smt_token_object, chain::by_symbol >( itr->symbol );
 
@@ -105,7 +105,7 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
 
          _db.push_optional_action( action );
 
-         _db.modify( *itr, [ emission ]( token_emission_schedule_object& o )
+         _db.modify( *itr, [&]( token_emission_schedule_object& o )
          {
             o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
          });
