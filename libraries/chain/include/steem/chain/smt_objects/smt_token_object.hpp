@@ -170,6 +170,8 @@ public:
    uint32_t                              rep_rel_amount_numerator = 0;
    uint8_t                               rel_amount_denom_bits = 0;
 
+   bool                                  floor_emissions = true;
+
    time_point_sec schedule_end_time() const
    {
       time_point_sec end_time = time_point_sec::maximum();
@@ -366,6 +368,7 @@ FC_REFLECT( steem::chain::smt_token_emissions_object,
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
+   (floor_emissions)
 )
 
 FC_REFLECT( steem::chain::smt_contribution_object,
