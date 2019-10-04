@@ -1130,7 +1130,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
 
-      generate_blocks( emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 7 ) );
+      generate_blocks( emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 7 ), false );
 
       validate_database();
 
