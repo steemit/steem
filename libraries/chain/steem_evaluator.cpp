@@ -15,7 +15,6 @@
 #include <fc/macros.hpp>
 
 #ifndef IS_LOW_MEM
-FC_TODO( "After we vendor fc, also vendor diff_match_patch and fix these warnings" )
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic push
@@ -84,6 +83,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    if ( _db.has_hardfork( STEEM_HARDFORK_0_14__410 ) )
    {
       FC_ASSERT( o.props.account_creation_fee.symbol.is_canon() );
+      if( o.props.account_creation_fee.amount > STEEM_MAX_ACCOUNT_CREATION_FEE ) wlog( "NOTIFYALERT! account creation fee exceeds max in replay." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2651 ) || _db.is_producing() )
       {
          FC_TODO( "Move to validate() after HF20" );
@@ -97,7 +97,8 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
 
    FC_TODO( "Check and move this to validate after HF 20" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20__2642 ))
+   if( o.props.maximum_block_size > STEEM_SOFT_MAX_BLOCK_SIZE ) wlog( "NOTIFYALERT! max block size exceeds soft limit in replay" );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__2642 ))
    {
       FC_ASSERT( o.props.maximum_block_size <= STEEM_SOFT_MAX_BLOCK_SIZE, "Max block size cannot be more than 2MiB" );
    }
@@ -163,6 +164,7 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    if( flags.account_creation_changed )
    {
       fc::raw::unpack_from_vector( itr->second, props.account_creation_fee );
+      if( props.account_creation_fee.amount > STEEM_MAX_ACCOUNT_CREATION_FEE ) wlog( "NOTIFYALERT! account creation fee exceeds max in replay." );
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2651 ) || _db.is_producing() )
       {
          FC_TODO( "Move to validate() after HF20" );
@@ -297,6 +299,7 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    if( hardfork >= STEEM_HARDFORK_0_11 )
    {
       FC_TODO( "If after HF 20, there are no temp account creations, the HF check can be removed." )
+      if( recovery_account == STEEM_TEMP_ACCOUNT ) wlog( "NOTIFYALERT! Temp account creation during replay" );
       if( ( hardfork < STEEM_HARDFORK_0_20__1782 ) || ( recovery_account != STEEM_TEMP_ACCOUNT ) )
       {
          acc.recovery_account = recovery_account;
@@ -316,6 +319,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    const witness_schedule_object& wso = _db.get_witness_schedule_object();
 
+   if( o.fee > asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ) ) wlog( "NOTIFYALERT! Account creation fee exceeds max in replay" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2651 ) || _db.is_producing() )
    {
       FC_TODO( "Move to validate() after HF20" );
@@ -342,7 +346,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
    }
 
    FC_TODO( "Check and move to validate post HF20" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
    {
       validate_auth_size( o.owner );
       validate_auth_size( o.active );
@@ -397,6 +401,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 {
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_20__1760 ), "Account creation with delegation is deprecated as of Hardfork 20" );
 
+   if( o.fee > asset( STEEM_MAX_ACCOUNT_CREATION_FEE, STEEM_SYMBOL ) ) wlog( "NOTIFYALERT! Account creation fee exceeds max in replay" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__2651 ) || _db.is_producing() )
    {
       FC_TODO( "Move to validate() after HF20" );
@@ -431,7 +436,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ("p", o.fee) );
 
    FC_TODO( "Check and move to validate post HF20" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
    {
       validate_auth_size( o.owner );
       validate_auth_size( o.active );
@@ -859,31 +864,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( _db.calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen." );
       }
 
-      FC_TODO( "Cleanup this logic after HF 20. Old ops don't need to check pre-hf20 times." )
       if( _db.has_hardfork( STEEM_HARDFORK_0_20__2019 ) )
       {
          if( o.parent_author == STEEM_ROOT_POST_PARENT )
              FC_ASSERT( ( now - auth.last_root_post ) > STEEM_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", auth.last_root_post) );
          else
              FC_ASSERT( (now - auth.last_post) >= STEEM_MIN_REPLY_INTERVAL_HF20, "You may only comment once every 3 seconds.", ("now",now)("auth.last_post",auth.last_post) );
-      }
-      else if( _db.has_hardfork( STEEM_HARDFORK_0_12__176 ) )
-      {
-         if( o.parent_author == STEEM_ROOT_POST_PARENT )
-             FC_ASSERT( ( now - auth.last_root_post ) > STEEM_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", auth.last_root_post) );
-         else
-             FC_ASSERT( (now - auth.last_post) > STEEM_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds.", ("now",now)("auth.last_post",auth.last_post) );
-      }
-      else if( _db.has_hardfork( STEEM_HARDFORK_0_6__113 ) )
-      {
-         if( o.parent_author == STEEM_ROOT_POST_PARENT )
-             FC_ASSERT( (now - auth.last_post) > STEEM_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("auth.last_post",auth.last_post) );
-         else
-             FC_ASSERT( (now - auth.last_post) > STEEM_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds.", ("now",now)("auth.last_post",auth.last_post) );
-      }
-      else
-      {
-         FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute.", ("now",now)("auth.last_post",auth.last_post) );
       }
 
       uint16_t reward_weight = STEEM_100_PERCENT;
@@ -1004,13 +990,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          com.last_update   = _db.head_block_time();
          com.active        = com.last_update;
-         std::function< bool( const shared_string& a, const string& b ) > equal;
-
-         FC_TODO( "Check if this can be simplified after HF 21" );
-         if ( _db.has_hardfork( STEEM_HARDFORK_0_21__2203 ) )
-            equal = []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() && std::strcmp( a.c_str(), b.c_str() ) == 0; };
-         else
-            equal = []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() || std::strcmp( a.c_str(), b.c_str() ) == 0; };
+         std::function< bool( const shared_string& a, const string& b ) > equal =
+            []( const shared_string& a, const string& b ) -> bool { return a.size() == b.size() && std::strcmp( a.c_str(), b.c_str() ) == 0; };
 
          if( !parent )
          {
@@ -1238,7 +1219,8 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
    FC_TODO( "Remove is producing after HF 21" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   if( o.to == STEEM_TREASURY_ACCOUNT && o.amount.symbol != SBD_SYMBOL ) wlog( "NOTIFYALERT! Non-SBD transfer to Treasury in replay" );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
          "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
@@ -1254,7 +1236,8 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
    const auto& to_account = o.to.size() ? _db.get_account(o.to) : from_account;
 
    FC_TODO( "Remove is producing after HF 21" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   if( o.to == STEEM_TREASURY_ACCOUNT && o.amount.symbol != SBD_SYMBOL ) wlog( "NOTIFYALERT! Non-SBD transfer to Treasury in replay" );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
          "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
@@ -1270,18 +1253,12 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
    if( o.vesting_shares.amount < 0 )
    {
-      // TODO: Update this to a HF 20 check
-#ifndef IS_TEST_NET
-      if( _db.head_block_num() > 23847548 )
+      if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
       {
-#endif
          FC_ASSERT( false, "Cannot withdraw negative VESTS. account: ${account}, vests:${vests}",
             ("account", o.account)("vests", o.vesting_shares) );
-#ifndef IS_TEST_NET
       }
-#endif
 
-      // else, no-op
       return;
    }
 
@@ -1336,19 +1313,6 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
       FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
-      FC_TODO( "Remove this entire block after HF 20" )
-      if( !_db.has_hardfork( STEEM_HARDFORK_0_20__1860 ) && !account.mined && _db.has_hardfork( STEEM_HARDFORK_0_1 ) )
-      {
-         const auto& props = _db.get_dynamic_global_properties();
-         const witness_schedule_object& wso = _db.get_witness_schedule_object();
-
-         asset min_vests = wso.median_props.account_creation_fee * props.get_vesting_share_price();
-         min_vests.amount.value *= 10;
-
-         FC_ASSERT( account.vesting_shares > min_vests || ( _db.has_hardfork( STEEM_HARDFORK_0_16__562 ) && o.vesting_shares.amount == 0 ),
-                    "Account registered by another account requires 10x account creation fee worth of Steem Power before it can be powered down." );
-      }
-
       if( o.vesting_shares.amount == 0 )
       {
          if( _db.has_hardfork( STEEM_HARDFORK_0_5__57 ) )
@@ -1399,7 +1363,8 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    auto itr = wd_idx.find( boost::make_tuple( from_account.name, to_account.name ) );
 
    FC_TODO( "Remove is producing after HF 21" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   if( o.to_account == STEEM_TREASURY_ACCOUNT ) wlog( "NOTIFYALERT! Vesting withdrawal from treasury in replay" );
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( o.to_account != STEEM_TREASURY_ACCOUNT,
          "Cannot withdraw vesting to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
@@ -2029,8 +1994,7 @@ void hf20_vote_evaluator( const vote_operation& o, database& _db )
    int16_t abs_weight = abs( o.weight );
    uint128_t used_mana = 0;
 
-   FC_TODO( "This hardfork check should not be needed. Remove after HF21 if that is the case." );
-   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3336 ) && dgpo.downvote_pool_percent && o.weight < 0 )
+   if( dgpo.downvote_pool_percent && o.weight < 0 )
    {
       if( _db.has_hardfork( STEEM_HARDFORK_0_22__3485 ) )
       {
@@ -3469,8 +3433,7 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
    const auto& from = _db.get_account( op.from );
    const auto& to   = _db.get_account(op.to);
 
-   FC_TODO( "Remove is producing after HF 21" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( op.to != STEEM_TREASURY_ACCOUNT,
          "Cannot transfer savings to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
@@ -3487,8 +3450,7 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
 
    FC_ASSERT( from.savings_withdraw_requests < STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT, "Account has reached limit for pending withdraw requests." );
 
-   FC_TODO( "Remove is producing after HF 21" );
-   if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( op.amount.symbol == SBD_SYMBOL || op.to != STEEM_TREASURY_ACCOUNT,
          "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
