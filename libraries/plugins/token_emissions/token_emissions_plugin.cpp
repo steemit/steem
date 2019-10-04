@@ -64,7 +64,7 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
 
-   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_token_emission );
+   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_virtual_emission_time );
 
    const auto& emission_obj = _db.get< token_emission_schedule_object, by_symbol >( emission_action.symbol );
    if ( next )
@@ -100,8 +100,8 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
          smt_token_emission_action action;
          action.control_account = token.control_account;
          action.symbol          = token.liquid_symbol;
-         action.emission_time   = next_emission_time;
-         action.emissions       = util::smt::generate_emissions( token, *emission, next_emission_time );
+         action.emission_time   = itr->next_consensus_emission;
+         action.emissions       = util::smt::generate_emissions( token, *emission, itr->next_consensus_emission );
 
          _db.push_optional_action( action );
 
@@ -109,6 +109,8 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
          {
             o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
          });
+
+         ilog( "[token_emissions_impl::on_post_apply_block] \n\tblock: ${b}, time: ${t}, emission action: ${a}", ("b", note.block_num)("t", next_emission_time)("a", action) );
       }
    }
 }

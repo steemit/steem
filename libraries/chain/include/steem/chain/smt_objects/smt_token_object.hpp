@@ -95,7 +95,7 @@ public:
    uint128_t            recent_claims;
    time_point_sec       last_reward_update;
 
-   time_point_sec       last_token_emission;
+   time_point_sec       last_virtual_emission_time;
 
    smt_market_maker_state  market_maker;
 
@@ -325,7 +325,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (reward_balance)
    (recent_claims)
    (last_reward_update)
-   (last_token_emission)
+   (last_virtual_emission_time)
    (allow_downvotes)
    (market_maker)
    (allow_voting)

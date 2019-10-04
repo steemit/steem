@@ -68,14 +68,17 @@ fc::optional< time_point_sec > next_emission_time( const database& db, const ass
 
    if( emission != idx.end() && emission->symbol == symbol )
    {
+      if( last_emission < emission->schedule_time ) return emission->schedule_time;
+
+      last_emission -= ( last_emission - emission->schedule_time ).to_seconds() % emission->interval_seconds;
       fc::time_point_sec next_schedule = last_emission + fc::seconds( emission->interval_seconds );
-      if( next_schedule < emission->schedule_end_time() ) return next_schedule;
+      if( next_schedule <= emission->schedule_end_time() ) return next_schedule;
 
       ++emission;
       if( emission != idx.end() && emission->symbol == symbol )
       {
          next_schedule = emission->schedule_time;
-         return next_schedule;
+         return emission->schedule_time;
       }
    }
 
@@ -88,15 +91,8 @@ const smt_token_emissions_object* get_emission_object( const database& db, const
    auto emission = idx.lower_bound( boost::make_tuple( symbol, t ) );
 
    if ( emission != idx.end() && emission->symbol == symbol )
-   {
-      if( t < emission->schedule_end_time() ) return &*emission;
-
-      ++emission;
-      if( emission != idx.end() && emission->symbol == symbol )
-      {
+      if( t >= emission->schedule_time && t <= emission->schedule_end_time() )
          return &*emission;
-      }
-   }
 
    return nullptr;
 }
@@ -134,7 +130,7 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
          rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
       }
 
-      share_type rel_amount = ( fc::uint128( token.max_supply ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
+      share_type rel_amount = ( fc::uint128( token.current_supply.value ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
 
       share_type new_token_supply;
       if ( emission.floor_emissions )
