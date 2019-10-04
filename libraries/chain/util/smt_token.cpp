@@ -70,8 +70,11 @@ fc::optional< time_point_sec > next_emission_time( const database& db, const ass
    {
       if( last_emission < emission->schedule_time ) return emission->schedule_time;
 
+      idump( (last_emission) );
       last_emission -= ( last_emission - emission->schedule_time ).to_seconds() % emission->interval_seconds;
+      idump( (last_emission) );
       fc::time_point_sec next_schedule = last_emission + fc::seconds( emission->interval_seconds );
+      idump( (next_schedule) );
       if( next_schedule <= emission->schedule_end_time() ) return next_schedule;
 
       ++emission;

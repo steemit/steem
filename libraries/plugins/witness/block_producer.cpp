@@ -227,6 +227,7 @@ FC_TODO( "Remove ifdef when required actions are added" )
    const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
    chain::optional_automated_actions optional_actions;
+   vector< const chain::pending_optional_action_object* > attempted_actions;
 
    while( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when )
    {
@@ -234,6 +235,8 @@ FC_TODO( "Remove ifdef when required actions are added" )
 
       if( new_total_size > maximum_block_size )
          break;
+
+      attempted_actions.push_back( &(*pending_optional_itr) );
 
       try
       {
@@ -245,16 +248,13 @@ FC_TODO( "Remove ifdef when required actions are added" )
       }
       catch( fc::exception& ) {}
 
-#ifdef ENABLE_MIRA
-      auto old = pending_optional_itr++;
-      if( !( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when ) )
-      {
-         pending_optional_itr = pending_optional_action_idx.iterator_to( *old );
-         ++pending_optional_itr;
-      }
-#else
       ++pending_optional_itr;
-#endif
+   }
+
+   for( const auto* o : attempted_actions )
+   {
+      idump( (*o) );
+      _db.remove( *o );
    }
 
 FC_TODO( "Remove ifdef when optional actions are added" )
