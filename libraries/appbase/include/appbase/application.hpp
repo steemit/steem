@@ -92,6 +92,8 @@ namespace appbase {
 
          boost::asio::io_service& get_io_service() { return *io_serv; }
 
+         void for_each_plugin( std::function< void(const abstract_plugin&) > cb ) const;
+
       protected:
          template< typename Impl >
          friend class plugin;

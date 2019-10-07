@@ -63,4 +63,7 @@ void initialize_core_indexes( database& db )
 index_info::index_info() {}
 index_info::~index_info() {}
 
+abstract_object::abstract_object() {}
+abstract_object::~abstract_object() {}
+
 } }
