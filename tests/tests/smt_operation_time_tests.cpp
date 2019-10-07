@@ -981,7 +981,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 {
    try
    {
-      resize_shared_mem( 1024 * 1024 * 512 );
+//      resize_shared_mem( 1024 * 1024 * 512 );
       BOOST_TEST_MESSAGE( "Testing SMT token emissions" );
       ACTORS( (creator)(alice)(bob)(charlie)(dan)(elaine)(fred)(george)(henry) )
 
@@ -1041,6 +1041,58 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op.floor_emissions = false;
 
       tx.operations.push_back( emissions_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, creator_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      smt_setup_emissions_operation emissions_op2;
+      emissions_op2.control_account = "creator";
+      emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ]      = 1;
+      emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
+      emissions_op2.emissions_unit.token_unit[ "george" ]                     = 1;
+      emissions_op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op2.interval_count   = 24;
+      emissions_op2.symbol = symbol;
+      emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * emissions_op.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op2.lep_time       = emissions_op2.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
+      emissions_op2.rep_time       = emissions_op2.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
+      emissions_op2.lep_abs_amount = asset( 50000000, symbol );
+      emissions_op2.rep_abs_amount = asset( 100000000, symbol );
+      emissions_op2.lep_rel_amount_numerator = 1;
+      emissions_op2.rep_rel_amount_numerator = 2;
+      emissions_op2.rel_amount_denom_bits    = 10;
+      emissions_op2.floor_emissions = false;
+
+      tx.operations.push_back( emissions_op2 );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, creator_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      smt_setup_emissions_operation emissions_op3;
+      emissions_op3.control_account = "creator";
+      emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ]      = 1;
+      emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
+      emissions_op3.emissions_unit.token_unit[ "george" ]                     = 1;
+      emissions_op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op3.interval_count   = SMT_EMIT_INDEFINITELY;
+      emissions_op3.symbol = symbol;
+      emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * emissions_op2.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op3.lep_time       = emissions_op3.schedule_time;
+      emissions_op3.rep_time       = emissions_op3.schedule_time;
+      emissions_op3.lep_abs_amount = asset( 100000000, symbol );
+      emissions_op3.rep_abs_amount = asset( 100000000, symbol );
+      emissions_op3.lep_rel_amount_numerator = 0;
+      emissions_op3.rep_rel_amount_numerator = 0;
+      emissions_op3.rel_amount_denom_bits    = 0;
+      emissions_op3.floor_emissions = false;
+
+      tx.operations.push_back( emissions_op3 );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, creator_private_key );
       db->push_transaction( tx, 0 );
@@ -1131,8 +1183,13 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
 
-      share_type supply = 15000000000;
-      BOOST_REQUIRE( token.current_supply == supply );
+      BOOST_TEST_MESSAGE( " --- SMT token emissions" );
+
+      share_type supply = token.current_supply;
+      share_type rewards = token.reward_balance.amount;
+      share_type market_maker = token.market_maker.token_balance.amount;
+      share_type vesting = token.total_vesting_fund_smt;
+      share_type george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
       auto emission_time = emissions_op.schedule_time;
       generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
@@ -1140,45 +1197,246 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
 
-      for ( auto i = 0; i < 5; i++ )
+      for ( auto i = 0; i <= emissions_op.interval_count; i++ )
       {
-         share_type relative_emission;
-         share_type absolute_emission;
+         validate_database();
+
+         uint32_t rel_amount_numerator;
+         share_type abs_amount;
          if ( emission_time <= emissions_op.lep_time )
          {
-            relative_emission = supply / 128;
-            absolute_emission = 20000000;
+            abs_amount = emissions_op.lep_abs_amount.amount;
+            rel_amount_numerator = emissions_op.lep_rel_amount_numerator;
          }
          else if ( emission_time >= emissions_op.rep_time )
          {
-            relative_emission = supply * 2 / 128;
-            absolute_emission = 40000000;
+            abs_amount = emissions_op.rep_abs_amount.amount;
+            rel_amount_numerator = emissions_op.rep_rel_amount_numerator;
          }
          else
          {
+            fc::uint128 lep_abs_val{ emissions_op.lep_abs_amount.amount.value },
+                        rep_abs_val{ emissions_op.rep_abs_amount.amount.value },
+                        lep_rel_num{ emissions_op.lep_rel_amount_numerator    },
+                        rep_rel_num{ emissions_op.rep_rel_amount_numerator    };
+
             uint32_t lep_dist    = emission_time.sec_since_epoch() - emissions_op.lep_time.sec_since_epoch();
             uint32_t rep_dist    = emissions_op.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
             uint32_t total_dist  = emissions_op.rep_time.sec_since_epoch() - emissions_op.lep_time.sec_since_epoch();
-            absolute_emission    = ( ( fc::uint128( 20000000 ) * lep_dist + fc::uint128( 40000000 ) * rep_dist ) / total_dist ).to_int64();
-            relative_emission    = ( ( ( fc::uint128( supply.value ) / 128 ) * lep_dist + ( ( fc::uint128( supply.value ) * 2 ) / 128 ) * rep_dist ) / total_dist ).to_uint64();
+            abs_amount           = ( ( lep_abs_val * lep_dist + rep_abs_val * rep_dist ) / total_dist ).to_int64();
+            rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
          }
 
-         share_type emission = std::max( absolute_emission, relative_emission );
-         supply += emission;
-         idump( (token.current_supply)(supply) );
+         share_type rel_amount = ( fc::uint128( supply.value ) * rel_amount_numerator >> emissions_op.rel_amount_denom_bits ).to_int64();
+
+         share_type new_token_supply;
+         if ( emissions_op.floor_emissions )
+            new_token_supply = std::min( abs_amount, rel_amount );
+         else
+            new_token_supply = std::max( abs_amount, rel_amount );
+
+         share_type new_rewards = new_token_supply * emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op.emissions_unit.token_unit_sum();
+         share_type new_market_maker = new_token_supply * emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op.emissions_unit.token_unit_sum();
+         share_type new_vesting = new_token_supply * emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op.emissions_unit.token_unit_sum();
+         share_type new_george = new_token_supply * emissions_op.emissions_unit.token_unit[ "george" ] / emissions_op.emissions_unit.token_unit_sum();
+
+         BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
+
+         supply += new_token_supply;
          BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+         market_maker += new_market_maker;
+         BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+         vesting += new_vesting;
+         BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+         rewards += new_rewards;
+         BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+         george_share += new_george;
+         BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
 
          // Prevent any sort of drift
          supply = token.current_supply;
+         market_maker = token.market_maker.token_balance.amount;
+         vesting = token.total_vesting_fund_smt;
+         rewards = token.reward_balance.amount;
+         george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
          emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
          generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
          generate_blocks( 2 );
       }
 
-      validate_database();
+      for ( auto i = 0; i <= emissions_op2.interval_count; i++ )
+      {
+         validate_database();
 
-      idump( (token.current_supply) );
+         uint32_t rel_amount_numerator;
+         share_type abs_amount;
+         if ( emission_time <= emissions_op2.lep_time )
+         {
+            abs_amount = emissions_op2.lep_abs_amount.amount;
+            rel_amount_numerator = emissions_op2.lep_rel_amount_numerator;
+         }
+         else if ( emission_time >= emissions_op2.rep_time )
+         {
+            abs_amount = emissions_op2.rep_abs_amount.amount;
+            rel_amount_numerator = emissions_op2.rep_rel_amount_numerator;
+         }
+         else
+         {
+            fc::uint128 lep_abs_val{ emissions_op2.lep_abs_amount.amount.value },
+                        rep_abs_val{ emissions_op2.rep_abs_amount.amount.value },
+                        lep_rel_num{ emissions_op2.lep_rel_amount_numerator    },
+                        rep_rel_num{ emissions_op2.rep_rel_amount_numerator    };
+
+            uint32_t lep_dist    = emission_time.sec_since_epoch() - emissions_op2.lep_time.sec_since_epoch();
+            uint32_t rep_dist    = emissions_op2.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
+            uint32_t total_dist  = emissions_op2.rep_time.sec_since_epoch() - emissions_op2.lep_time.sec_since_epoch();
+            abs_amount           = ( ( lep_abs_val * lep_dist + rep_abs_val * rep_dist ) / total_dist ).to_int64();
+            rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
+         }
+
+         share_type rel_amount = ( fc::uint128( supply.value ) * rel_amount_numerator >> emissions_op2.rel_amount_denom_bits ).to_int64();
+
+         share_type new_token_supply;
+         if ( emissions_op2.floor_emissions )
+            new_token_supply = std::min( abs_amount, rel_amount );
+         else
+            new_token_supply = std::max( abs_amount, rel_amount );
+
+         share_type new_rewards = new_token_supply * emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op2.emissions_unit.token_unit_sum();
+         share_type new_market_maker = new_token_supply * emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op2.emissions_unit.token_unit_sum();
+         share_type new_vesting = new_token_supply * emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op2.emissions_unit.token_unit_sum();
+         share_type new_george = new_token_supply * emissions_op2.emissions_unit.token_unit[ "george" ] / emissions_op2.emissions_unit.token_unit_sum();
+
+         BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
+
+         supply += new_token_supply;
+         BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+         market_maker += new_market_maker;
+         BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+         vesting += new_vesting;
+         BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+         rewards += new_rewards;
+         BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+         george_share += new_george;
+         BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+         // Prevent any sort of drift
+         supply = token.current_supply;
+         market_maker = token.market_maker.token_balance.amount;
+         vesting = token.total_vesting_fund_smt;
+         rewards = token.reward_balance.amount;
+         george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
+
+         emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
+         generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+         generate_blocks( 2 );
+      }
+
+      BOOST_TEST_MESSAGE( " --- SMT token emissions catch-up logic" );
+
+      share_type new_token_supply = emissions_op3.lep_abs_amount.amount;
+      share_type new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
+      share_type new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
+      share_type new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
+      share_type new_george = new_token_supply * emissions_op3.emissions_unit.token_unit[ "george" ] / emissions_op3.emissions_unit.token_unit_sum();
+
+      BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
+
+      supply += new_token_supply;
+      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+      market_maker += new_market_maker;
+      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+      vesting += new_vesting;
+      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+      rewards += new_rewards;
+      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+      george_share += new_george;
+      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+      // Prevent any sort of drift
+      supply = token.current_supply;
+      market_maker = token.market_maker.token_balance.amount;
+      vesting = token.total_vesting_fund_smt;
+      rewards = token.reward_balance.amount;
+      george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
+
+      emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 2;
+      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+      generate_blocks( 3 );
+
+      new_token_supply = ( emissions_op3.lep_abs_amount.amount * 2 );
+
+      new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_george = new_token_supply * emissions_op3.emissions_unit.token_unit[ "george" ] / emissions_op3.emissions_unit.token_unit_sum();
+
+      BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
+
+      supply += new_token_supply;
+      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+      market_maker += new_market_maker;
+      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+      vesting += new_vesting;
+      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+      rewards += new_rewards;
+      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+      george_share += new_george;
+      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+      // Prevent any sort of drift
+      supply = token.current_supply;
+      market_maker = token.market_maker.token_balance.amount;
+      vesting = token.total_vesting_fund_smt;
+      rewards = token.reward_balance.amount;
+      george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
+
+      emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 6;
+      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+      generate_blocks( 11 );
+
+      new_token_supply = emissions_op3.lep_abs_amount.amount * 6;
+
+      new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
+      new_george = new_token_supply * emissions_op3.emissions_unit.token_unit[ "george" ] / emissions_op3.emissions_unit.token_unit_sum();
+
+      BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
+
+      supply += new_token_supply;
+      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+      market_maker += new_market_maker;
+      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+      vesting += new_vesting;
+      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+      rewards += new_rewards;
+      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+      george_share += new_george;
+      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
