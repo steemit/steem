@@ -52,5 +52,5 @@ typedef multi_index_container<
 } } //steem::chain
 
 FC_REFLECT( steem::chain::pending_optional_action_object,
-            (id)(execution_time)(action) )
+            (id)(execution_time)(action_hash)(action) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::pending_optional_action_object, steem::chain::pending_optional_action_index )

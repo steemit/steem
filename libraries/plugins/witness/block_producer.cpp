@@ -253,7 +253,6 @@ FC_TODO( "Remove ifdef when required actions are added" )
 
    for( const auto* o : attempted_actions )
    {
-      idump( (*o) );
       _db.remove( *o );
    }
 

@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE( full_block )
 
    // In a full block scenario, there would be no optional actions included nor the last required action
    // Clear optional actions and the last required action and resign.
-   block.extensions.erase( *block.extensions.end() );
+   block.extensions.erase( *block.extensions.rbegin() );
    block.extensions.begin()->get< required_automated_actions >().pop_back();
    block.sign( STEEM_INIT_PRIVATE_KEY );
 
