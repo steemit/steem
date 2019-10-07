@@ -31,13 +31,21 @@ namespace steem { namespace protocol {
       friend bool operator==( const smt_refund_action& lhs, const smt_refund_action& rhs );
    };
 
+   struct contribution_payout
+   {
+      asset payout;
+      bool  to_vesting;
+
+      friend bool operator==( const contribution_payout& rhs, const contribution_payout& lhs );
+   };
+
    struct smt_contributor_payout_action : public base_operation
    {
       account_name_type    contributor;
       asset_symbol_type    symbol;
       uint32_t             contribution_id;
       asset                contribution;
-      std::vector< asset > payouts;
+      std::vector< contribution_payout > payouts;
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( contributor ); }
@@ -48,7 +56,7 @@ namespace steem { namespace protocol {
    struct smt_founder_payout_action : public base_operation
    {
       asset_symbol_type                                   symbol;
-      std::map< account_name_type, std::vector< asset > > account_payouts;
+      std::map< account_name_type, std::vector< contribution_payout > > account_payouts;
       share_type                                          market_maker_steem  = 0;
       share_type                                          market_maker_tokens = 0;
       share_type                                          reward_balance      = 0;
@@ -102,6 +110,7 @@ FC_REFLECT( steem::protocol::example_required_action, (account) )
 #endif
 
 FC_REFLECT( steem::protocol::smt_refund_action, (contributor)(symbol)(contribution_id)(refund) )
+FC_REFLECT( steem::protocol::contribution_payout, (payout)(to_vesting) )
 FC_REFLECT( steem::protocol::smt_contributor_payout_action, (contributor)(symbol)(contribution_id)(contribution)(payouts) )
 FC_REFLECT( steem::protocol::smt_founder_payout_action, (symbol)(account_payouts)(market_maker_steem)(market_maker_tokens)(reward_balance) )
 FC_REFLECT( steem::protocol::smt_ico_launch_action, (control_account)(symbol) )
