@@ -1196,7 +1196,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
 
-      for ( auto i = 0; i <= emissions_op.interval_count; i++ )
+      for ( uint32_t i = 0; i <= emissions_op.interval_count; i++ )
       {
          validate_database();
 
@@ -1268,7 +1268,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          generate_blocks( 2 );
       }
 
-      for ( auto i = 0; i <= emissions_op2.interval_count; i++ )
+      for ( uint32_t i = 0; i <= emissions_op2.interval_count; i++ )
       {
          validate_database();
 
