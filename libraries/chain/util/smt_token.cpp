@@ -68,6 +68,7 @@ fc::optional< time_point_sec > next_emission_time( const database& db, const ass
 
    if( emission != idx.end() && emission->symbol == symbol )
    {
+      idump( (emission->schedule_time) );
       if( last_emission < emission->schedule_time ) return emission->schedule_time;
 
       idump( (last_emission) );

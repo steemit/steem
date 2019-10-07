@@ -981,6 +981,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 {
    try
    {
+      resize_shared_mem( 1024 * 1024 * 512 );
       BOOST_TEST_MESSAGE( "Testing SMT token emissions" );
       ACTORS( (creator)(alice)(bob)(charlie)(dan)(elaine)(fred)(george)(henry) )
 
@@ -1027,13 +1028,13 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 2;
       emissions_op.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op.interval_count   = SMT_EMIT_INDEFINITELY;
+      emissions_op.interval_count   = 24;
       emissions_op.symbol = symbol;
-      emissions_op.schedule_time  = db->head_block_time() + ( STEEM_BLOCK_INTERVAL * 7 );
-      emissions_op.lep_time       = emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_HOUR );
-      emissions_op.rep_time       = emissions_op.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY );
-      emissions_op.lep_abs_amount = asset( 10000000, symbol );
-      emissions_op.rep_abs_amount = asset( 20000000, symbol );
+      emissions_op.schedule_time  = db->head_block_time() + ( STEEM_BLOCK_INTERVAL * 10 );
+      emissions_op.lep_time       = emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
+      emissions_op.rep_time       = emissions_op.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
+      emissions_op.lep_abs_amount = asset( 20000000, symbol );
+      emissions_op.rep_abs_amount = asset( 40000000, symbol );
       emissions_op.lep_rel_amount_numerator = 1;
       emissions_op.rep_rel_amount_numerator = 2;
       emissions_op.rel_amount_denom_bits    = 7;
@@ -1130,7 +1131,50 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
 
-      generate_blocks( emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 7 ), false );
+      share_type supply = 15000000000;
+      BOOST_REQUIRE( token.current_supply == supply );
+
+      auto emission_time = emissions_op.schedule_time;
+      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+      generate_blocks( 2 );
+
+      auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
+
+      for ( auto i = 0; i < 5; i++ )
+      {
+         share_type relative_emission;
+         share_type absolute_emission;
+         if ( emission_time <= emissions_op.lep_time )
+         {
+            relative_emission = supply / 128;
+            absolute_emission = 20000000;
+         }
+         else if ( emission_time >= emissions_op.rep_time )
+         {
+            relative_emission = supply * 2 / 128;
+            absolute_emission = 40000000;
+         }
+         else
+         {
+            uint32_t lep_dist    = emission_time.sec_since_epoch() - emissions_op.lep_time.sec_since_epoch();
+            uint32_t rep_dist    = emissions_op.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
+            uint32_t total_dist  = emissions_op.rep_time.sec_since_epoch() - emissions_op.lep_time.sec_since_epoch();
+            absolute_emission    = ( ( fc::uint128( 20000000 ) * lep_dist + fc::uint128( 40000000 ) * rep_dist ) / total_dist ).to_int64();
+            relative_emission    = ( ( ( fc::uint128( supply.value ) / 128 ) * lep_dist + ( ( fc::uint128( supply.value ) * 2 ) / 128 ) * rep_dist ) / total_dist ).to_uint64();
+         }
+
+         share_type emission = std::max( absolute_emission, relative_emission );
+         supply += emission;
+         idump( (token.current_supply)(supply) );
+         BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+         // Prevent any sort of drift
+         supply = token.current_supply;
+
+         emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
+         generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+         generate_blocks( 2 );
+      }
 
       validate_database();
 
