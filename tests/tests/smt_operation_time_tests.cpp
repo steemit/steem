@@ -981,7 +981,6 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 {
    try
    {
-//      resize_shared_mem( 1024 * 1024 * 512 );
       BOOST_TEST_MESSAGE( "Testing SMT token emissions" );
       ACTORS( (creator)(alice)(bob)(charlie)(dan)(elaine)(fred)(george)(henry) )
 

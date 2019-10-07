@@ -21,9 +21,8 @@ void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a 
    const auto& token = _db.get< smt_token_object, by_symbol >( a.symbol );
    auto next_emission = util::smt::next_emission_time( _db, a.symbol, token.last_virtual_emission_time );
 
-   idump( (token.last_virtual_emission_time)(*next_emission)(a.emission_time) );
    FC_ASSERT( next_emission.valid(), "SMT ${t} has no upcoming emission events.", ("t", a.symbol) );
-   FC_ASSERT( *next_emission == a.emission_time, "Emission for ${t} is occuring before next emission time. Now: ${n} Next Emission Time: ${e}",
+   FC_ASSERT( *next_emission == a.emission_time, "Emission for ${t} is occurring before next emission time. Now: ${n} Next Emission Time: ${e}",
       ("t", a.symbol)("n", a.emission_time)("e", *next_emission) );
 
    auto emission_obj = util::smt::get_emission_object( _db, token.liquid_symbol, *next_emission );
@@ -78,11 +77,7 @@ void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a 
       t.total_vesting_fund_smt += vesting_tokens;
       t.current_supply += total_new_supply;
       t.last_virtual_emission_time = a.emission_time;
-   });
-
-   static size_t num_emissions = 0;
-   if ( !_db.is_pending_tx() )
-      ilog( "emission: ${n}", ("n", ++num_emissions) );
+   } );
 }
 
 } } //steem::chain

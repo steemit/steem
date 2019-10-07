@@ -91,7 +91,6 @@ void token_emissions_impl::on_generate_optional_actions( const generate_optional
 
    for ( auto itr = next_emission_schedule_idx.begin(); itr != next_emission_schedule_idx.end() && itr->next_scheduled_emission <= next_emission_time; ++itr )
    {
-      ilog( "next_emission_time: ${n}, next_scheduled_emission: ${s}, head_block_time ${t}", ("n", next_emission_time)("s", itr->next_scheduled_emission)("t", _db.head_block_time()) );
       auto emission = token_emissions_idx.lower_bound( boost::make_tuple( itr->symbol, itr->next_consensus_emission ) );
 
       if ( emission != token_emissions_idx.end() && emission->symbol == itr->symbol )
@@ -109,9 +108,7 @@ void token_emissions_impl::on_generate_optional_actions( const generate_optional
          _db.modify( *itr, [&]( token_emission_schedule_object& o )
          {
             o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
-         });
-
-         ilog( "[token_emissions_impl::on_post_apply_block] \n\tblock: ${b}, time: ${t}, emission action: ${a}", ("b", _db.head_block_num())("t", next_emission_time)("a", action) );
+         } );
       }
    }
 }
