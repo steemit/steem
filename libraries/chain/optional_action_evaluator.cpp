@@ -56,7 +56,7 @@ void smt_token_emission_evaluator::do_apply( const smt_token_emission_action& a 
       {
          vesting_tokens += e.second;
       }
-      else if( is_vesting_type( e.first ) )
+      else if( is_founder_vesting( e.first ) )
       {
          _db.create_vesting( _db.get_account( get_unit_target_account( e.first ) ), asset( e.second, a.symbol.get_liquid_symbol() ) );
       }

@@ -104,13 +104,15 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
 
 bool is_valid_emissions_destination( const unit_target_type& unit_target )
 {
-   if ( is_valid_account_name( unit_target ) )
-      return true;
    if ( is_market_maker( unit_target ) )
       return true;
    if ( is_rewards( unit_target ) )
       return true;
    if ( is_vesting( unit_target ) )
+      return true;
+   if ( is_valid_account_name( unit_target ) )
+      return true;
+   if ( is_founder_vesting( unit_target ) )
       return true;
    return false;
 }
