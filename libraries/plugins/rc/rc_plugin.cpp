@@ -1159,6 +1159,11 @@ struct post_apply_operation_visitor
       _mod_accounts.emplace_back( op.from_account );
    }
 
+   void operator()( const smt_token_emission_action& a )const
+   {
+      _mod_accounts.emplace_back( a.symbol.to_nai_string() );
+   }
+
    template< typename Op >
    void operator()( const Op& op )const
    {

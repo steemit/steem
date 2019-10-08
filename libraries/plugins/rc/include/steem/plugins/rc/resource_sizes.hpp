@@ -136,13 +136,21 @@ struct operation_exec_info
    int64_t witness_set_properties_operation_exec_time          =   9500;
    int64_t witness_update_operation_exec_time                  =   9500;
 
-   int64_t claim_reward_balance2_operation_exec_time           = 0;
-   int64_t smt_setup_operation_exec_time                       = 0;
-   int64_t smt_setup_emissions_operation_exec_time             = 0;
-   int64_t smt_set_setup_parameters_operation_exec_time        = 0;
-   int64_t smt_set_runtime_parameters_operation_exec_time      = 0;
-   int64_t smt_create_operation_exec_time                      = 0;
-   int64_t smt_contribute_operation_exec_time                  = 0;
+   int64_t claim_reward_balance2_operation_exec_time           = 50300;
+   int64_t smt_setup_operation_exec_time                       = 41000;
+   int64_t smt_setup_emissions_operation_exec_time             = 13000;
+   int64_t smt_set_setup_parameters_operation_exec_time        = 40000;
+   int64_t smt_set_runtime_parameters_operation_exec_time      = 39000;
+   int64_t smt_create_operation_exec_time                      = 50000;
+   int64_t smt_contribute_operation_exec_time                  = 32000;
+
+   int64_t smt_contributor_payout_action_exec_time             = 60000;
+   int64_t smt_founder_payout_action_exec_time                 = 69000;
+   int64_t smt_token_launch_action_exec_time                   = 31000;
+   int64_t smt_ico_evaluation_action_exec_time                 = 21000;
+   int64_t smt_ico_launch_action_exec_time                     = 18000;
+
+   int64_t smt_token_emission_action_exec_time                 = 2400;
 
    int64_t create_proposal_operation_exec_time                  =   31700;
    int64_t update_proposal_votes_operation_exec_time            =   12000;

@@ -3596,7 +3596,7 @@ void database::apply_optional_action( const optional_automated_action& a )
    _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
 
    if( _benchmark_dumper.is_enabled() )
-      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_req_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_opt_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
 
    notify_post_apply_optional_action( note );
 }
