@@ -3297,12 +3297,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    valid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3312,12 +3312,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    valid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3377,13 +3377,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 1 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3393,7 +3393,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 }
       },
@@ -3417,13 +3417,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_FROM, 1 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3433,13 +3433,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_FROM, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3455,13 +3455,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_FROM_VESTING, 1 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3471,13 +3471,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_FROM_VESTING, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3493,13 +3493,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_VESTING, 1 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3509,13 +3509,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_VESTING, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3531,12 +3531,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3547,12 +3547,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3574,7 +3574,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3584,12 +3584,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3605,12 +3605,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { "$market_malformed", 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3620,12 +3620,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3641,12 +3641,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3656,12 +3656,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { "$market_maker1", 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3677,12 +3677,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3692,12 +3692,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { "$rewardsx", 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3714,12 +3714,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    valid_generation_policy2.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3729,7 +3729,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    valid_generation_policy2.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {}
@@ -3745,12 +3745,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3764,7 +3764,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3781,7 +3781,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
@@ -3791,12 +3791,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3816,7 +3816,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3827,12 +3827,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3898,12 +3898,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "elaine", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3913,12 +3913,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3940,12 +3940,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "elaine", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3955,12 +3955,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -3982,12 +3982,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -3997,12 +3997,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "elaine", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4024,12 +4024,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "elaine", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4039,12 +4039,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "elaine", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4066,12 +4066,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$elaine.vesting", 2 },
+         { "$!elaine.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4081,12 +4081,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4108,12 +4108,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$elaine.vesting", 2 },
+         { "$!elaine.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4123,12 +4123,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4150,12 +4150,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4165,12 +4165,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$elaine.vesting", 1 },
+         { "$!elaine.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4192,12 +4192,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4207,12 +4207,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    invalid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$elaine.vesting", 1 },
+         { "$!elaine.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },
@@ -4235,12 +4235,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    valid_generation_policy.pre_soft_cap_unit = {
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 }
       },
       {
          { "alice", 2 },
-         { "$alice.vesting", 2 },
+         { "$!alice.vesting", 2 },
          { SMT_DESTINATION_MARKET_MAKER, 2 },
          { SMT_DESTINATION_REWARDS, 2 },
          { SMT_DESTINATION_FROM, 2 },
@@ -4250,12 +4250,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    valid_generation_policy.post_soft_cap_unit = {
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 }
       },
       {
          { "alice", 1 },
-         { "$alice.vesting", 1 },
+         { "$!alice.vesting", 1 },
          { SMT_DESTINATION_MARKET_MAKER, 1 },
          { SMT_DESTINATION_REWARDS, 1 },
          { SMT_DESTINATION_FROM, 1 },

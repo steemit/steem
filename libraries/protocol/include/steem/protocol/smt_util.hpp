@@ -3,6 +3,7 @@
 #include <steem/protocol/types.hpp>
 
 #define SMT_DESTINATION_PREFIX         "$"
+#define SMT_DESTINATION_ACCOUNT_PREFIX SMT_DESTINATION_PREFIX "!"
 #define SMT_DESTINATION_VESTING_SUFFIX ".vesting"
 #define SMT_DESTINATION_FROM           unit_target_type( SMT_DESTINATION_PREFIX "from" )
 #define SMT_DESTINATION_FROM_VESTING   unit_target_type( SMT_DESTINATION_PREFIX "from" SMT_DESTINATION_VESTING_SUFFIX )

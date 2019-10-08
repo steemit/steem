@@ -22,13 +22,10 @@ bool is_rewards( const unit_target_type& unit_target )
 
 bool is_founder_vesting( const unit_target_type& unit_target )
 {
-   if ( unit_target == SMT_DESTINATION_FROM_VESTING )
-      return false;
-
    std::string unit_target_str = unit_target;
-   if ( unit_target_str.size() > std::strlen( SMT_DESTINATION_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ) )
+   if ( unit_target_str.size() > std::strlen( SMT_DESTINATION_ACCOUNT_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ) )
    {
-      auto pos = unit_target_str.find( SMT_DESTINATION_PREFIX );
+      auto pos = unit_target_str.find( SMT_DESTINATION_ACCOUNT_PREFIX );
       if ( pos != std::string::npos && pos == 0 )
       {
          std::size_t suffix_len = std::strlen( SMT_DESTINATION_VESTING_SUFFIX );
@@ -82,20 +79,21 @@ account_name_type get_unit_target_account( const unit_target_type& unit_target )
       return account_name_type( unit_target );
 
    // This is a special unit target destination in the form of $alice.vesting
-   FC_ASSERT( unit_target.size() > std::strlen( SMT_DESTINATION_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ),
+   FC_ASSERT( unit_target.size() > std::strlen( SMT_DESTINATION_ACCOUNT_PREFIX ) + std::strlen( SMT_DESTINATION_VESTING_SUFFIX ),
       "Unit target '${target}' is malformed", ("target", unit_target) );
 
    std::string str_name = unit_target;
-   auto pos = str_name.find( SMT_DESTINATION_PREFIX );
-   FC_ASSERT( pos != std::string::npos && pos == 0, "Expected SMT destination prefix '${prefix}' for unit target '${target}'.",
-      ("prefix", SMT_DESTINATION_PREFIX)("target", unit_target) );
+   auto pos = str_name.find( SMT_DESTINATION_ACCOUNT_PREFIX );
+   FC_ASSERT( pos != std::string::npos && pos == 0, "Expected SMT destination account prefix '${prefix}' for unit target '${target}'.",
+      ("prefix", SMT_DESTINATION_ACCOUNT_PREFIX)("target", unit_target) );
 
    std::size_t suffix_len = std::strlen( SMT_DESTINATION_VESTING_SUFFIX );
    FC_ASSERT( !str_name.compare( str_name.size() - suffix_len, suffix_len, SMT_DESTINATION_VESTING_SUFFIX ),
       "Expected SMT destination vesting suffix '${suffix}' for unit target '${target}'.",
          ("suffix", SMT_DESTINATION_VESTING_SUFFIX)("target", unit_target) );
 
-   account_name_type unit_target_account = str_name.substr( 1, str_name.size() - suffix_len - 1 );
+   std::size_t prefix_len = std::strlen( SMT_DESTINATION_ACCOUNT_PREFIX );
+   account_name_type unit_target_account = str_name.substr( prefix_len, str_name.size() - suffix_len - prefix_len );
    FC_ASSERT( is_valid_account_name( unit_target_account ), "The derived unit target account name '${name}' is invalid.",
       ("name", unit_target_account) );
 
