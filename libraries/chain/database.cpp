@@ -1060,6 +1060,7 @@ void database::push_optional_action( const optional_automated_action& a, time_po
    {
       create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
       {
+         pending_action.action_hash = fc::sha256::hash( a );
          pending_action.action = a;
          pending_action.execution_time = execution_time;
       } );
@@ -2651,6 +2652,8 @@ void database::initialize_evaluators()
    _my->_req_action_evaluator_registry.register_evaluator< smt_refund_evaluator             >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_contributor_payout_evaluator >();
    _my->_req_action_evaluator_registry.register_evaluator< smt_founder_payout_evaluator     >();
+
+   _my->_opt_action_evaluator_registry.register_evaluator< smt_token_emission_evaluator     >();
 }
 
 
@@ -3565,6 +3568,8 @@ void database::process_optional_actions( const optional_automated_actions& actio
       // optional actions from those contained in a block. It is the responsibility of the
       // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
+      auto action_itr = find< pending_optional_action_object, by_hash >( fc::sha256::hash( *actions_itr ) );
+      if( action_itr != nullptr ) remove( *action_itr );
    }
 
    // This expiration is based on the timestamp of the last irreversible block. For historical

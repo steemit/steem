@@ -3,6 +3,7 @@
 #include <steem/plugins/chain/chain_plugin.hpp>
 #include <steem/plugins/p2p/p2p_plugin.hpp>
 #include <steem/plugins/rc/rc_plugin.hpp>
+#include <steem/plugins/token_emissions/token_emissions_plugin.hpp>
 #include <steem/plugins/witness/block_producer.hpp>
 
 #include <appbase/application.hpp>
@@ -42,6 +43,7 @@ public:
       (steem::plugins::chain::chain_plugin)
       (steem::plugins::p2p::p2p_plugin)
       (steem::plugins::rc::rc_plugin)
+      (steem::plugins::token_emissions::token_emissions_plugin)
    )
 
    witness_plugin();

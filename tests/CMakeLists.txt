@@ -299,6 +299,7 @@ add_boost_test( chain_test
    smt_operation_time_tests/smt_vesting_withdrawals
    smt_operation_time_tests/recent_claims_decay
    smt_operation_time_tests/smt_rewards
+   smt_operation_time_tests/smt_token_emissions
    smt_tests/smt_transfer_validate
    smt_tests/smt_transfer_apply
    smt_tests/asset_symbol_vesting_methods

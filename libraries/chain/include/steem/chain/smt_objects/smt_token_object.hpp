@@ -95,6 +95,8 @@ public:
    uint128_t            recent_claims;
    time_point_sec       last_reward_update;
 
+   time_point_sec       last_virtual_emission_time;
+
    smt_market_maker_state  market_maker;
 
    /// set_setup_parameters
@@ -167,6 +169,19 @@ public:
    uint32_t                              lep_rel_amount_numerator = 0;
    uint32_t                              rep_rel_amount_numerator = 0;
    uint8_t                               rel_amount_denom_bits = 0;
+
+   bool                                  floor_emissions = false;
+
+   time_point_sec schedule_end_time() const
+   {
+      time_point_sec end_time = time_point_sec::maximum();
+
+      if ( interval_count != SMT_EMIT_INDEFINITELY )
+         // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
+         end_time = schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) );
+
+      return end_time;
+   }
 };
 
 class smt_contribution_object : public object< smt_contribution_object_type, smt_contribution_object >
@@ -255,6 +270,7 @@ typedef multi_index_container <
 > smt_ico_index;
 
 struct by_symbol_time;
+struct by_symbol_end_time;
 
 typedef multi_index_container <
    smt_token_emissions_object,
@@ -265,6 +281,12 @@ typedef multi_index_container <
          composite_key< smt_token_emissions_object,
             member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
             member< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_time >
+         >
+      >,
+      ordered_unique< tag< by_symbol_end_time >,
+         composite_key< smt_token_emissions_object,
+            member< smt_token_emissions_object, asset_symbol_type, &smt_token_emissions_object::symbol >,
+            const_mem_fun< smt_token_emissions_object, time_point_sec, &smt_token_emissions_object::schedule_end_time >
          >
       >
    >,
@@ -303,6 +325,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (reward_balance)
    (recent_claims)
    (last_reward_update)
+   (last_virtual_emission_time)
    (allow_downvotes)
    (market_maker)
    (allow_voting)
@@ -345,6 +368,7 @@ FC_REFLECT( steem::chain::smt_token_emissions_object,
    (lep_rel_amount_numerator)
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
+   (floor_emissions)
 )
 
 FC_REFLECT( steem::chain::smt_contribution_object,

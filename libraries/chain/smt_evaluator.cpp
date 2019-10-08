@@ -209,7 +209,8 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
          last_emission->rep_abs_amount == o.rep_abs_amount &&
          last_emission->lep_rel_amount_numerator == o.lep_rel_amount_numerator &&
          last_emission->rep_rel_amount_numerator == o.rep_rel_amount_numerator &&
-         last_emission->rel_amount_denom_bits == o.rel_amount_denom_bits,
+         last_emission->rel_amount_denom_bits == o.rel_amount_denom_bits &&
+         last_emission->floor_emissions == o.floor_emissions,
          "SMT emissions must be removed from latest to earliest, last emission: ${le}. Current: ${c}", ("le", *last_emission)("c", o)
       );
 
@@ -242,6 +243,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
          eo.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
          eo.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
          eo.rel_amount_denom_bits = o.rel_amount_denom_bits;
+         eo.floor_emissions = o.floor_emissions;
       });
    }
 }

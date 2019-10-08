@@ -56,16 +56,97 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
    auto _last_emission = last_emission( db, symbol );
 
    if ( _last_emission != nullptr )
+      return _last_emission->schedule_end_time();
+
+   return {};
+}
+
+fc::optional< time_point_sec > next_emission_time( const database& db, const asset_symbol_type& symbol, time_point_sec last_emission )
+{
+   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_end_time >();
+   auto emission = idx.lower_bound( boost::make_tuple( symbol, last_emission ) );
+
+   if( emission != idx.end() && emission->symbol == symbol )
    {
-      // A maximum interval count indicates we should emit indefinitely
-      if ( _last_emission->interval_count == SMT_EMIT_INDEFINITELY )
-         return time_point_sec::maximum();
-      else
-         // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
-         return _last_emission->schedule_time + fc::seconds( uint64_t( _last_emission->interval_seconds ) * uint64_t( _last_emission->interval_count ) );
+      if( last_emission < emission->schedule_time ) return emission->schedule_time;
+
+      last_emission -= ( last_emission - emission->schedule_time ).to_seconds() % emission->interval_seconds;
+      fc::time_point_sec next_schedule = last_emission + fc::seconds( emission->interval_seconds );
+      if( next_schedule <= emission->schedule_end_time() ) return next_schedule;
+
+      ++emission;
+      if( emission != idx.end() && emission->symbol == symbol )
+      {
+         next_schedule = emission->schedule_time;
+         return emission->schedule_time;
+      }
    }
 
    return {};
+}
+
+const smt_token_emissions_object* get_emission_object( const database& db, const asset_symbol_type& symbol, time_point_sec t )
+{
+   const auto& idx = db.get_index< smt_token_emissions_index, by_symbol_end_time >();
+   auto emission = idx.lower_bound( boost::make_tuple( symbol, t ) );
+
+   if ( emission != idx.end() && emission->symbol == symbol )
+      if( t >= emission->schedule_time && t <= emission->schedule_end_time() )
+         return &*emission;
+
+   return nullptr;
+}
+
+flat_map< unit_target_type, share_type > generate_emissions( const smt_token_object& token, const smt_token_emissions_object& emission, time_point_sec emission_time )
+{
+   flat_map< unit_target_type, share_type > emissions;
+
+   try
+   {
+      share_type abs_amount;
+      uint64_t rel_amount_numerator;
+
+      if ( emission_time <= emission.lep_time )
+      {
+         abs_amount = emission.lep_abs_amount.amount;
+         rel_amount_numerator = emission.lep_rel_amount_numerator;
+      }
+      else if ( emission_time >= emission.rep_time )
+      {
+         abs_amount = emission.rep_abs_amount.amount;
+         rel_amount_numerator = emission.rep_rel_amount_numerator;
+      }
+      else
+      {
+         fc::uint128 lep_abs_val{ emission.lep_abs_amount.amount.value },
+                     rep_abs_val{ emission.rep_abs_amount.amount.value },
+                     lep_rel_num{ emission.lep_rel_amount_numerator    },
+                     rep_rel_num{ emission.rep_rel_amount_numerator    };
+
+         uint32_t lep_dist    = emission_time.sec_since_epoch() - emission.lep_time.sec_since_epoch();
+         uint32_t rep_dist    = emission.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
+         uint32_t total_dist  = emission.rep_time.sec_since_epoch() - emission.lep_time.sec_since_epoch();
+         abs_amount           = ( ( lep_abs_val * lep_dist + rep_abs_val * rep_dist ) / total_dist ).to_int64();
+         rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
+      }
+
+      share_type rel_amount = ( fc::uint128( token.current_supply.value ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
+
+      share_type new_token_supply;
+      if ( emission.floor_emissions )
+         new_token_supply = std::min( abs_amount, rel_amount );
+      else
+         new_token_supply = std::max( abs_amount, rel_amount );
+
+      uint32_t unit_sum = emission.emissions_unit.token_unit_sum();
+
+      for ( auto& e : emission.emissions_unit.token_unit )
+         emissions[ e.first ] = ( ( fc::uint128( e.second ) * new_token_supply.value ) / unit_sum ).to_int64();
+
+   }
+   FC_CAPTURE_AND_RETHROW( (token)(emission)(emission_time) );
+
+   return emissions;
 }
 
 namespace ico {

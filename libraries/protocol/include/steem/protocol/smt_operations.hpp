@@ -92,6 +92,9 @@ struct smt_setup_operation : public base_operation
 struct smt_emissions_unit
 {
    flat_map< unit_target_type, uint16_t > token_unit;
+
+   void validate()const;
+   uint32_t token_unit_sum()const;
 };
 
 struct smt_setup_emissions_operation : public base_operation
@@ -115,6 +118,7 @@ struct smt_setup_emissions_operation : public base_operation
 
    uint8_t             rel_amount_denom_bits = 0;
    bool                remove = false;
+   bool                floor_emissions = false;
 
    extensions_type     extensions;
 
@@ -265,6 +269,7 @@ FC_REFLECT(
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
    (remove)
+   (floor_emissions)
    (extensions)
    )
 
