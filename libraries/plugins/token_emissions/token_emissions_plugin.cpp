@@ -83,8 +83,7 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
 
 void token_emissions_impl::on_generate_optional_actions( const generate_optional_actions_notification& note )
 {
-   // We're creating token emissions for the upcoming block.
-   time_point_sec next_emission_time = _db.head_block_time() + STEEM_BLOCK_INTERVAL;
+   time_point_sec next_emission_time = _db.head_block_time();
 
    const auto& next_emission_schedule_idx = _db.get_index< token_emission_schedule_index, by_next_emission_symbol >();
    const auto& token_emissions_idx = _db.get_index< smt_token_emissions_index, by_symbol_end_time >();

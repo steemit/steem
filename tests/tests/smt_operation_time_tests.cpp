@@ -1191,8 +1191,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       share_type george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
       auto emission_time = emissions_op.schedule_time;
-      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
-      generate_blocks( 2 );
+      generate_blocks( emission_time );
+      generate_block();
 
       auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
 
@@ -1264,8 +1264,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
          emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
-         generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
-         generate_blocks( 2 );
+         generate_blocks( emission_time );
+         generate_block();
       }
 
       for ( uint32_t i = 0; i <= emissions_op2.interval_count; i++ )
@@ -1336,8 +1336,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
          emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
-         generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
-         generate_blocks( 2 );
+         generate_blocks( emission_time );
+         generate_block();
       }
 
       BOOST_TEST_MESSAGE( " --- SMT token emissions catch-up logic" );
@@ -1373,7 +1373,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
       emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 2;
-      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+      generate_blocks( emission_time );
       generate_blocks( 3 );
 
       new_token_supply = ( emissions_op3.lep_abs_amount.amount * 2 );
@@ -1408,7 +1408,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       george_share = db->get_balance( db->get_account( "george" ), symbol ).amount;
 
       emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 6;
-      generate_blocks( emission_time - STEEM_BLOCK_INTERVAL );
+      generate_blocks( emission_time );
       generate_blocks( 11 );
 
       new_token_supply = emissions_op3.lep_abs_amount.amount * 6;
