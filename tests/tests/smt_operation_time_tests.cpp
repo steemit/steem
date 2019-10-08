@@ -409,13 +409,13 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
          get_generation_unit(
          {
             { SMT_DESTINATION_MARKET_MAKER, 3 },
-            { "$george.vesting", 2 }
+            { "$!george.vesting", 2 }
          },
          {
             { SMT_DESTINATION_FROM, 5 },
             { SMT_DESTINATION_MARKET_MAKER, 1 },
             { SMT_DESTINATION_REWARDS, 2 },
-            { "$george.vesting", 2 }
+            { "$!george.vesting", 2 }
          } ), /* post_soft_cap_unit */
          50,                                                            /* min_unit_ratio */
          100                                                            /* max_unit_ratio */
