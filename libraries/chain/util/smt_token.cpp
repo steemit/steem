@@ -70,19 +70,19 @@ fc::optional< time_point_sec > last_emission_time( const database& db, const ass
 
 namespace ico {
 
-share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
+share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< contribution_payout >& payouts )
 {
    share_type additional_token_supply = 0;
 
-   for ( auto& _asset : assets )
+   for ( auto& p : payouts )
    {
-      if ( _asset.symbol.is_vesting() )
-         db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
+      if ( p.to_vesting )
+         db.create_vesting( account, p.payout );
       else
-         db.adjust_balance( account, _asset );
+         db.adjust_balance( account, p.payout );
 
-      if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
-         additional_token_supply += _asset.amount;
+      if ( p.payout.symbol.space() == asset_symbol_type::smt_nai_space )
+         additional_token_supply += p.payout.amount;
    }
 
    return additional_token_supply;
@@ -220,7 +220,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       }
 
       for ( auto it = payout_map.begin(); it != payout_map.end(); ++it )
-         payout_action.payouts.push_back( asset( it->second, it->first ) );
+         payout_action.payouts.push_back( { asset( it->second, it->first.get_liquid_symbol() ), it->first.is_vesting() } );
 
       db.push_required_action( payout_action );
       action_scheduled = true;
@@ -328,7 +328,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       payout_action.symbol = a;
 
       for ( auto it = account_payout_map.begin(); it != account_payout_map.end(); ++it )
-         payout_action.account_payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+         payout_action.account_payouts[ std::get< 0 >( it->first ) ].push_back( { asset( it->second, std::get< 1 >( it->first ).get_liquid_symbol() ), std::get< 1 >( it->first ).is_vesting() } );
 
       payout_action.market_maker_tokens = market_maker_tokens;
       payout_action.market_maker_steem  = market_maker_steem;
