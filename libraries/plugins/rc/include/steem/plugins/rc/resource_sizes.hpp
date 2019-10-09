@@ -194,6 +194,11 @@ FC_REFLECT( steem::plugins::rc::state_object_size_info,
    ( proposal_object_base_size )
    ( proposal_vote_object_base_size )
    ( proposal_vote_object_member_size )
+   ( smt_token_object_size )
+   ( smt_ico_object_size )
+   ( smt_token_emissions_object_size )
+   ( smt_contribution_object_size )
+   ( votable_assets_item_size )
    )
 
 FC_REFLECT( steem::plugins::rc::operation_exec_info,
@@ -243,6 +248,13 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( smt_set_runtime_parameters_operation_exec_time )
    ( smt_create_operation_exec_time )
    ( smt_contribute_operation_exec_time )
+   ( smt_contributor_payout_action_exec_time )
+   ( smt_founder_payout_action_exec_time )
+   ( smt_token_launch_action_exec_time )
+   ( smt_ico_evaluation_action_exec_time )
+   ( smt_ico_launch_action_exec_time )
+
+   ( smt_token_emission_action_exec_time )
 
    (create_proposal_operation_exec_time)
    (update_proposal_votes_operation_exec_time)
