@@ -17,17 +17,26 @@ namespace steem { namespace plugins { namespace witness {
 chain::signed_block block_producer::generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip)
 {
    chain::signed_block result;
-   steem::chain::detail::with_skip_flags(
-      _db,
-      skip,
-      [&]()
-      {
-         try
+   try
+   {
+      _db.set_producing( true );
+      steem::chain::detail::with_skip_flags(
+         _db,
+         skip,
+         [&]()
          {
-            result = _generate_block( when, witness_owner, block_signing_private_key );
-         }
-         FC_CAPTURE_AND_RETHROW( (witness_owner) )
-      });
+            try
+            {
+               result = _generate_block( when, witness_owner, block_signing_private_key );
+            }
+            FC_CAPTURE_AND_RETHROW( (witness_owner) )
+         });
+      _db.set_producing( false );
+   }
+   catch ( ... )
+   {
+      _db.set_producing( false );
+   }
    return result;
 }
 

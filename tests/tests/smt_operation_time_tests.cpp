@@ -1206,7 +1206,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       tx.operations.push_back( custom_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, creator_private_key );
-      //db->push_transaction( tx, 0 );
+      db->push_transaction( tx, 0 );
       tx.operations.clear();
       tx.signatures.clear();
 
