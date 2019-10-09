@@ -1186,12 +1186,19 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
 
+      steem::plugins::rc::rc_plugin_skip_flags rc_skip;
+      rc_skip.skip_reject_not_enough_rc = 0;
+      rc_skip.skip_deduct_rc = 0;
+      rc_skip.skip_negative_rc_balance = 0;
+      rc_skip.skip_reject_unknown_delta_vests = 0;
+      appbase::app().get_plugin< steem::plugins::rc::rc_plugin >().set_rc_plugin_skip_flags( rc_skip );
+
       steem::plugins::rc::delegate_to_pool_operation del_op;
       custom_json_operation custom_op;
 
       del_op.from_account = "creator";
       del_op.to_pool = symbol.to_nai_string();
-      del_op.amount = db->get_account( "creator" ).vesting_shares;
+      del_op.amount = asset( db->get_account( "creator" ).vesting_shares.amount / 2, VESTS_SYMBOL );
       custom_op.json = fc::json::to_string( steem::plugins::rc::rc_plugin_operation( del_op ) );
       custom_op.id = STEEM_RC_PLUGIN_NAME;
       custom_op.required_auths.insert( "creator" );

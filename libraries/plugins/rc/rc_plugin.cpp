@@ -233,6 +233,11 @@ struct get_resource_user_visitor
          return account;
       return account_name_type();
    }
+
+   account_name_type operator()( const smt_token_emission_action& a )const
+   {
+      return a.symbol.to_nai_string();
+   }
 };
 
 account_name_type get_resource_user( const signed_transaction& tx )
