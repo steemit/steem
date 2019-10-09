@@ -16,7 +16,9 @@
 #include <steem/chain/smt_objects.hpp>
 
 #include <steem/chain/util/reward.hpp>
-
+#include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/rc_operations.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
 #include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -984,6 +986,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       BOOST_TEST_MESSAGE( "Testing SMT token emissions" );
       ACTORS( (creator)(alice)(bob)(charlie)(dan)(elaine)(fred)(george)(henry) )
 
+      vest( STEEM_INIT_MINER_NAME, "creator", ASSET( "100000.000 TESTS" ) );
+
       generate_block();
 
       auto alices_balance    = asset( 5000000, STEEM_SYMBOL );
@@ -1181,6 +1185,23 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       generate_block();
 
       BOOST_REQUIRE( token.phase == smt_phase::launch_success );
+
+      steem::plugins::rc::delegate_to_pool_operation del_op;
+      custom_json_operation custom_op;
+
+      del_op.from_account = "creator";
+      del_op.to_pool = symbol.to_nai_string();
+      del_op.amount = db->get_account( "creator" ).vesting_shares;
+      custom_op.json = fc::json::to_string( steem::plugins::rc::rc_plugin_operation( del_op ) );
+      custom_op.id = STEEM_RC_PLUGIN_NAME;
+      custom_op.required_auths.insert( "creator" );
+
+      tx.operations.push_back( custom_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, creator_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
 
       BOOST_TEST_MESSAGE( " --- SMT token emissions" );
 

@@ -22,6 +22,7 @@
 #define STATE_TRANSACTION_BYTE_SIZE               174
 #define STATE_TRANSFER_FROM_SAVINGS_BYTE_SIZE     229
 #define STATE_LIMIT_ORDER_BYTE_SIZE              1940
+#define STATE_TMP_OBJ_BYTE_SIZE                  1940
 #define STATE_COMMENT_VOTE_BYTE_SIZE              525
 
 #define EXEC_FOLLOW_CUSTOM_OP_SCALE                20
@@ -93,6 +94,12 @@ struct state_object_size_info
    // proposal_vote_object
    int64_t proposal_vote_object_base_size       = 24  *STATE_BYTES_SCALE;
    int64_t proposal_vote_object_member_size     = 8   *STATE_BYTES_SCALE;
+
+   int64_t smt_token_object_size                = 240 *STATE_BYTES_SCALE;
+   int64_t smt_ico_object_size                  = 208 *STATE_TMP_OBJ_BYTE_SIZE;
+   int64_t smt_token_emissions_object_size      = 104 *STATE_BYTES_SCALE;
+   int64_t smt_contribution_object_size         = 56  *STATE_TMP_OBJ_BYTE_SIZE;
+   int64_t votable_assets_item_size             = 20  *STATE_BYTES_SCALE;
 };
 
 struct operation_exec_info
