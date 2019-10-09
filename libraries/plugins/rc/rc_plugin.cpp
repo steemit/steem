@@ -284,7 +284,7 @@ void use_account_rcs(
 #endif
 
    // ilog( "use_account_rcs( ${n}, ${rc} )", ("n", account_name)("rc", rc) );
-   const account_object& account = db.get< account_object, by_name >( account_name );
+   //const account_object& account = db.get< account_object, by_name >( account_name );
    const rc_account_object& rc_account = db.get< rc_account_object, by_name >( account_name );
 
    int64_t total_mana_available = 0;
@@ -317,7 +317,11 @@ void use_account_rcs(
       total_mana_available += consumed_rc;
    }
 
-   mbparams.max_mana = get_maximum_rc( account, rc_account );
+   if( is_destination_nai( account_name ) )
+      mbparams.max_mana = 0;
+   else
+      mbparams.max_mana = get_maximum_rc( db.get< account_object, by_name >( account_name ), rc_account );
+
    manabar rca_manabar = rc_account.rc_manabar;
    rca_manabar.regenerate_mana< true >( mbparams, now );
    int64_t consumed_rc = std::min( rca_manabar.current_mana, rc - total_mana_available );
@@ -1159,9 +1163,46 @@ struct post_apply_operation_visitor
       _mod_accounts.emplace_back( op.from_account );
    }
 
-   void operator()( const smt_token_emission_action& a )const
+   void operator()( const smt_create_operation& op )const
    {
-      _mod_accounts.emplace_back( a.symbol.to_nai_string() );
+      account_name_type nai = op.symbol.to_nai_string();
+      int32_t now = _db.head_block_time().sec_since_epoch();
+
+      _db.create< rc_account_object >( [&]( rc_account_object& rca )
+      {
+         rca.account = nai;
+         rca.creator = op.control_account;
+         rca.rc_manabar.last_update_time = now;
+         rca.max_rc_creation_adjustment = asset( 0, STEEM_SYMBOL );
+         int64_t max_rc = 0;
+         rca.rc_manabar.current_mana = max_rc;
+         rca.last_max_rc = max_rc;
+
+         rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = nai;
+         for( int i = STEEM_RC_RECOVERY_SLOT_NUM; i < STEEM_RC_MAX_SLOTS; i++ )
+         {
+            rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
+         }
+      });
+
+      _db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& pool )
+      {
+         pool.account = nai;
+         pool.asset_symbol = STEEM_SYMBOL;
+         pool.rc_pool_manabar.current_mana = 0;
+         pool.rc_pool_manabar.last_update_time = now;
+         pool.max_rc = 0;
+      });
+
+      _db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& outdel )
+      {
+         outdel.from_pool = nai;
+         outdel.to_account = nai;
+         outdel.asset_symbol = STEEM_SYMBOL;
+         outdel.drc_manabar.current_mana = 0;
+         outdel.drc_manabar.last_update_time = now;
+         outdel.drc_max_mana = std::numeric_limits< int64_t >::max();
+      });
    }
 
    template< typename Op >
@@ -1397,12 +1438,15 @@ void rc_plugin_impl::validate_database()
 
    for( const rc_account_object& rc_account : rc_idx )
    {
-      const account_object& account = _db.get< account_object, by_name >( rc_account.account );
-      int64_t max_rc = get_maximum_rc( account, rc_account );
+      const auto account = _db.find< account_object, by_name >( rc_account.account );
+      if( account != nullptr )
+      {
+         int64_t max_rc = get_maximum_rc( *account, rc_account );
 
-      FC_ASSERT( max_rc == rc_account.last_max_rc,
-         "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
-         ("a", account.name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
+         FC_ASSERT( max_rc == rc_account.last_max_rc,
+            "Account ${a} max RC changed from ${old} to ${new} without triggering an op, noticed on block ${b} in validate_database()",
+            ("a", account->name)("old", rc_account.last_max_rc)("new", max_rc)("b", _db.head_block_num()) );
+      }
    }
 }
 

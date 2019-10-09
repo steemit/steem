@@ -17,7 +17,7 @@ namespace steem { namespace plugins { namespace rc {
 
 using namespace steem::chain;
 
-inline bool is_destination_nai( const string& dest )
+bool is_destination_nai( const string& dest )
 {
    return dest.size() == STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH - 1 && dest.c_str()[0] == '@' && dest.c_str()[1] == '@';
 }
