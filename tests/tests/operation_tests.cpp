@@ -8523,7 +8523,7 @@ BOOST_AUTO_TEST_CASE( account_update2_apply )
       BOOST_REQUIRE( acct_auth.active == authority( 2, new_private_key.get_public_key(), 2 ) );
       BOOST_REQUIRE( acct.memo_key == new_private_key.get_public_key() );
 
-#ifdef IS_LOW_MEM
+#ifndef IS_LOW_MEM
       const account_metadata_object& acct_metadata = db->get< account_metadata_object, by_account >( acct.id );
       BOOST_REQUIRE( acct_metadata.json_metadata == "{\"bar\":\"foo\"}" );
       BOOST_REQUIRE( acct_metadata.posting_json_metadata == "{\"success\":true}" );
