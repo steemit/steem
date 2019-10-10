@@ -1189,25 +1189,6 @@ struct post_apply_operation_visitor
             rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
          }
       });
-
-      _db.create< rc_delegation_pool_object >( [&]( rc_delegation_pool_object& pool )
-      {
-         pool.account = nai;
-         pool.asset_symbol = VESTS_SYMBOL;
-         pool.rc_pool_manabar.current_mana = 0;
-         pool.rc_pool_manabar.last_update_time = now;
-         pool.max_rc = 0;
-      });
-
-      _db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& outdel )
-      {
-         outdel.from_pool = nai;
-         outdel.to_account = nai;
-         outdel.asset_symbol = VESTS_SYMBOL;
-         outdel.drc_manabar.current_mana = 0;
-         outdel.drc_manabar.last_update_time = now;
-         outdel.drc_max_mana = std::numeric_limits< int64_t >::max();
-      });
    }
 
    template< typename Op >
