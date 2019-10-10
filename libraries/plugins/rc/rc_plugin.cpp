@@ -1168,7 +1168,7 @@ struct post_apply_operation_visitor
       _mod_accounts.emplace_back( op.from_account );
    }
 
-   void operator()( const smt_create_operation& op )const
+   void operator()( const smt_token_launch_action& op )const
    {
       account_name_type nai = op.symbol.to_nai_string();
       int32_t now = _db.head_block_time().sec_since_epoch();
