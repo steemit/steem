@@ -1137,6 +1137,111 @@ class wallet_api
       condenser_api::legacy_signed_transaction remove_proposal( account_name_type deleter,
                                                                 flat_set< int64_t > ids,
                                                                 bool broadcast );
+
+      /**
+       *  Create a Smart Media Token.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param smt_creation_fee The fee paid to create a token
+       *  @param precision The number of decimal places a token uses
+       */
+      condenser_api::legacy_signed_transaction create_smt(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         asset smt_creation_fee,
+         uint8_t precision,
+         bool broadcast );
+
+      /**
+       *  Creates Smart Media Token setup parameters.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param json_setup_parameters A JSON representation of smt_setup_parameters
+       */
+      condenser_api::legacy_signed_transaction smt_set_setup_parameters(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         string json_setup_parameters,
+         bool broadcast );
+
+      /**
+       *  Creates Smart Media Token runtime parameters.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param json_runtime_parameters A JSON representation of smt_runtime_parameters
+       */
+      condenser_api::legacy_signed_transaction smt_set_runtime_parameters(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         string json_runtime_parameters,
+         bool broadcast );
+
+      /**
+       *  Create Smart Media Token emissions.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param schedule_time The time the token is applicable
+       *  @param json_emission_unit A JSON representation of an emission unit
+       *  @param interval_seconds The seconds between intervals
+       *  @param interval_count The number of intervals
+       *  @param lep_time The time of the left endpoint
+       *  @param rep_time The time of the right endpoint
+       *  @param lep_abs_amount The absolute emission amount of the left endpoint
+       *  @param rep_abs_amount The absolute emission amount of the right endpoint
+       *  @param lep_rel_amount_numerator The relative emission numerator of the left endpoint
+       *  @param rep_rel_amount_numerator The relative emission numerator of the right endpoint
+       *  @param rel_amount_denom_bits The about of bits to shift for the relative denominator
+       *  @param remove Indicates whether an emission should be added or removed
+       *  @param floor_emissions Indicates whether we should consider the lowest or highest value with regards to relative and absolute emissions
+       */
+      condenser_api::legacy_signed_transaction smt_setup_emissions(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         time_point_sec schedule_time,
+         string json_emission_unit,
+         uint32_t interval_seconds,
+         uint32_t interval_count,
+         time_point_sec lep_time,
+         time_point_sec rep_time,
+         asset lep_abs_amount,
+         asset rep_abs_amount,
+         uint32_t lep_rel_amount_numerator,
+         uint32_t rep_rel_amount_numerator,
+         uint8_t rel_amount_denom_bits,
+         bool remove,
+         bool floor_emissions,
+         bool broadcast );
+
+      /**
+       *  Setup a Smart Media Token.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param max_supply The maximum supply of a smart media token
+       *  @param json_initial_generation_policy The steem and token destination routes of the ICO process
+       *  @param contribution_begin_time The start time of the ICO contribution process
+       *  @param contribution_end_time The end time of the ICO contribution process
+       *  @param launch_time The time in which a token should launch
+       *  @param steem_units_min The minimum steem units required for a successful ICO
+       *  @param steem_units_soft_cap The steem unit cap in which the pre_soft_cap_unit generation policy applies
+       *  @param steem_units_hard_cap The steem unit cap in which the post_soft_cap_unit generation policy applies
+       */
+      condenser_api::legacy_signed_transaction smt_setup(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         int64_t max_supply,
+         string json_initial_generation_policy,
+         time_point_sec contribution_begin_time,
+         time_point_sec contribution_end_time,
+         time_point_sec launch_time,
+         share_type steem_units_min,
+         share_type steem_units_soft_cap,
+         share_type steem_units_hard_cap,
+         bool broadcast );
 };
 
 struct plain_keys {
