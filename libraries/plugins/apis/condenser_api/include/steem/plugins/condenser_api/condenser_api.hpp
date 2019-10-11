@@ -1074,6 +1074,7 @@ DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   fl
 DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
+DEFINE_API_ARGS( get_nai_pool,                           vector< variant >,   vector< asset_symbol_type > )
 
 #undef DEFINE_API_ARGS
 
@@ -1171,6 +1172,7 @@ public:
       (list_proposals)
       (find_proposals)
       (list_proposal_votes)
+      (get_nai_pool)
    )
 
    private:

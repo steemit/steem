@@ -135,6 +135,7 @@ namespace detail
             (list_proposals)
             (find_proposals)
             (list_proposal_votes)
+            (get_nai_pool)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -2108,6 +2109,13 @@ namespace detail
       }
    } FC_LOG_AND_RETHROW() }
 
+   DEFINE_API_IMPL( condenser_api_impl, get_nai_pool )
+   {
+      CHECK_ARG_SIZE( 0 );
+
+      return _database_api->get_nai_pool( {} ).nai_pool;
+   }
+
 } // detail
 
 uint16_t api_account_object::_compute_voting_power( const database_api::api_account_object& a )
@@ -2307,6 +2315,7 @@ DEFINE_READ_APIS( condenser_api,
    (list_proposals)
    (list_proposal_votes)
    (find_proposals)
+   (get_nai_pool)
 )
 
 } } } // steem::plugins::condenser_api

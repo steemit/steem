@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steem/condenser_api_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/condenser_api/*.hpp")
 add_library( condenser_api_plugin
              condenser_api.cpp
              condenser_api_plugin.cpp
