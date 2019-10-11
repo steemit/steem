@@ -2627,9 +2627,9 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return my->sign_transaction( trx, broadcast );
    }
 
-   vector< asset_symbol_type > get_nai_pool()
+   vector< asset_symbol_type > wallet_api::get_nai_pool()
    {
-      return _remote_api->get_nai_pool();
+      return my->_remote_api->get_nai_pool();
    }
 
 } } // steem::wallet

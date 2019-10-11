@@ -1145,6 +1145,7 @@ class wallet_api
        *  @param symbol The asset symbol of the created token
        *  @param smt_creation_fee The fee paid to create a token
        *  @param precision The number of decimal places a token uses
+       *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction create_smt(
          account_name_type control_account,
@@ -1159,6 +1160,7 @@ class wallet_api
        *  @param control_account The name of the controlling account
        *  @param symbol The asset symbol of the created token
        *  @param json_setup_parameters A JSON representation of smt_setup_parameters
+       *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_set_setup_parameters(
          account_name_type control_account,
@@ -1172,6 +1174,7 @@ class wallet_api
        *  @param control_account The name of the controlling account
        *  @param symbol The asset symbol of the created token
        *  @param json_runtime_parameters A JSON representation of smt_runtime_parameters
+       *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_set_runtime_parameters(
          account_name_type control_account,
@@ -1197,6 +1200,7 @@ class wallet_api
        *  @param rel_amount_denom_bits The about of bits to shift for the relative denominator
        *  @param remove Indicates whether an emission should be added or removed
        *  @param floor_emissions Indicates whether we should consider the lowest or highest value with regards to relative and absolute emissions
+       *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_setup_emissions(
          account_name_type control_account,
@@ -1229,6 +1233,7 @@ class wallet_api
        *  @param steem_units_min The minimum steem units required for a successful ICO
        *  @param steem_units_soft_cap The steem unit cap in which the pre_soft_cap_unit generation policy applies
        *  @param steem_units_hard_cap The steem unit cap in which the post_soft_cap_unit generation policy applies
+       *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_setup(
          account_name_type control_account,
@@ -1242,6 +1247,11 @@ class wallet_api
          share_type steem_units_soft_cap,
          share_type steem_units_hard_cap,
          bool broadcast );
+
+      /**
+       * Retrieve the current NAI pool.
+       */
+      vector< asset_symbol_type > get_nai_pool();
 };
 
 struct plain_keys {
