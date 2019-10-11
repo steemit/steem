@@ -3549,7 +3549,13 @@ void database::apply_required_action( const required_automated_action& a )
    required_action_notification note( a );
    notify_pre_apply_required_action( note );
 
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_req_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
 
    notify_post_apply_required_action( note );
 }
@@ -3603,7 +3609,13 @@ void database::apply_optional_action( const optional_automated_action& a )
    optional_action_notification note( a );
    notify_pre_apply_optional_action( note );
 
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_opt_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
 
    notify_post_apply_optional_action( note );
 }

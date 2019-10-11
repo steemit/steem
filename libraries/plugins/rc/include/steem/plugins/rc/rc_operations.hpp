@@ -12,6 +12,8 @@ using steem::protocol::extensions_type;
 
 class rc_plugin;
 
+bool is_destination_nai( const string& dest );
+
 /**
  * Delegate SP or a vesting SMT to a pool.
  *
