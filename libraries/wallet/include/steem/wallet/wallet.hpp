@@ -1353,6 +1353,14 @@ FC_API( steem::wallet::wallet_api,
         (find_proposals)
         (list_proposal_votes)
         (remove_proposal)
+
+        ///smt api
+        (create_smt)
+        (smt_set_setup_parameters)
+        (smt_set_runtime_parameters)
+        (smt_setup_emissions)
+        (smt_setup)
+        (get_nai_pool)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
