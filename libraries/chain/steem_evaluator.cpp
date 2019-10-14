@@ -2778,7 +2778,7 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
 
          _db.modify( comment, [&]( comment_object& c )
          {
-            c.smt_rshares.insert_or_assign( symbol_rshare.first, rshare_ctx );
+            c.smt_rshares[ symbol_rshare.first ] = rshare_ctx;
          });
       }
    }

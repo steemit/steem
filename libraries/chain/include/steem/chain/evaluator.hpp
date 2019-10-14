@@ -2,6 +2,8 @@
 #include <steem/protocol/exceptions.hpp>
 #include <steem/protocol/operations.hpp>
 
+#include <boost/core/demangle.hpp>
+
 namespace steem { namespace chain {
 
 class database;

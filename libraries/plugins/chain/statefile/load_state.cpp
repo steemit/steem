@@ -38,7 +38,7 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
       for( const auto& header : top_header.sections )
       {
          object_section obj_header = header.get< object_section >();
-         header_map.insert_or_assign( obj_header.object_type, std::move( obj_header ) );
+         header_map[ obj_header.object_type ] = std::move( obj_header );
       }
 
       for( const auto& idx : index_map )

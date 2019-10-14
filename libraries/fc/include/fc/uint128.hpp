@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string>
 
+#include <boost/endian/conversion.hpp>
+
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/city.hpp>
 
@@ -32,6 +34,7 @@ namespace fc
       uint128( uint64_t _h, uint64_t _l )
       :hi(_h),lo(_l){}
       uint128( const fc::bigint& bi );
+      uint128( const uint128& o ):hi(o.hi),lo(o.lo){}
 
       operator std::string()const;
       operator fc::bigint()const;
@@ -121,6 +124,9 @@ namespace fc
       uint64_t lo;
   };
   static_assert( sizeof(uint128) == 2*sizeof(uint64_t), "validate packing assumptions" );
+
+  inline uint128 endian_reverse( const uint128& u )
+  { return uint128( boost::endian::endian_reverse( u.hi ), boost::endian::endian_reverse( u.lo ) ); }
 
   typedef uint128 uint128_t;
 

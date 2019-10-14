@@ -88,7 +88,7 @@ void process_comment_rewards( database& db )
             rf_ctx.curation_reward_curve = smt_fund.curation_reward_curve;
             rf_ctx.content_constant = smt_fund.content_constant;
             rf_ctx.percent_curation_rewards = smt_fund.percent_curation_rewards;
-            reward_funds.insert_or_assign( smt_rshare.first, std::move( rf_ctx ) );
+            reward_funds[ smt_rshare.first ] = std::move( rf_ctx );
 
             new_claims[ smt_rshare.first ] = 0;
 
