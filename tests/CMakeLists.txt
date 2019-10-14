@@ -51,7 +51,7 @@ function(parse_unit_tests RESULT)
 endfunction()
 
 parse_unit_tests(TEST_CASES ${UNIT_TESTS})
-
+#string (REPLACE ";" "\n" TEST_CASES "${TEST_CASES}")
 #message(STATUS "${TEST_CASES}")
 
 add_boost_test( chain_test
@@ -180,7 +180,6 @@ add_boost_test( chain_test
    operation_time_tests/convert_delay
    operation_time_tests/steem_inflation
    operation_time_tests/sbd_interest
-   operation_time_tests/liquidity_rewards
    operation_time_tests/post_rate_limit
    operation_time_tests/comment_freeze
    operation_time_tests/sbd_stability
@@ -247,6 +246,72 @@ add_boost_test( chain_test
    serialization_tests/asset_symbol_type_test
    serialization_tests/unpack_clear_test
    serialization_tests/unpack_recursion_test
+   smt_operation_tests/smt_limit_order_create_authorities
+   smt_operation_tests/smt_limit_order_create2_authorities
+   smt_operation_tests/smt_limit_order_create_apply
+   smt_operation_tests/smt_limit_order_cancel_authorities
+   smt_operation_tests/smt_limit_order_cancel_apply
+   smt_operation_tests/smt_limit_order_create2_apply
+   smt_operation_tests/claim_reward_balance2_validate
+   smt_operation_tests/claim_reward_balance2_authorities
+   smt_operation_tests/claim_reward_balance2_apply
+   smt_operation_tests/smt_transfer_to_vesting_validate
+   smt_operation_tests/smt_transfer_to_vesting_apply
+   smt_operation_tests/smt_withdraw_vesting_validate
+   smt_operation_tests/smt_withdraw_vesting_apply
+   smt_operation_tests/smt_create_validate
+   smt_operation_tests/smt_create_authorities
+   smt_operation_tests/smt_create_duplicate
+   smt_operation_tests/smt_create_duplicate_differing_decimals
+   smt_operation_tests/smt_create_duplicate_different_users
+   smt_operation_tests/smt_create_with_steem_funds
+   smt_operation_tests/smt_create_with_sbd_funds
+   smt_operation_tests/smt_create_with_invalid_nai
+   smt_operation_tests/smt_creation_fee_test
+   smt_operation_tests/smt_create_reset
+   smt_operation_tests/smt_nai_pool_removal
+   smt_operation_tests/smt_nai_pool_count
+   smt_operation_tests/smt_setup_emissions_validate
+   smt_operation_tests/smt_setup_emissions_authorities
+   smt_operation_tests/smt_setup_emissions_apply
+   smt_operation_tests/set_setup_parameters_validate
+   smt_operation_tests/set_setup_parameters_authorities
+   smt_operation_tests/set_setup_parameters_apply
+   smt_operation_tests/smt_set_runtime_parameters_validate
+   smt_operation_tests/smt_set_runtime_parameters_authorities
+   smt_operation_tests/smt_set_runtime_parameters_apply
+   smt_operation_tests/smt_contribute_validate
+   smt_operation_tests/smt_contribute_apply
+   smt_operation_tests/smt_transfer_validate
+   smt_operation_tests/smt_transfer_apply
+   smt_operation_tests/smt_setup_validate
+   smt_operation_tests/smt_setup_authorities
+   smt_operation_tests/smt_setup_apply
+   smt_operation_tests/comment_votable_assets_validate
+   smt_operation_tests/comment_votable_assets_apply
+   smt_operation_tests/smt_delegate_vesting_shares_validate
+   smt_operation_tests/smt_delegate_vesting_shares_apply
+   smt_operation_tests/vote2_authorities
+   smt_operation_tests/vote2_apply
+   smt_operation_time_tests/smt_refunds
+   smt_operation_time_tests/smt_ico_payouts
+   smt_operation_time_tests/smt_ico_payouts_special_destinations
+   smt_operation_time_tests/smt_vesting_withdrawals
+   smt_operation_time_tests/recent_claims_decay
+   smt_operation_time_tests/smt_rewards
+   smt_operation_time_tests/smt_token_emissions
+   smt_tests/smt_transfer_validate
+   smt_tests/smt_transfer_apply
+   smt_tests/asset_symbol_vesting_methods
+   smt_tests/vesting_smt_creation
+   smt_tests/smt_founder_vesting
+   smt_tests/setup_validate
+   smt_tests/setup_authorities
+   smt_tests/setup_apply
+   smt_tests/smt_create_apply
+   smt_tests/tick_pricing_rules_validation
+   smt_tests/tick_pricing_rules
+   smt_tests/price_as_decimal_and_real
    undo_tests/undo_basic
    undo_tests/undo_object_disapear
    undo_tests/undo_key_collision
@@ -265,13 +330,19 @@ parse_unit_tests(TEST_CASES ${PLUGIN_TESTS})
 add_boost_test( plugin_test
    SOURCES ${PLUGIN_TESTS}
    TESTS
-    json_rpc/basic_validation
-    json_rpc/syntax_validation
-    json_rpc/misc_validation
-    json_rpc/positive_validation
-    json_rpc/semantics_validation
-    market_history/mh_test
-    transaction_status/transaction_status_test
+   json_rpc/basic_validation
+   json_rpc/syntax_validation
+   json_rpc/misc_validation
+   json_rpc/positive_validation
+   json_rpc/semantics_validation
+   market_history/mh_test
+   smt_market_history/smt_mh_test
+   transaction_status/transaction_status_test
+   rc_delegation/rc_delegate_to_pool_apply
+   rc_delegation/rc_delegate_to_pool_apply
+   rc_delegation/rc_set_slot_delegator
+   rc_delegation/rc_delegate_drc_from_pool
+   rc_delegation/rc_drc_pool_consumption
 )
 
 target_link_libraries( plugin_test db_fixture steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin transaction_status_plugin transaction_status_api_plugin fc ${PLATFORM_SPECIFIC_LIBS} )

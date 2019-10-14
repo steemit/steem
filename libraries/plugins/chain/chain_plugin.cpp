@@ -1,7 +1,11 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/transaction_object.hpp>
 
 #include <steem/plugins/chain/abstract_block_producer.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/statefile/statefile.hpp>
 #include <steem/plugins/statsd/utility.hpp>
 
 #include <steem/utilities/benchmark_dumper.hpp>
@@ -21,6 +25,7 @@
 #include <thread>
 #include <memory>
 #include <iostream>
+#include <future>
 
 namespace steem { namespace plugins { namespace chain {
 
@@ -70,10 +75,13 @@ class chain_plugin_impl
       void stop_write_processing();
       void write_default_database_config( bfs::path& p );
 
+      void post_block( const block_notification& note );
+
       uint64_t                         shared_memory_size = 0;
       uint16_t                         shared_file_full_threshold = 0;
       uint16_t                         shared_file_scale_rate = 0;
       int16_t                          sps_remove_threshold = -1;
+      uint32_t                         chainbase_flags = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
       bool                             resync   = false;
@@ -83,12 +91,15 @@ class chain_plugin_impl
       bool                             dump_memory_details = false;
       bool                             benchmark_is_enabled = false;
       bool                             statsd_on_replay = false;
-      uint32_t                         stop_replay_at = 0;
+      uint32_t                         stop_at_block = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       bool                             replay_in_memory = false;
       std::vector< std::string >       replay_memory_indices{};
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
+      std::string                      from_state = "";
+      std::string                      to_state = "";
+      statefile::state_format_info     state_format;
 
       uint32_t allow_future_time = 5;
 
@@ -97,13 +108,14 @@ class chain_plugin_impl
       boost::lockfree::queue< write_context* > write_queue;
       int16_t                          write_lock_hold_time = 500;
 
-      vector< string >                 loaded_plugins;
-      fc::mutable_variant_object       plugin_state_opts;
+      flat_map< string, fc::variant_object > plugin_state_opts;
       bfs::path                        database_cfg;
 
       database  db;
       std::string block_generator_registrant;
       std::shared_ptr< abstract_block_producer > block_generator;
+
+      boost::signals2::connection      _post_apply_block_conn;
 };
 
 struct write_request_visitor
@@ -254,7 +266,7 @@ void chain_plugin_impl::start_write_processing()
             db.with_write_lock( [&]()
             {
                STATSD_START_TIMER( "chain", "lock_time", "write_lock", 1.0f )
-               while( true )
+               while( running )
                {
                   req_visitor.skip = cxt->skip;
                   req_visitor.except = &(cxt->except);
@@ -302,6 +314,15 @@ void chain_plugin_impl::write_default_database_config( bfs::path &p )
    fc::json::save_to_file( steem::utilities::default_database_configuration(), p );
 }
 
+void chain_plugin_impl::post_block( const block_notification& note )
+{
+   if( db.get_dynamic_global_properties().last_irreversible_block_num >= stop_at_block )
+   {
+      running = false;
+      std::async( std::launch::async, [&]{ app().quit(); } );
+   }
+}
+
 } // detail
 
 
@@ -324,26 +345,30 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
          ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G. If running a full node, increase this value to 200G.")
          ("shared-file-full-threshold", bpo::value<uint16_t>()->default_value(0),
-            "A 2 precision percentage (0-10000) that defines the threshold for when to autoscale the shared memory file. Setting this to 0 disables autoscaling. Recommended value for consensus node is 9500 (95%). Full node is 9900 (99%)" )
+            "A 2 precision percentage (0-10000) that defines the threshold for when to autoscale the shared memory file. Setting this to 0 disables autoscaling. Recommended value for consensus node is 9500 (95%). Full node is 9900 (99%)")
          ("shared-file-scale-rate", bpo::value<uint16_t>()->default_value(0),
-            "A 2 precision percentage (0-10000) that defines how quickly to scale the shared memory file. When autoscaling occurs the file's size will be increased by this percent. Setting this to 0 disables autoscaling. Recommended value is between 1000-2000 (10-20%)" )
+            "A 2 precision percentage (0-10000) that defines how quickly to scale the shared memory file. When autoscaling occurs the file's size will be increased by this percent. Setting this to 0 disables autoscaling. Recommended value is between 1000-2000 (10-20%)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
+         ("from-state", bpo::value<string>()->default_value(""), "Load from state, then replay subsequent blocks")
+         ("to-state", bpo::value<string>()->default_value(""), "File to save state to on shutdown")
+         ("state-format", bpo::value<string>()->default_value("binary"), "State file save format (binary|json)")
 #ifdef ENABLE_MIRA
          ("memory-replay-indices", bpo::value<vector<string>>()->multitoken()->composing(), "Specify which indices should be in memory during replay")
 #endif
          ;
    cli.add_options()
          ("sps-remove-threshold", bpo::value<uint16_t>()->default_value( 200 ), "Maximum numbers of proposals/votes which can be removed in the same cycle")
-         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
-         ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
-         ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
+         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks")
+         ("force-open", bpo::bool_switch()->default_value(false), "force open the database, skipping the environment check")
+         ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log")
+         ("stop-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("advanced-benchmark", "Make profiling for every plugin.")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
-         ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
-         ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+         ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking")
+         ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out")
 #ifdef ENABLE_MIRA
          ("database-cfg", bpo::value<bfs::path>()->default_value("database.cfg"), "The database configuration file location")
          ("memory-replay,m", bpo::bool_switch()->default_value(false), "Replay with state in memory instead of on disk")
@@ -354,7 +379,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ;
 }
 
-void chain_plugin::plugin_initialize(const variables_map& options) {
+void chain_plugin::plugin_initialize(const variables_map& options)
+{
    my->shared_memory_dir = app().data_dir() / "blockchain";
 
    if( options.count("shared-file-dir") )
@@ -376,10 +402,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->sps_remove_threshold = options.at( "sps-remove-threshold" ).as< uint16_t >();
 
+   my->chainbase_flags |= options.at( "force-open" ).as< bool >() ? chainbase::skip_env_check : chainbase::skip_nothing;
+
+   my->from_state          = options.at( "from-state" ).as<string>();
+   my->to_state            = options.at( "to-state" ).as<string>();
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
-   my->stop_replay_at      =
-      options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
+   my->stop_at_block      =
+      options.count( "stop-at-block" ) ? options.at( "stop-at-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
@@ -389,6 +419,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
    else
       my->flush_interval = 10000;
+
+   if( options.at( "state-format" ).as<string>() == "binary" )
+   {
+      my->state_format.is_binary = true;
+   }
+   else if( options.at( "state-format" ).as<string>() == "json" )
+   {
+      my->state_format.is_binary = false;
+   }
+   else
+   {
+      FC_ASSERT( false, "Unknown state format ${f}", ("f", options.at("state-format").as<string>()) );
+   }
 
    if(options.count("checkpoint"))
    {
@@ -521,8 +564,9 @@ void chain_plugin::plugin_startup()
    db_open_args.shared_file_full_threshold = my->shared_file_full_threshold;
    db_open_args.shared_file_scale_rate = my->shared_file_scale_rate;
    db_open_args.sps_remove_threshold = my->sps_remove_threshold;
+   db_open_args.chainbase_flags = my->chainbase_flags;
    db_open_args.do_validate_invariants = my->validate_invariants;
-   db_open_args.stop_replay_at = my->stop_replay_at;
+   db_open_args.stop_at_block = my->stop_at_block;
    db_open_args.benchmark_is_enabled = my->benchmark_is_enabled;
    db_open_args.database_cfg = database_config;
    db_open_args.replay_in_memory = my->replay_in_memory;
@@ -561,12 +605,18 @@ void chain_plugin::plugin_startup()
          ("pm", measure.peak_mem) );
    };
 
-   if(my->replay)
+   if(my->replay || (my->from_state != ""))
    {
       ilog("Replaying blockchain on user request.");
-      uint32_t last_block_number = 0;
       db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
-      last_block_number = my->db.reindex( db_open_args );
+      if( my->from_state != "" )
+      {
+         db_open_args.genesis_func = std::make_shared< std::function<void( database&, const database::open_args& )> >( [&]( database& db, const database::open_args& args )
+         {
+            statefile::init_genesis_from_state( db, ( app().data_dir() / my->from_state ).string(), args.shared_mem_dir, args.database_cfg );
+         } );
+      }
+      uint32_t last_block_number = my->db.reindex( db_open_args );
 
       if( my->benchmark_interval > 0 )
       {
@@ -579,9 +629,15 @@ void chain_plugin::plugin_startup()
                ("pm", total_data.peak_mem) );
       }
 
-      if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
+      if( my->stop_at_block > 0 && my->stop_at_block <= last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
+         if( my->to_state != "" )
+         {
+            ilog( "Saving blockchain state" );
+            auto result = statefile::write_state( my->db, ( app().data_dir() / my->to_state ).string(), my->state_format );
+            ilog( "Blockchain state successful, size=${n} hash=${h}", ("n", result.size)("h", result.hash) );
+         }
          exit(EXIT_SUCCESS);
       }
    }
@@ -600,13 +656,22 @@ void chain_plugin::plugin_startup()
       }
       catch( const fc::exception& e )
       {
-         wlog("Error opening database. If the binary or configuration has changed, replay the blockchain explicitly. Error: ${e}", ("e", e));
+         wlog( "Error opening database. If the binary or configuration has changed, replay the blockchain explicitly using `--replay-blockchain`." );
+         wlog( "If you know what you are doing you can skip this check and force open the database using `--force-open`." );
+         wlog( "WARNING: THIS MAY CORRUPT YOUR DATABASE. FORCE OPEN AT YOUR OWN RISK." );
+         wlog( " Error: ${e}", ("e", e) );
          exit(EXIT_FAILURE);
       }
    }
 
    ilog( "Started on blockchain with ${n} blocks", ("n", my->db.head_block_num()) );
    on_sync();
+
+   if( my->stop_at_block )
+   {
+      my->_post_apply_block_conn = my->db.add_post_apply_block_handler( [&]( const block_notification& note )
+      { my->post_block( note ); }, *this, 10 );
+   }
 
    my->start_write_processing();
 }
@@ -615,14 +680,38 @@ void chain_plugin::plugin_shutdown()
 {
    ilog("closing chain database");
    my->stop_write_processing();
+
+   if( my->to_state != "" )
+   {
+      db().with_write_lock( [&]()
+      {
+         db().undo_all();
+
+         FC_TODO( "Serializing and deserializing transaction objects does not seem to be working... :/" );
+         //const auto& trx_idx = db().get_index< steem::chain::transaction_index, by_id >();
+         //while( trx_idx.begin() != trx_idx.end() )
+         //{
+         //   db().remove( *trx_idx.begin() );
+         //}
+
+         ilog( "Saving blockchain state" );
+         auto result = statefile::write_state( my->db, ( app().data_dir() / my->to_state ).string(), my->state_format );
+         ilog( "Blockchain state successful, size=${n} hash=${h}", ("n", result.size)("h", result.hash) );
+      });
+   }
+
    my->db.close();
    ilog("database closed successfully");
 }
 
 void chain_plugin::report_state_options( const string& plugin_name, const fc::variant_object& opts )
 {
-   my->loaded_plugins.push_back( plugin_name );
-   my->plugin_state_opts( opts );
+   my->plugin_state_opts[ plugin_name ] = opts;
+}
+
+flat_map< string, fc::variant_object >& chain_plugin::get_state_options() const
+{
+   return my->plugin_state_opts;
 }
 
 bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip )

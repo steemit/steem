@@ -89,6 +89,12 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
+   enum open_flags
+   {
+      skip_nothing               = 0,
+      skip_env_check             = 1 << 0 // Skip environment check on db open
+   };
+
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -387,7 +393,6 @@ namespace chainbase {
          }
 
          const index_type& indicies()const { return _indices; }
-         int64_t revision()const { return _revision; }
 
 
          /**
@@ -400,9 +405,19 @@ namespace chainbase {
             const auto& head = _stack.back();
 
             for( auto& item : head.old_values ) {
-               auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
-                  v = std::move( item.second );
-               });
+               bool ok = false;
+               auto itr = _indices.find( item.second.id );
+               if( itr != _indices.end() )
+               {
+                  ok = _indices.modify( itr, [&]( value_type& v ) {
+                     v = std::move( item.second );
+                  });
+               }
+               else
+               {
+                  ok = _indices.emplace( std::move( item.second ) ).second;
+               }
+
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
@@ -560,6 +575,8 @@ namespace chainbase {
                undo();
          }
 
+         int64_t revision()const { return _revision; }
+
          void set_revision( int64_t revision )
          {
             if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
@@ -569,6 +586,9 @@ namespace chainbase {
             assert( _indices.revision() == _revision );
 #endif
          }
+
+         int64_t next_id()const { return _next_id._id; }
+         void set_next_id( int64_t next_id ) { _next_id = typename value_type::id_type( next_id ); }
 
       private:
          bool enabled()const { return _stack.size(); }
@@ -671,15 +691,19 @@ namespace chainbase {
 
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
-         virtual void     set_revision( int64_t revision ) = 0;
+
          virtual unique_ptr<abstract_session> start_undo_session() = 0;
 
-         virtual int64_t revision()const = 0;
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
          virtual void    undo_all()const = 0;
          virtual uint32_t type_id()const  = 0;
+
+         virtual int64_t revision()const = 0;
+         virtual void    set_revision( int64_t revision ) = 0;
+         virtual int64_t next_id()const = 0;
+         virtual void    set_next_id( int64_t next_id ) = 0;
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
          virtual size_t size() const = 0;
@@ -723,19 +747,16 @@ namespace chainbase {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
          }
 
-         virtual void     set_revision( int64_t revision ) override
-         {
-#ifdef ENABLE_MIRA
-            _base.set_revision( revision );
-#endif
-         }
-
-         virtual int64_t  revision()const  override { return _base.revision(); }
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
          virtual void     commit( int64_t revision )const  override { _base.commit(revision); }
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
+
+         virtual int64_t  revision()const  override { return _base.revision(); }
+         virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
+         virtual int64_t  next_id()const override { return _base.next_id(); }
+         virtual void     set_next_id( int64_t next_id ) override { _base.set_next_id( next_id ); }
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const override final
          {
@@ -1158,7 +1179,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
 #ifndef ENABLE_MIRA
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
@@ -1185,7 +1206,7 @@ namespace chainbase {
          }
 
          template< typename Lambda >
-         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 0 ) -> decltype( (*(Lambda*)nullptr)() )
+         auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
             write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
@@ -1193,11 +1214,8 @@ namespace chainbase {
             int_incrementer ii( _write_lock_count );
 #endif
 
-            if( !wait_micro )
-            {
-               lock.lock();
-            }
-            else
+#if !defined ENABLE_MIRA || defined IS_TEST_NET
+            if( wait_micro )
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
@@ -1205,6 +1223,11 @@ namespace chainbase {
                   std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
                   lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
+            }
+            else
+#endif
+            {
+               lock.lock();
             }
 
             return callback();

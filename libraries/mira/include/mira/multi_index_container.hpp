@@ -128,7 +128,7 @@ public:
 
   multi_index_container():
     super(ctor_args_list()),
-    entry_count(0)
+    _entry_count(0)
    {
       std::vector< std::string > split_v;
       auto type = boost::core::demangle( typeid( Value ).name() );
@@ -140,7 +140,7 @@ public:
 
   explicit multi_index_container( const boost::filesystem::path& p, const boost::any& cfg ):
     super(ctor_args_list()),
-    entry_count(0)
+    _entry_count(0)
    {
       std::vector< std::string > split_v;
       auto type = boost::core::demangle( typeid( Value ).name() );
@@ -157,7 +157,7 @@ public:
    template< typename InputIterator >
    explicit multi_index_container( InputIterator& first, InputIterator& last, const boost::filesystem::path& p, const boost::any& cfg ):
     super(ctor_args_list()),
-    entry_count(0)
+    _entry_count(0)
    {
       std::vector< std::string > split_v;
       auto type = boost::core::demangle( typeid( Value ).name() );
@@ -166,13 +166,22 @@ public:
       _name = "rocksdb_" + *(split_v.rbegin());
       _wopts.disableWAL = true;
 
-      open( p, cfg );
+      open( p, cfg, true );
 
       while( first != last )
       {
-         insert_( *(const_cast<value_type*>(first.operator->())) );
+         super::insert_rocksdb_( *first );
          ++first;
+         ++_entry_count;
+
+         super::commit_first_key_update();
       }
+
+      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+      super::_write_buffer.Clear();
+
+      close();
+      open( p, cfg );
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
@@ -184,7 +193,8 @@ public:
       _name( other._name ),
       _stats( other._stats ),
       _wopts( other._wopts ),
-      _ropts( other._ropts )
+      _ropts( other._ropts ),
+      _entry_count( other._entry_count )
    {}
 
    multi_index_container( multi_index_container&& other ) :
@@ -193,7 +203,8 @@ public:
       _name( std::move( other._name ) ),
       _stats( std::move( other._stats ) ),
       _wopts( std::move( other._wopts ) ),
-      _ropts( std::move( other._ropts ) )
+      _ropts( std::move( other._ropts ) ),
+      _entry_count( other._entry_count )
    {}
 
    multi_index_container& operator=( const multi_index_container& rhs )
@@ -204,6 +215,7 @@ public:
       _stats = rhs._stats;
       _wopts = rhs._wopts;
       _ropts = rhs._ropts;
+      _entry_count = rhs._entry_count;
 
       return *this;
    }
@@ -216,11 +228,12 @@ public:
       _stats = std::move( rhs._stats );
       _wopts = std::move( rhs._wopts );
       _ropts = std::move( rhs._ropts );
+      _entry_count = rhs._entry_count;
 
       return *this;
    }
 
-   bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr )
+   bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr, bool bulk_load = false )
    {
       assert( p.is_absolute() );
 
@@ -236,12 +249,15 @@ public:
 
       try
       {
-         if ( configuration::gather_statistics( cfg ) )
-            _stats = ::rocksdb::CreateDBStatistics();
-
          detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
 
          opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+
+         if( bulk_load )
+            opts.PrepareForBulkLoad();
+
+         if ( configuration::gather_statistics( cfg ) )
+            opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
       }
       catch ( ... )
       {
@@ -279,7 +295,7 @@ public:
 
          if( s.ok() )
          {
-            entry_count = fc::raw::unpack_from_char_array< uint64_t >( value_slice.data(), value_slice.size() );
+            _entry_count = fc::raw::unpack_from_char_array< uint64_t >( value_slice.data(), value_slice.size() );
          }
 
          auto ser_rev_key = fc::raw::pack_to_vector( REVISION_KEY );
@@ -313,7 +329,7 @@ public:
       if( super::_db && super::_db.unique() )
       {
          auto ser_count_key = fc::raw::pack_to_vector( ENTRY_COUNT_KEY );
-         auto ser_count_val = fc::raw::pack_to_vector( entry_count );
+         auto ser_count_val = fc::raw::pack_to_vector( _entry_count );
 
          super::_db->Put(
             _wopts,
@@ -590,12 +606,12 @@ primary_iterator erase( primary_iterator position )
 
   bool empty_()const
   {
-    return entry_count==0;
+    return _entry_count==0;
   }
 
   uint64_t size_()const
   {
-    return entry_count;
+    return _entry_count;
   }
 
   uint64_t max_size_()const
@@ -610,29 +626,38 @@ primary_iterator erase( primary_iterator position )
       return insert_( v );
    }
 
-   bool insert_( value_type& v )
+   bool insert_( const value_type& v )
    {
-      bool status = false;
-      if( super::insert_rocksdb_( v ) )
+      bool status = super::insert_rocksdb_( v );
+
+      if( !_bulk_load )
       {
-         auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
-         status = retval.ok();
          if( status )
          {
-            ++entry_count;
-            super::commit_first_key_update();
+            auto retval = super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+            status = retval.ok();
+            if( status )
+            {
+               ++_entry_count;
+               super::commit_first_key_update();
+            }
+            else
+            {
+               elog( "${e}", ("e", retval.ToString()) );
+               super::reset_first_key_update();
+            }
          }
          else
          {
-            elog( "${e}", ("e", retval.ToString()) );
             super::reset_first_key_update();
          }
+
+         super::_write_buffer.Clear();
       }
       else
       {
-         super::reset_first_key_update();
+         ++_entry_count;
       }
-      super::_write_buffer.Clear();
 
       return status;
    }
@@ -644,7 +669,7 @@ primary_iterator erase( primary_iterator position )
       bool status = retval.ok();
       if( status )
       {
-         --entry_count;
+         --_entry_count;
          std::lock_guard< std::mutex > lock( super::_cache->get_lock() );
          super::_cache->invalidate( v );
          super::commit_first_key_update();
@@ -662,7 +687,7 @@ primary_iterator erase( primary_iterator position )
   {
     super::clear_();
     super::_cache->clear();
-    entry_count=0;
+    _entry_count=0;
   }
 
    template< typename Modifier >
@@ -756,8 +781,27 @@ primary_iterator erase( primary_iterator position )
       return status.ok();
    }
 
+   void begin_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   {
+      close();
+      open( p, cfg, true );
+      _bulk_load = true;
+   }
+
+   void end_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   {
+      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+      super::commit_first_key_update();
+      super::_write_buffer.Clear();
+
+      close();
+      open( p, cfg );
+      _bulk_load = false;
+   }
+
 private:
-   uint64_t entry_count;
+   uint64_t _entry_count = 0;
+   bool     _bulk_load = false;
 
    size_t get_column_size() const { return super::COLUMN_INDEX; }
 

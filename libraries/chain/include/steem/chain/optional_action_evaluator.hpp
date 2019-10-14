@@ -12,4 +12,6 @@ using namespace steem::protocol;
 STEEM_DEFINE_ACTION_EVALUATOR( example_optional, optional_automated_action )
 #endif
 
+STEEM_DEFINE_ACTION_EVALUATOR( smt_token_emission, optional_automated_action )
+
 } } //steem::chain

@@ -295,7 +295,27 @@ const std::string& sps_processor::get_calculating_name()
 void sps_processor::run( const block_notification& note )
 {
    remove_old_proposals( note );
+   record_funding( note );
    make_payments( note );
+}
+
+void sps_processor::record_funding( const block_notification& note )
+{
+   if( !is_maintenance_period( note.block.timestamp ) )
+      return;
+
+   const auto& props = db.get_dynamic_global_properties();
+
+   if ( props.sps_interval_ledger.amount.value <= 0 )
+      return;
+
+   operation vop = sps_fund_operation( props.sps_interval_ledger );
+   db.push_virtual_operation( vop );
+
+   db.modify( props, []( dynamic_global_property_object& dgpo )
+   {
+      dgpo.sps_interval_ledger = asset( 0, SBD_SYMBOL );
+   });
 }
 
 } } // namespace steem::chain

@@ -177,6 +177,7 @@ struct api_account_object
       post_count( a.post_count ),
       can_vote( a.can_vote ),
       voting_manabar( a.voting_manabar ),
+      downvote_manabar( a.downvote_manabar ),
       balance( a.balance ),
       savings_balance( a.savings_balance ),
       sbd_balance( a.sbd_balance ),
@@ -229,11 +230,9 @@ struct api_account_object
       }
 #endif
 
-#ifdef STEEM_ENABLE_SMT
       const auto& by_control_account_index = db.get_index<smt_token_index>().indices().get<by_control_account>();
       auto smt_obj_itr = by_control_account_index.find( name );
       is_smt = smt_obj_itr != by_control_account_index.end();
-#endif
    }
 
 
@@ -264,6 +263,7 @@ struct api_account_object
 
    bool              can_vote = false;
    util::manabar     voting_manabar;
+   util::manabar     downvote_manabar;
 
    asset             balance;
    asset             savings_balance;
@@ -538,6 +538,19 @@ struct api_hardfork_property_object
    fc::time_point_sec            next_hardfork_time;
 };
 
+struct api_smt_token_object
+{
+   api_smt_token_object( const smt_token_object& token, const database& db ) : token( token )
+   {
+      const smt_ico_object* ico = db.find< chain::smt_ico_object, chain::by_symbol >( token.liquid_symbol );
+      if ( ico != nullptr )
+         this->ico = *ico;
+   }
+
+   smt_token_object                token;
+   fc::optional< smt_ico_object >  ico;
+};
+
 enum proposal_status
 {
    all,
@@ -556,7 +569,8 @@ struct api_proposal_object
    api_proposal_object() = default;
 
    api_proposal_object(const proposal_object& po, const time_point_sec& current_time) :
-      id(po.proposal_id),
+      id(po.id),
+      proposal_id(po.proposal_id),
       creator(po.creator),
       receiver(po.receiver),
       start_date(po.start_date),
@@ -600,9 +614,10 @@ struct api_proposal_vote_object
 struct order
 {
    price                order_price;
-   double               real_price; // dollars per steem
-   share_type           steem;
-   share_type           sbd;
+   std::string          decimal_price;
+   double               real_price;
+   asset                for_sale;
+   asset                to_receive;
    fc::time_point_sec   created;
 };
 
@@ -635,7 +650,7 @@ FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(downvote_manabar)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -730,6 +745,11 @@ FC_REFLECT( steem::plugins::database_api::api_hardfork_property_object,
             (next_hardfork_time)
           )
 
+FC_REFLECT( steem::plugins::database_api::api_smt_token_object,
+   (token)
+   (ico)
+)
+
 FC_REFLECT_ENUM( steem::plugins::database_api::proposal_status,
                   (all)
                   (inactive)
@@ -758,6 +778,6 @@ FC_REFLECT( steem::plugins::database_api::api_proposal_vote_object,
             (proposal)
           )
 
-FC_REFLECT( steem::plugins::database_api::order, (order_price)(real_price)(steem)(sbd)(created) );
+FC_REFLECT( steem::plugins::database_api::order, (order_price)(decimal_price)(real_price)(for_sale)(to_receive)(created) );
 
 FC_REFLECT( steem::plugins::database_api::order_book, (asks)(bids) );

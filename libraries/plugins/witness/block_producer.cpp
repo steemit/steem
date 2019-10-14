@@ -17,17 +17,26 @@ namespace steem { namespace plugins { namespace witness {
 chain::signed_block block_producer::generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip)
 {
    chain::signed_block result;
-   steem::chain::detail::with_skip_flags(
-      _db,
-      skip,
-      [&]()
-      {
-         try
+   try
+   {
+      _db.set_producing( true );
+      steem::chain::detail::with_skip_flags(
+         _db,
+         skip,
+         [&]()
          {
-            result = _generate_block( when, witness_owner, block_signing_private_key );
-         }
-         FC_CAPTURE_AND_RETHROW( (witness_owner) )
-      });
+            try
+            {
+               result = _generate_block( when, witness_owner, block_signing_private_key );
+            }
+            FC_CAPTURE_AND_RETHROW( (witness_owner) )
+         });
+      _db.set_producing( false );
+   }
+   catch ( ... )
+   {
+      _db.set_producing( false );
+   }
    return result;
 }
 
@@ -82,18 +91,19 @@ void block_producer::adjust_hardfork_version_vote(const chain::witness_object& w
       pending_block.extensions.insert( block_header_extensions( STEEM_BLOCKCHAIN_VERSION ) );
 
    const auto& hfp = _db.get_hardfork_property_object();
+   const auto& hf_versions = _db.get_hardfork_versions();
 
    if( hfp.current_hardfork_version < STEEM_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
-      && ( witness.hardfork_version_vote != hfp.next_hardfork || witness.hardfork_time_vote != hfp.next_hardfork_time ) ) // Witness vote does not match binary configuration
+      && ( witness.hardfork_version_vote != hf_versions.versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != hf_versions.times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
    {
       // Make vote match binary configuration
-      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.next_hardfork, hfp.next_hardfork_time ) ) );
+      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hf_versions.versions[ hfp.last_hardfork + 1 ], hf_versions.times[ hfp.last_hardfork + 1 ] ) ) );
    }
    else if( hfp.current_hardfork_version == STEEM_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
             && witness.hardfork_version_vote > STEEM_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
    {
       // Make vote match binary configuration. This is vote to not apply the new hardfork.
-      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hfp.current_hardfork_version, hfp.processed_hardforks.back() ) ) );
+      pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( hf_versions.versions[ hfp.last_hardfork ], hf_versions.times[ hfp.last_hardfork ] ) ) );
    }
 }
 
@@ -197,7 +207,17 @@ void block_producer::apply_pending_transactions(
          temp_session.squash();
          total_block_size = new_total_size;
          required_actions.push_back( pending_required_itr->action );
+
+#ifdef ENABLE_MIRA
+         auto old = pending_required_itr++;
+         if( !( pending_required_itr != pending_required_action_idx.end() && pending_required_itr->execution_time <= when ) )
+         {
+            pending_required_itr = pending_required_action_idx.iterator_to( *old );
+            ++pending_required_itr;
+         }
+#else
          ++pending_required_itr;
+#endif
       }
       catch( fc::exception& e )
       {
@@ -216,6 +236,7 @@ FC_TODO( "Remove ifdef when required actions are added" )
    const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
    chain::optional_automated_actions optional_actions;
+   vector< const chain::pending_optional_action_object* > attempted_actions;
 
    while( pending_optional_itr != pending_optional_action_idx.end() && pending_optional_itr->execution_time <= when )
    {
@@ -223,6 +244,8 @@ FC_TODO( "Remove ifdef when required actions are added" )
 
       if( new_total_size > maximum_block_size )
          break;
+
+      attempted_actions.push_back( &(*pending_optional_itr) );
 
       try
       {
@@ -233,7 +256,13 @@ FC_TODO( "Remove ifdef when required actions are added" )
          optional_actions.push_back( pending_optional_itr->action );
       }
       catch( fc::exception& ) {}
+
       ++pending_optional_itr;
+   }
+
+   for( const auto* o : attempted_actions )
+   {
+      _db.remove( *o );
    }
 
 FC_TODO( "Remove ifdef when optional actions are added" )

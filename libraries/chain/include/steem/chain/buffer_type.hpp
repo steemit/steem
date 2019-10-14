@@ -37,6 +37,4 @@ template< typename T, typename B > inline T unpack_from_buffer( const B& raw )
 
 } } // fc::raw
 
-#ifndef ENABLE_MIRA
 FC_REFLECT_TYPENAME( steem::chain::buffer_type )
-#endif

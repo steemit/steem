@@ -45,6 +45,7 @@ enum sort_order_type
    by_comment_voter,
    by_voter_comment,
    by_price,
+   by_symbol_contributor,
    by_symbol,
    by_control_account,
    by_symbol_time,
@@ -53,7 +54,13 @@ enum sort_order_type
    by_end_date,
    by_total_votes,
    by_voter_proposal,
-   by_proposal_voter
+   by_proposal_voter,
+   by_contributor,
+   by_symbol_id,
+   by_comment_voter_symbol,
+   by_voter_comment_symbol,
+   by_comment_symbol_voter,
+   by_voter_symbol_comment
 };
 
 enum order_direction_type
@@ -400,6 +407,7 @@ struct find_votes_args
 {
    account_name_type author;
    string            permlink;
+   asset_symbol_type symbol = STEEM_SYMBOL;
 };
 
 typedef list_votes_return find_votes_return;
@@ -428,6 +436,8 @@ typedef list_limit_orders_return find_limit_orders_return;
 struct get_order_book_args
 {
    uint32_t          limit;
+   asset_symbol_type base;
+   asset_symbol_type quote;
 };
 
 typedef order_book get_order_book_return;
@@ -561,8 +571,6 @@ struct verify_signatures_return
    bool valid;
 };
 
-#ifdef STEEM_ENABLE_SMT
-
 typedef void_type get_nai_pool_args;
 
 struct get_nai_pool_return
@@ -570,12 +578,27 @@ struct get_nai_pool_return
    vector< asset_symbol_type > nai_pool;
 };
 
+typedef list_object_args_type list_smt_contributions_args;
+
+struct list_smt_contributions_return
+{
+   vector< smt_contribution_object > contributions;
+};
+
+struct find_smt_contributions_args
+{
+   vector< std::pair< asset_symbol_type, account_name_type > > symbol_contributors;
+};
+
+typedef list_smt_contributions_return find_smt_contributions_return;
+
+typedef list_object_args_type list_smt_token_emissions_args;
 
 typedef list_object_args_type list_smt_tokens_args;
 
 struct list_smt_tokens_return
 {
-   vector< smt_token_object > tokens;
+   vector< api_smt_token_object > tokens;
 };
 
 struct find_smt_tokens_args
@@ -601,7 +624,6 @@ struct find_smt_token_emissions_args
 
 typedef list_smt_token_emissions_return find_smt_token_emissions_return;
 
-#endif
 
 } } } // steem::database_api
 
@@ -637,6 +659,7 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter)
    (by_voter_comment)
    (by_price)
+   (by_symbol_contributor)
    (by_symbol)
    (by_control_account)
    (by_symbol_time)
@@ -645,7 +668,13 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_end_date)
    (by_total_votes)
    (by_voter_proposal)
-   (by_proposal_voter) )
+   (by_proposal_voter)
+   (by_contributor)
+   (by_symbol_id)
+   (by_comment_voter_symbol)
+   (by_voter_comment_symbol)
+   (by_comment_symbol_voter)
+   (by_voter_symbol_comment) )
 
 FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
   (ascending)
@@ -749,7 +778,7 @@ FC_REFLECT( steem::plugins::database_api::list_votes_return,
    (votes) )
 
 FC_REFLECT( steem::plugins::database_api::find_votes_args,
-   (author)(permlink) )
+   (author)(permlink)(symbol) )
 
 FC_REFLECT( steem::plugins::database_api::list_limit_orders_return,
    (orders) )
@@ -758,7 +787,7 @@ FC_REFLECT( steem::plugins::database_api::find_limit_orders_args,
    (account) )
 
 FC_REFLECT( steem::plugins::database_api::get_order_book_args,
-   (limit) )
+   (limit)(base)(quote) )
 
 FC_REFLECT( steem::plugins::database_api::list_proposals_args,
    (start)(limit)(order)(order_direction)(status) )
@@ -809,10 +838,14 @@ FC_REFLECT( steem::plugins::database_api::verify_signatures_args,
 FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
    (valid) )
 
-#ifdef STEEM_ENABLE_SMT
-
 FC_REFLECT( steem::plugins::database_api::get_nai_pool_return,
    (nai_pool) )
+
+FC_REFLECT( steem::plugins::database_api::list_smt_contributions_return,
+   (contributions) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_contributions_args,
+   (symbol_contributors) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )
@@ -826,4 +859,3 @@ FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_return,
 FC_REFLECT( steem::plugins::database_api::find_smt_token_emissions_args,
    (asset_symbol) )
 
-#endif

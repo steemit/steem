@@ -77,13 +77,13 @@ class database_api_impl
          (verify_authority)
          (verify_account_authority)
          (verify_signatures)
-#ifdef STEEM_ENABLE_SMT
          (get_nai_pool)
+         (list_smt_contributions)
+         (find_smt_contributions)
          (list_smt_tokens)
          (find_smt_tokens)
          (list_smt_token_emissions)
          (find_smt_token_emissions)
-#endif
       )
 
       template< typename ResultType >
@@ -1173,12 +1173,12 @@ namespace last_votes_misc
 
    //====================================================votes_impl====================================================
    template< sort_order_type SORTORDERTYPE >
-   void votes_impl( database_api_impl& _impl, vector< api_comment_vote_object >& c, size_t nr_args, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp, uint64_t weight )
+   void votes_impl( database_api_impl& _impl, vector< api_comment_vote_object >& c, uint32_t limit, vector< fc::variant >& key, fc::time_point_sec& timestamp, uint64_t weight )
    {
-      if( SORTORDERTYPE == by_comment_voter )
-         FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, string, account_name_type)", ("nr_args", nr_args ) );
+      if( SORTORDERTYPE == by_comment_voter_symbol )
+         FC_ASSERT( key.size() == 3 || key.size() == 4, "by_comment_voter_symbol start requires 3-4 values. (account_name_type, string, account_name_type, asset_symbol_type)" );
       else
-         FC_ASSERT( key.size() == nr_args, "by_comment_voter start requires ${nr_args} values. (account_name_type, ${desc}account_name_type, string)", ("nr_args", nr_args )("desc",( nr_args == 4 )?"time_point_sec, ":"" ) );
+         FC_ASSERT( key.size() == 3 || key.size() == 4, "by_voter_comment_symbol start requires 3-4 values. (account_name_type, account_name_type, string)" );
 
       account_name_type voter;
       account_name_type author;
@@ -1187,7 +1187,7 @@ namespace last_votes_misc
       account_id_type voter_id;
       comment_id_type comment_id;
 
-      if( SORTORDERTYPE == by_comment_voter )
+      if( SORTORDERTYPE == by_comment_voter_symbol )
       {
          author = key[0].as< account_name_type >();
          permlink = key[1].as< string >();
@@ -1195,9 +1195,9 @@ namespace last_votes_misc
       }
       else
       {
-         author = key[ nr_args - 2 ].as< account_name_type >();
-         permlink = key[ nr_args - 1 ].as< string >();
          voter = key[0].as< account_name_type >();
+         author = key[ 1 ].as< account_name_type >();
+         permlink = key[ 2 ].as< string >();
       }
 
       if( voter != account_name_type() )
@@ -1214,9 +1214,16 @@ namespace last_votes_misc
          comment_id = comment->id;
       }
 
-      if( SORTORDERTYPE == by_comment_voter )
+      asset_symbol_type start_symbol = STEEM_SYMBOL;
+
+      if( key.size() == 4 )
       {
-         _impl.iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
+         start_symbol = key[3].as< asset_symbol_type >();
+      }
+
+      if( SORTORDERTYPE == by_comment_voter_symbol )
+      {
+         _impl.iterate_results< chain::comment_vote_index, chain::by_comment_voter_symbol >(
          boost::make_tuple( comment_id, voter_id ),
          c,
          limit,
@@ -1225,7 +1232,7 @@ namespace last_votes_misc
       }
       else if( SORTORDERTYPE == by_voter_comment )
       {
-         _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
+         _impl.iterate_results< chain::comment_vote_index, chain::by_voter_comment_symbol >(
          boost::make_tuple( voter_id, comment_id ),
          c,
          limit,
@@ -1252,15 +1259,96 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
    switch( args.order )
    {
       case( by_comment_voter ):
+      case( by_comment_voter_symbol ):
       {
          static fc::time_point_sec t( -1 );
-         last_votes_misc::votes_impl< by_comment_voter >( *this, result.votes, 3/*nr_args*/, args.limit, key, t, 0 );
+         last_votes_misc::votes_impl< by_comment_voter_symbol >( *this, result.votes, args.limit, key, t, 0 );
          break;
       }
       case( by_voter_comment ):
+      case( by_voter_comment_symbol ):
       {
          static fc::time_point_sec t( -1 );
-         last_votes_misc::votes_impl< by_voter_comment >( *this, result.votes, 3/*nr_args*/, args.limit, key, t, 0 );
+         last_votes_misc::votes_impl< by_voter_comment_symbol >( *this, result.votes, args.limit, key, t, 0 );
+         break;
+      }
+      case( by_comment_symbol_voter ):
+      {
+         auto key = args.start.as< vector< fc::variant > >();
+         FC_ASSERT( key.size() == 3 || key.size() == 4, "by_comment_symbol_voter start requires 3-4 values. (account_name_type, string, asset_symbol_type, account_name_type)" );
+
+         auto author = key[0].as< account_name_type >();
+         auto permlink = key[1].as< string >();
+         comment_id_type comment_id;
+
+         if( author != account_name_type() || permlink.size() )
+         {
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
+            comment_id = comment->id;
+         }
+
+         asset_symbol_type start_symbol = key[2].as< asset_symbol_type >();
+         account_id_type voter_id;
+
+         if( key.size() == 4 )
+         {
+            auto voter = key[3].as< account_name_type >();
+
+            if( voter != account_name_type() )
+            {
+               auto account = _db.find< chain::account_object, chain::by_name >( voter );
+               FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
+               voter_id = account->id;
+            }
+         }
+
+         iterate_results< chain::comment_vote_index, chain::by_comment_symbol_voter >(
+            boost::make_tuple( comment_id, start_symbol, voter_id ),
+            result.votes,
+            args.limit,
+            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); },
+            &database_api_impl::filter_default< comment_vote_object > );
+         break;
+      }
+      case( by_voter_symbol_comment ):
+      {
+         auto key = args.start.as< vector< fc::variant > >();
+         FC_ASSERT( key.size() == 2 || key.size() == 4, "by_voter_symbol_comment start requires 2 or 4 values. (account_name_type, asset_symbol_type, account_name_type, string)" );
+
+         account_id_type voter_id;
+         auto voter = key[0].as< account_name_type >();
+
+         if( voter != account_name_type() )
+         {
+            auto account = _db.find< chain::account_object, chain::by_name >( voter );
+            FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
+            voter_id = account->id;
+         }
+
+         asset_symbol_type start_symbol = key[1].as< asset_symbol_type >();
+
+         comment_id_type comment_id;
+
+         if( key.size() == 4 )
+         {
+            auto author = key[2].as< account_name_type >();
+            auto permlink = key[3].as< string >();
+
+            if( author != account_name_type() || permlink.size() )
+            {
+               auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
+               FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
+               comment_id = comment->id;
+            }
+         }
+
+         iterate_results< chain::comment_vote_index, chain::by_voter_symbol_comment >(
+            boost::make_tuple( voter_id, start_symbol, comment_id ),
+            result.votes,
+            args.limit,
+            [&]( const comment_vote_object& cv ){ return api_comment_vote_object( cv, _db ); },
+            &database_api_impl::filter_default< comment_vote_object > );
          break;
       }
       default:
@@ -1274,10 +1362,10 @@ DEFINE_API_IMPL( database_api_impl, find_votes )
 {
    find_votes_return result;
 
-   auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( args.author, args.permlink ) );
+   auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( args.author, args.permlink, args.symbol ) );
    FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}", ("a", args.author)("p", args.permlink ) );
 
-   const auto& vote_idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+   const auto& vote_idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter_symbol >();
    auto itr = vote_idx.lower_bound( comment->id );
 
    while( itr != vote_idx.end() && itr->comment == comment->id && result.votes.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1353,44 +1441,54 @@ DEFINE_API_IMPL( database_api_impl, find_limit_orders )
 
 
 /* Order Book */
-
 DEFINE_API_IMPL( database_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
    get_order_book_return result;
 
-   auto max_sell = price::max( SBD_SYMBOL, STEEM_SYMBOL );
-   auto max_buy = price::max( STEEM_SYMBOL, SBD_SYMBOL );
+   std::pair< asset_symbol_type, asset_symbol_type > market{ args.base, args.quote };
+
+   auto max_sell = price::max( std::get< 0 >( market ), std::get< 1 >( market ) );
+   auto max_buy  = price::max( std::get< 1 >( market ), std::get< 0 >( market ) );
 
    const auto& limit_price_idx = _db.get_index< chain::limit_order_index >().indices().get< chain::by_price >();
-   auto sell_itr = limit_price_idx.lower_bound( max_sell );
-   auto buy_itr  = limit_price_idx.lower_bound( max_buy );
-   auto end = limit_price_idx.end();
+   auto sell_itr               = limit_price_idx.lower_bound( max_sell );
+   auto buy_itr                = limit_price_idx.lower_bound( max_buy );
+   auto end                    = limit_price_idx.end();
 
-   while( sell_itr != end && sell_itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < args.limit )
+   while (
+      sell_itr != end &&
+      sell_itr->sell_price.base.symbol  == std::get< 0 >( market ) &&
+      sell_itr->sell_price.quote.symbol == std::get< 1 >( market ) &&
+      result.bids.size() < args.limit )
    {
       auto itr = sell_itr;
       order cur;
-      cur.order_price = itr->sell_price;
-      cur.real_price  = 0.0;
-      // cur.real_price  = (cur.order_price).to_real();
-      cur.sbd = itr->for_sale;
-      cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
-      cur.created = itr->created;
-      result.bids.push_back( cur );
+      cur.order_price   = itr->sell_price;
+      cur.decimal_price = itr->sell_price.as_decimal();
+      cur.real_price    = itr->sell_price.as_real();
+      cur.for_sale      = itr->amount_for_sale();
+      cur.to_receive    = itr->amount_to_receive();
+      cur.created       = itr->created;
+      result.bids.push_back( std::move( cur ) );
       ++sell_itr;
    }
-   while( buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < args.limit )
+
+   while (
+      buy_itr != end &&
+      buy_itr->sell_price.base.symbol  == std::get< 1 >( market ) &&
+      buy_itr->sell_price.quote.symbol == std::get< 0 >( market ) &&
+      result.asks.size() < args.limit )
    {
       auto itr = buy_itr;
       order cur;
-      cur.order_price = itr->sell_price;
-      cur.real_price = 0.0;
-      // cur.real_price  = (~cur.order_price).to_real();
-      cur.steem   = itr->for_sale;
-      cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
-      cur.created = itr->created;
-      result.asks.push_back( cur );
+      cur.order_price   = itr->sell_price;
+      cur.decimal_price = itr->sell_price.as_decimal();
+      cur.real_price    = itr->sell_price.as_real();
+      cur.for_sale      = itr->amount_for_sale();
+      cur.to_receive    = itr->amount_to_receive();
+      cur.created       = itr->created;
+      result.asks.push_back( std::move( cur ) );
       ++buy_itr;
    }
 
@@ -1704,7 +1802,6 @@ DEFINE_API_IMPL( database_api_impl, verify_signatures )
    return result;
 }
 
-#ifdef STEEM_ENABLE_SMT
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // SMT                                                              //
@@ -1715,6 +1812,100 @@ DEFINE_API_IMPL( database_api_impl, get_nai_pool )
 {
    get_nai_pool_return result;
    result.nai_pool = _db.get< nai_pool_object >().pool();
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+
+   list_smt_contributions_return result;
+   result.contributions.reserve( args.limit );
+
+   switch( args.order )
+   {
+      case( by_symbol_contributor ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 3, "The parameter 'start' must be an empty array or consist of asset_symbol_type, contributor and contribution_id" );
+
+         boost::tuple< asset_symbol_type, account_name_type, uint32_t > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( asset_symbol_type(), account_name_type(), 0 );
+         else
+            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< account_name_type >(), key[ 2 ].as< uint32_t >() );
+
+         iterate_results< chain::smt_contribution_index, chain::by_symbol_contributor >(
+            start,
+            result.contributions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
+         break;
+      }
+      case( by_symbol_id ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 2, "The parameter 'start' must be an empty array or consist of asset_symbol_type and id" );
+
+         boost::tuple< asset_symbol_type, smt_contribution_object_id_type > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( asset_symbol_type(), 0 );
+         else
+            start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< smt_contribution_object_id_type >() );
+
+         iterate_results< chain::smt_contribution_index, chain::by_symbol_id >(
+            start,
+            result.contributions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
+         break;
+      }
+#ifndef IS_LOW_MEM
+      case ( by_contributor ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 0 || key.size() == 3, "The parameter 'start' must be an empty array or consist of contributor, asset_symbol_type and contribution_id" );
+
+         boost::tuple< account_name_type, asset_symbol_type, uint32_t > start;
+         if ( key.size() == 0 )
+            start = boost::make_tuple( account_name_type(), asset_symbol_type(), 0 );
+         else
+            start = boost::make_tuple( key[ 0 ].as< account_name_type >(), key[ 1 ].as< asset_symbol_type >(), key[ 2 ].as< uint32_t >() );
+
+         iterate_results< chain::smt_contribution_index, chain::by_contributor >(
+            start,
+            result.contributions,
+            args.limit,
+            &database_api_impl::on_push_default< chain::smt_contribution_object >,
+            &database_api_impl::filter_default< chain::smt_contribution_object > );
+         break;
+      }
+#endif
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
+   }
+
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, find_smt_contributions )
+{
+   find_smt_contributions_return result;
+
+   const auto& idx = _db.get_index< chain::smt_contribution_index, chain::by_symbol_contributor >();
+
+   for( auto& symbol_contributor : args.symbol_contributors )
+   {
+      auto itr = idx.lower_bound( boost::make_tuple( symbol_contributor.first, symbol_contributor.second, 0 ) );
+      while( itr != idx.end() && itr->symbol == symbol_contributor.first && itr->contributor == symbol_contributor.second && result.contributions.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
+      {
+         result.contributions.push_back( *itr );
+         ++itr;
+      }
+   }
+
    return result;
 }
 
@@ -1740,7 +1931,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            &database_api_impl::on_push_default< chain::smt_token_object >,
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
             &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
@@ -1765,7 +1956,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
             start,
             result.tokens,
             args.limit,
-            &database_api_impl::on_push_default< chain::smt_token_object >,
+            [&]( const smt_token_object& t ) { return api_smt_token_object( t, _db ); },
             &database_api_impl::filter_default< chain::smt_token_object > );
 
          break;
@@ -1789,7 +1980,7 @@ DEFINE_API_IMPL( database_api_impl, find_smt_tokens )
       const auto token = chain::util::smt::find_token( _db, symbol, args.ignore_precision );
       if( token != nullptr )
       {
-         result.tokens.push_back( *token );
+         result.tokens.push_back( api_smt_token_object( *token, _db ) );
       }
    }
 
@@ -1847,7 +2038,6 @@ DEFINE_API_IMPL( database_api_impl, find_smt_token_emissions )
    return result;
 }
 
-#endif
 
 DEFINE_LOCKLESS_APIS( database_api, (get_config)(get_version) )
 
@@ -1900,13 +2090,13 @@ DEFINE_READ_APIS( database_api,
    (verify_authority)
    (verify_account_authority)
    (verify_signatures)
-#ifdef STEEM_ENABLE_SMT
    (get_nai_pool)
+   (list_smt_contributions)
+   (find_smt_contributions)
    (list_smt_tokens)
    (find_smt_tokens)
    (list_smt_token_emissions)
    (find_smt_token_emissions)
-#endif
 )
 
 } } } // steem::plugins::database_api

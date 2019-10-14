@@ -22,6 +22,7 @@
 #define STATE_TRANSACTION_BYTE_SIZE               174
 #define STATE_TRANSFER_FROM_SAVINGS_BYTE_SIZE     229
 #define STATE_LIMIT_ORDER_BYTE_SIZE              1940
+#define STATE_TMP_OBJ_BYTE_SIZE                  1940
 #define STATE_COMMENT_VOTE_BYTE_SIZE              525
 
 #define EXEC_FOLLOW_CUSTOM_OP_SCALE                20
@@ -93,6 +94,12 @@ struct state_object_size_info
    // proposal_vote_object
    int64_t proposal_vote_object_base_size       = 24  *STATE_BYTES_SCALE;
    int64_t proposal_vote_object_member_size     = 8   *STATE_BYTES_SCALE;
+
+   int64_t smt_token_object_size                = 240 *STATE_BYTES_SCALE;
+   int64_t smt_ico_object_size                  = 208 *STATE_TMP_OBJ_BYTE_SIZE;
+   int64_t smt_token_emissions_object_size      = 104 *STATE_BYTES_SCALE;
+   int64_t smt_contribution_object_size         = 56  *STATE_TMP_OBJ_BYTE_SIZE;
+   int64_t votable_assets_item_size             = 20  *STATE_BYTES_SCALE;
 };
 
 struct operation_exec_info
@@ -136,16 +143,21 @@ struct operation_exec_info
    int64_t witness_set_properties_operation_exec_time          =   9500;
    int64_t witness_update_operation_exec_time                  =   9500;
 
-#ifdef STEEM_ENABLE_SMT
-   int64_t claim_reward_balance2_operation_exec_time           = 0;
-   int64_t smt_setup_operation_exec_time                       = 0;
-   int64_t smt_cap_reveal_operation_exec_time                  = 0;
-   int64_t smt_refund_operation_exec_time                      = 0;
-   int64_t smt_setup_emissions_operation_exec_time             = 0;
-   int64_t smt_set_setup_parameters_operation_exec_time        = 0;
-   int64_t smt_set_runtime_parameters_operation_exec_time      = 0;
-   int64_t smt_create_operation_exec_time                      = 0;
-#endif
+   int64_t claim_reward_balance2_operation_exec_time           = 50300;
+   int64_t smt_setup_operation_exec_time                       = 41000;
+   int64_t smt_setup_emissions_operation_exec_time             = 13000;
+   int64_t smt_set_setup_parameters_operation_exec_time        = 40000;
+   int64_t smt_set_runtime_parameters_operation_exec_time      = 39000;
+   int64_t smt_create_operation_exec_time                      = 50000;
+   int64_t smt_contribute_operation_exec_time                  = 32000;
+
+   int64_t smt_contributor_payout_action_exec_time             = 60000;
+   int64_t smt_founder_payout_action_exec_time                 = 69000;
+   int64_t smt_token_launch_action_exec_time                   = 31000;
+   int64_t smt_ico_evaluation_action_exec_time                 = 21000;
+   int64_t smt_ico_launch_action_exec_time                     = 18000;
+
+   int64_t smt_token_emission_action_exec_time                 = 2400;
 
    int64_t create_proposal_operation_exec_time                  =   31700;
    int64_t update_proposal_votes_operation_exec_time            =   12000;
@@ -182,6 +194,11 @@ FC_REFLECT( steem::plugins::rc::state_object_size_info,
    ( proposal_object_base_size )
    ( proposal_vote_object_base_size )
    ( proposal_vote_object_member_size )
+   ( smt_token_object_size )
+   ( smt_ico_object_size )
+   ( smt_token_emissions_object_size )
+   ( smt_contribution_object_size )
+   ( votable_assets_item_size )
    )
 
 FC_REFLECT( steem::plugins::rc::operation_exec_info,
@@ -224,16 +241,20 @@ FC_REFLECT( steem::plugins::rc::operation_exec_info,
    ( witness_set_properties_operation_exec_time )
    ( witness_update_operation_exec_time )
 
-#ifdef STEEM_ENABLE_SMT
    ( claim_reward_balance2_operation_exec_time )
    ( smt_setup_operation_exec_time )
-   ( smt_cap_reveal_operation_exec_time )
-   ( smt_refund_operation_exec_time )
    ( smt_setup_emissions_operation_exec_time )
    ( smt_set_setup_parameters_operation_exec_time )
    ( smt_set_runtime_parameters_operation_exec_time )
    ( smt_create_operation_exec_time )
-#endif
+   ( smt_contribute_operation_exec_time )
+   ( smt_contributor_payout_action_exec_time )
+   ( smt_founder_payout_action_exec_time )
+   ( smt_token_launch_action_exec_time )
+   ( smt_ico_evaluation_action_exec_time )
+   ( smt_ico_launch_action_exec_time )
+
+   ( smt_token_emission_action_exec_time )
 
    (create_proposal_operation_exec_time)
    (update_proposal_votes_operation_exec_time)

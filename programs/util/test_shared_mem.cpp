@@ -52,46 +52,9 @@ using chainbase::shared_string;
 using chainbase::t_deque;
 using chainbase::allocator;
 
-/* shared_string is a string type placeable in shared memory,
- *  * courtesy of Boost.Interprocess.
- *   */
-
-namespace fc {
-#ifndef ENABLE_MIRA
-    void to_variant( const shared_string& s, fc::variant& vo ) {
-       vo = std::string(s.c_str());
-    }
-    void from_variant( const fc::variant& var,  shared_string& vo ) {
-       vo = var.as_string().c_str();
-    }
-#endif
-
-    /*
-    template<typename... T >
-    void to_variant( const bip::deque< T... >& t, fc::variant& v ) {
-      std::vector<variant> vars(t.size());
-      for( size_t i = 0; i < t.size(); ++i ) {
-         vars[i] = t[i];
-      }
-      v = std::move(vars);
-    }
-
-    template<typename T, typename... A>
-    void from_variant( const fc::variant& v, bip::deque< T, A... >& d ) {
-      const variants& vars = v.get_array();
-      d.clear();
-      d.resize( vars.size() );
-      for( uint32_t i = 0; i < vars.size(); ++i ) {
-         from_variant( vars[i], d[i] );
-      }
-    }
-    */
-}
-
-
-    /* Book record. All its members can be placed in shared memory,
-     *  * hence the structure itself can too.
-     *   */
+/* Book record. All its members can be placed in shared memory,
+ * hence the structure itself can too.
+ */
 
 struct book
 {

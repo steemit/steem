@@ -23,8 +23,11 @@ class pending_optional_action_object : public object< pending_optional_action_ob
       id_type                    id;
 
       time_point_sec             execution_time;
+      fc::sha256                 action_hash;
       optional_automated_action  action;
 };
+
+struct by_hash;
 
 typedef multi_index_container<
    pending_optional_action_object,
@@ -35,6 +38,12 @@ typedef multi_index_container<
             member< pending_optional_action_object, time_point_sec, &pending_optional_action_object::execution_time >,
             member< pending_optional_action_object, pending_optional_action_id_type, &pending_optional_action_object::id >
          >
+      >,
+      ordered_unique< tag< by_hash >,
+         composite_key< pending_optional_action_object,
+            member< pending_optional_action_object, fc::sha256, &pending_optional_action_object::action_hash >,
+            member< pending_optional_action_object, pending_optional_action_id_type, &pending_optional_action_object::id >
+         >
       >
    >,
    allocator< pending_optional_action_object >
@@ -43,5 +52,5 @@ typedef multi_index_container<
 } } //steem::chain
 
 FC_REFLECT( steem::chain::pending_optional_action_object,
-            (id)(execution_time)(action) )
+            (id)(execution_time)(action_hash)(action) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::pending_optional_action_object, steem::chain::pending_optional_action_index )

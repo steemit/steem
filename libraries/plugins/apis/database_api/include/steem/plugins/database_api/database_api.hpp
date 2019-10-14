@@ -145,18 +145,19 @@ class database_api
           */
          (verify_signatures)
 
-#ifdef STEEM_ENABLE_SMT
          /**
          * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
          */
          (get_nai_pool)
+
+         (list_smt_contributions)
+         (find_smt_contributions)
 
          (list_smt_tokens)
          (find_smt_tokens)
 
          (list_smt_token_emissions)
          (find_smt_token_emissions)
-#endif
       )
 
    private:

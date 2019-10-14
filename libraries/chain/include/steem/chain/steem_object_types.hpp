@@ -21,6 +21,8 @@
       object_type () {}
 #endif
 
+#define STEEM_OBJECT_ID_TYPE( object ) typedef oid< object ## _object > object ## _id_type;
+
 namespace steem {
 
 namespace protocol {
@@ -86,15 +88,15 @@ enum object_type
    pending_optional_action_object_type,
    proposal_object_type,
    proposal_vote_object_type,
-#ifdef STEEM_ENABLE_SMT
    // SMT objects
    smt_token_object_type,
-   smt_event_token_object_type,
    account_regular_balance_object_type,
    account_rewards_balance_object_type,
    nai_pool_object_type,
-   smt_token_emissions_object_type
-#endif
+   smt_token_emissions_object_type,
+   smt_contribution_object_type,
+   smt_ico_object_type,
+   comment_smt_beneficiaries_object_type
 };
 
 class dynamic_global_property_object;
@@ -130,14 +132,14 @@ class vesting_delegation_expiration_object;
 class pending_required_action_object;
 class pending_optional_action_object;
 
-#ifdef STEEM_ENABLE_SMT
 class smt_token_object;
-class smt_event_token_object;
 class account_regular_balance_object;
 class account_rewards_balance_object;
 class nai_pool_object;
 class smt_token_emissions_object;
-#endif
+class smt_contribution_object;
+class smt_ico_object;
+class comment_smt_beneficiaries_object;
 
 class proposal_object;
 class proposal_vote_object;
@@ -175,14 +177,14 @@ typedef oid< vesting_delegation_expiration_object   > vesting_delegation_expirat
 typedef oid< pending_required_action_object         > pending_required_action_id_type;
 typedef oid< pending_optional_action_object         > pending_optional_action_id_type;
 
-#ifdef STEEM_ENABLE_SMT
 typedef oid< smt_token_object                       > smt_token_id_type;
-typedef oid< smt_event_token_object                 > smt_event_token_id_type;
 typedef oid< account_regular_balance_object         > account_regular_balance_id_type;
 typedef oid< account_rewards_balance_object         > account_rewards_balance_id_type;
 typedef oid< nai_pool_object                        > nai_pool_id_type;
 typedef oid< smt_token_emissions_object             > smt_token_emissions_object_id_type;
-#endif
+typedef oid< smt_contribution_object                > smt_contribution_object_id_type;
+typedef oid< smt_ico_object                         > smt_ico_object_id_type;
+typedef oid< comment_smt_beneficiaries_object       > comment_smt_beneficiaries_id_type;
 
 typedef oid< proposal_object > proposal_id_type;
 typedef oid< proposal_vote_object > proposal_vote_id_type;
@@ -348,7 +350,13 @@ T unpack_from_vector( const steem::chain::buffer_type& s )
    } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) )
 }
 #endif
-} } // namespace fc::raw
+}
+
+#ifndef ENABLE_MIRA
+template<> struct get_typename< steem::chain::shared_string > { static const char* name() { return get_typename< string >::name(); } };
+#endif
+
+} // namespace fc::raw
 
 FC_REFLECT_ENUM( steem::chain::object_type,
                  (dynamic_global_property_object_type)
@@ -385,19 +393,14 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (pending_optional_action_object_type)
                  (proposal_object_type)
                  (proposal_vote_object_type)
-
-#ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
-                 (smt_event_token_object_type)
                  (account_regular_balance_object_type)
                  (account_rewards_balance_object_type)
                  (nai_pool_object_type)
                  (smt_token_emissions_object_type)
-#endif
+                 (smt_contribution_object_type)
+                 (smt_ico_object_type)
+                 (comment_smt_beneficiaries_object_type)
                )
-
-#ifndef ENABLE_MIRA
-FC_REFLECT_TYPENAME( steem::chain::shared_string )
-#endif
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

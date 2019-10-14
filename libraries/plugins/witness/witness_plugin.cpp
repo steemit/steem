@@ -1,3 +1,5 @@
+#include <steem/chain/steem_fwd.hpp>
+
 #include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin_objects.hpp>
 
@@ -95,12 +97,10 @@ namespace detail {
       const comment_object& _c;
       const database& _db;
 
-#ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
          FC_TODO("To be implemented  suppport for allowed_vote_assets");
       }
-#endif
 
       void operator()( const comment_payout_beneficiaries& cpb )const
       {
@@ -253,14 +253,26 @@ namespace detail {
                   // code uses this approach).  However, it may improve performance.
 
                   const witness_custom_op_object* coo = _db.find< witness_custom_op_object, by_account >( account );
-                  STEEM_ASSERT( !coo, plugin_exception,
-                     "Account ${a} already submitted a custom json operation this block.",
-                     ("a", account) );
 
-                  _db.create< witness_custom_op_object >( [&]( witness_custom_op_object& o )
+                  if( !coo )
                   {
-                     o.account = account;
-                  } );
+                     _db.create< witness_custom_op_object >( [&]( witness_custom_op_object& o )
+                     {
+                        o.account = account;
+                        o.count = 1;
+                     });
+                  }
+                  else
+                  {
+                     STEEM_ASSERT( coo->count < WITNESS_CUSTOM_OP_BLOCK_LIMIT, plugin_exception,
+                        "Account ${a} already submitted ${n} custom json operation(s) this block.",
+                        ("a", account)("n", WITNESS_CUSTOM_OP_BLOCK_LIMIT) );
+
+                     _db.modify( *coo, [&]( witness_custom_op_object& o )
+                     {
+                        o.count++;
+                     });
+                  }
                }
             }
 

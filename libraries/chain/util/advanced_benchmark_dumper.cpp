@@ -25,15 +25,14 @@ namespace steem { namespace chain { namespace util {
 
    void advanced_benchmark_dumper::begin()
    {
-      time_begin = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+      time_begin = fc::time_point::now();
    }
 
    template< bool APPLY_CONTEXT >
    void advanced_benchmark_dumper::end( const std::string& str )
    {
-      uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::system_clock::now().time_since_epoch() ).count() - time_begin;
-      auto res = info.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, time );
+      auto time = fc::time_point::now() - time_begin;
+      auto res = info.emplace( APPLY_CONTEXT ? (apply_context_name + str) : str, time, 1 );
 
       if( !res.second )
          res.first->inc( time );
@@ -72,8 +71,12 @@ namespace steem { namespace chain { namespace util {
       std::for_each(info.items.begin(), info.items.end(), [&rinfo]( const item& obj )
       {
          //rinfo.items.emplace( obj.op_name, obj.time );
-         rinfo.emplace( obj.op_name, obj.time );
+         rinfo.emplace( obj.op_name, obj.time, obj.count );
       });
+
+#ifdef IS_TEST_NET
+      wdump( (rinfo) );
+#endif
 
       dump_impl( info, file_name );
       dump_impl( rinfo, "r_" + file_name );

@@ -27,9 +27,6 @@ void create_proposal_evaluator::do_apply( const create_proposal_operation& o )
 
       asset fee_sbd( STEEM_TREASURY_FEE, SBD_SYMBOL );
 
-      FC_ASSERT( _db.get_balance( o.creator, SBD_SYMBOL ) >= fee_sbd,
-         "Account does not have sufficient funds for specified fee of ${of}", ("of", fee_sbd) );
-
       //treasury account must exist, also we need it later to change its balance
       const auto& treasury_account =_db.get_account( STEEM_TREASURY_ACCOUNT );
 

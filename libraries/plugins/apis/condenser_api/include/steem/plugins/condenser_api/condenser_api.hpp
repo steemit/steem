@@ -116,6 +116,7 @@ struct api_account_object
       post_count( a.post_count ),
       can_vote( a.can_vote ),
       voting_manabar( a.voting_manabar ),
+      downvote_manabar( a.downvote_manabar ),
       balance( legacy_asset::from_asset( a.balance ) ),
       savings_balance( legacy_asset::from_asset( a.savings_balance ) ),
       sbd_balance( legacy_asset::from_asset( a.sbd_balance ) ),
@@ -180,6 +181,7 @@ struct api_account_object
 
    bool              can_vote = false;
    util::manabar     voting_manabar;
+   util::manabar     downvote_manabar;
    uint16_t          voting_power = 0;
 
    legacy_asset      balance;
@@ -369,15 +371,25 @@ struct extended_dynamic_global_properties
       sbd_interest_rate( o.sbd_interest_rate ),
       sbd_print_rate( o.sbd_print_rate ),
       maximum_block_size( o.maximum_block_size ),
+      required_actions_partition_percent( o.required_actions_partition_percent ),
       current_aslot( o.current_aslot ),
       recent_slots_filled( o.recent_slots_filled ),
       participation_count( o.participation_count ),
       last_irreversible_block_num( o.last_irreversible_block_num ),
-      vote_power_reserve_rate( o.vote_power_reserve_rate ),
+      target_votes_per_period( o.target_votes_per_period ),
+      vote_power_reserve_rate( o.target_votes_per_period ),
       delegation_return_period( o.delegation_return_period ),
       reverse_auction_seconds( o.reverse_auction_seconds ),
+      available_account_subsidies( o.available_account_subsidies ),
       sbd_stop_percent( o.sbd_stop_percent ),
-      sbd_start_percent( o.sbd_start_percent )
+      sbd_start_percent( o.sbd_start_percent ),
+      next_maintenance_time( o.next_maintenance_time ),
+      last_budget_time( o.last_budget_time ),
+      content_reward_percent( o.content_reward_percent ),
+      vesting_reward_percent( o.vesting_reward_percent ),
+      sps_fund_percent( o.sps_fund_percent ),
+      sps_interval_ledger( legacy_asset::from_asset( o.sps_interval_ledger ) ),
+      downvote_pool_percent( o.downvote_pool_percent )
    {}
 
    uint32_t          head_block_number = 0;
@@ -406,19 +418,34 @@ struct extended_dynamic_global_properties
    uint16_t          sbd_print_rate = STEEM_100_PERCENT;
 
    uint32_t          maximum_block_size = 0;
+   uint16_t          required_actions_partition_percent = 0;
    uint64_t          current_aslot = 0;
    fc::uint128_t     recent_slots_filled;
    uint8_t           participation_count = 0;
 
    uint32_t          last_irreversible_block_num = 0;
 
+   uint32_t          target_votes_per_period = STEEM_INITIAL_VOTE_POWER_RATE;
    uint32_t          vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
    uint32_t          delegation_return_period = STEEM_DELEGATION_RETURN_PERIOD_HF0;
 
    uint64_t          reverse_auction_seconds = 0;
 
+   int64_t           available_account_subsidies = 0;
+
    uint16_t          sbd_stop_percent = 0;
    uint16_t          sbd_start_percent = 0;
+
+   time_point_sec    next_maintenance_time;
+   time_point_sec    last_budget_time;
+
+   uint16_t          content_reward_percent = STEEM_CONTENT_REWARD_PERCENT_HF16;
+   uint16_t          vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
+   uint16_t          sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
+
+   legacy_asset      sps_interval_ledger;
+
+   uint16_t          downvote_pool_percent = 0;
 };
 
 struct api_witness_object
@@ -671,6 +698,34 @@ struct api_convert_request_object
    uint32_t          requestid = 0;
    legacy_asset      amount;
    time_point_sec    conversion_date;
+};
+
+struct api_proposal_object
+{
+   api_proposal_object() {}
+   api_proposal_object( const database_api::api_proposal_object& p ) :
+      id( p.id ),
+      proposal_id( p.proposal_id ),
+      creator( p.creator ),
+      receiver( p.receiver ),
+      start_date( p.start_date ),
+      end_date( p.end_date ),
+      daily_pay( legacy_asset::from_asset( p.daily_pay ) ),
+      subject( p.subject ),
+      permlink( p.permlink ),
+      total_votes( p.total_votes )
+   {}
+
+   proposal_id_type  id;
+   proposal_id_type  proposal_id;
+   account_name_type creator;
+   account_name_type receiver;
+   time_point_sec    start_date;
+   time_point_sec    end_date;
+   legacy_asset      daily_pay;
+   string            subject;
+   string            permlink;
+   uint64_t          total_votes = 0;
 };
 
 struct discussion : public api_comment_object
@@ -1016,9 +1071,10 @@ DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
-DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
-DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< database_api::api_proposal_object > )
+DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< api_proposal_object > )
+DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
+DEFINE_API_ARGS( get_nai_pool,                           vector< variant >,   vector< asset_symbol_type > )
 
 #undef DEFINE_API_ARGS
 
@@ -1116,6 +1172,7 @@ public:
       (list_proposals)
       (find_proposals)
       (list_proposal_votes)
+      (get_nai_pool)
    )
 
    private:
@@ -1146,7 +1203,7 @@ FC_REFLECT( steem::plugins::condenser_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
-             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(voting_power)
+             (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(downvote_manabar)(voting_power)
              (balance)
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
@@ -1183,8 +1240,11 @@ FC_REFLECT( steem::plugins::condenser_api::extended_dynamic_global_properties,
             (total_vesting_fund_steem)(total_vesting_shares)
             (total_reward_fund_steem)(total_reward_shares2)(pending_rewarded_vesting_shares)(pending_rewarded_vesting_steem)
             (sbd_interest_rate)(sbd_print_rate)
-            (maximum_block_size)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)(vote_power_reserve_rate)
-            (delegation_return_period)(reverse_auction_seconds)(sbd_stop_percent)(sbd_start_percent) )
+            (maximum_block_size)(required_actions_partition_percent)(current_aslot)(recent_slots_filled)(participation_count)(last_irreversible_block_num)
+            (target_votes_per_period)(vote_power_reserve_rate)
+            (delegation_return_period)(reverse_auction_seconds)(available_account_subsidies)(sbd_stop_percent)(sbd_start_percent)
+            (next_maintenance_time)(last_budget_time)(content_reward_percent)(vesting_reward_percent)(sps_fund_percent)(sps_interval_ledger)(downvote_pool_percent)
+          )
 
 FC_REFLECT( steem::plugins::condenser_api::api_witness_object,
              (id)
@@ -1264,6 +1324,9 @@ FC_REFLECT( steem::plugins::condenser_api::api_vesting_delegation_expiration_obj
 
 FC_REFLECT( steem::plugins::condenser_api::api_convert_request_object,
              (id)(owner)(requestid)(amount)(conversion_date) )
+
+FC_REFLECT( steem::plugins::condenser_api::api_proposal_object,
+             (id)(proposal_id)(creator)(receiver)(start_date)(end_date)(daily_pay)(subject)(permlink)(total_votes) )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::discussion, (steem::plugins::condenser_api::api_comment_object),
              (url)(root_title)(pending_payout_value)(total_pending_payout_value)

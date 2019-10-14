@@ -12,10 +12,8 @@ namespace steem { namespace chain {
 
    using protocol::beneficiary_route_type;
    using chainbase::t_vector;
-   using chainbase::t_pair;
-#ifdef STEEM_ENABLE_SMT
-   using protocol::votable_asset_info;
-#endif
+   using chainbase::t_flat_map;
+   using protocol::votable_asset_options;
 
    struct strcmp_less
    {
@@ -43,17 +41,37 @@ namespace steem { namespace chain {
          }
    };
 
+   struct rshare_context
+   {
+      share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
+      share_type        abs_rshares; /// this is used to track the total abs(weight) of votes for the purpose of calculating cashout_time
+      share_type        vote_rshares; /// Total positive rshares from all votes. Used to calculate delta weights. Needed to handle vote changing and removal.
+
+      uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
+      int32_t           net_votes = 0;
+
+      share_type        author_rewards = 0;
+   };
+
+   struct comment_votable_asset_options
+   {
+      share_type  max_accepted_payout    = std::numeric_limits< int64_t >::max();
+      bool        allow_curation_rewards = true;
+   };
+
    class comment_object : public object < comment_object_type, comment_object >
    {
       STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_object )
 
       public:
          template< typename Constructor, typename Allocator >
-         comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
-#ifdef STEEM_ENABLE_SMT
-            , allowed_vote_assets( a )
-#endif
+         comment_object( Constructor&& c, allocator< Allocator > a ) :
+            category( a ),
+            parent_permlink( a ),
+            permlink( a ),
+            beneficiaries( a ),
+            allowed_vote_assets( a ),
+            smt_rshares( a )
          {
             c( *this );
          }
@@ -106,10 +124,12 @@ namespace steem { namespace chain {
 
          using t_beneficiaries = t_vector< beneficiary_route_type >;
          t_beneficiaries   beneficiaries;
-#ifdef STEEM_ENABLE_SMT
-         using t_votable_assets = t_vector< t_pair< asset_symbol_type, votable_asset_info > >;
+
+         using t_votable_assets = t_flat_map< asset_symbol_type, comment_votable_asset_options >;
          t_votable_assets  allowed_vote_assets;
-#endif
+
+         using t_smt_rshares = t_flat_map< asset_symbol_type, rshare_context >;
+         t_smt_rshares     smt_rshares;
    };
 
    class comment_content_object : public object< comment_content_object_type, comment_content_object >
@@ -133,6 +153,25 @@ namespace steem { namespace chain {
          shared_string     json_metadata;
    };
 
+   class comment_smt_beneficiaries_object : public object< comment_smt_beneficiaries_object_type, comment_smt_beneficiaries_object >
+   {
+      STEEM_STD_ALLOCATOR_CONSTRUCTOR( comment_smt_beneficiaries_object )
+
+      public:
+         template< typename Constructor, typename Allocator >
+         comment_smt_beneficiaries_object( Constructor&& c, allocator< Allocator > a ) :
+            beneficiaries( a )
+         {
+            c( *this );
+         }
+
+         id_type           id;
+
+         comment_id_type   comment;
+         asset_symbol_type smt;
+         t_vector< beneficiary_route_type > beneficiaries;
+   };
+
    /**
     * This index maintains the set of voter/comment pairs that have been used, voters cannot
     * vote on the same comment more than once per payout period.
@@ -154,27 +193,48 @@ namespace steem { namespace chain {
          comment_id_type   comment;
          uint64_t          weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
          int64_t           rshares = 0; ///< The number of rshares this vote is responsible for
+         FC_TODO( "Remove vote_percent field after SMT hardfork" );
          int16_t           vote_percent = 0; ///< The percent weight of the vote
          time_point_sec    last_update; ///< The time of the last update of the vote
          int8_t            num_changes = 0;
+         asset_symbol_type symbol = STEEM_SYMBOL;
    };
 
-   struct by_comment_voter;
-   struct by_voter_comment;
+   struct by_comment_voter_symbol;
+   struct by_comment_symbol_voter;
+   struct by_voter_comment_symbol;
+   struct by_voter_symbol_comment;
+
    typedef multi_index_container<
       comment_vote_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< comment_vote_object, comment_vote_id_type, &comment_vote_object::id > >,
-         ordered_unique< tag< by_comment_voter >,
+         ordered_unique< tag< by_comment_voter_symbol >,
             composite_key< comment_vote_object,
-               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>,
-               member< comment_vote_object, account_id_type, &comment_vote_object::voter>
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >
             >
          >,
-         ordered_unique< tag< by_voter_comment >,
+         ordered_unique< tag< by_comment_symbol_voter >,
             composite_key< comment_vote_object,
-               member< comment_vote_object, account_id_type, &comment_vote_object::voter>,
-               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >
+            >
+         >,
+         ordered_unique< tag< by_voter_comment_symbol >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >
+            >
+         >,
+         ordered_unique< tag< by_voter_symbol_comment >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter >,
+               member< comment_vote_object, asset_symbol_type, &comment_vote_object::symbol >,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment >
             >
          >
       >,
@@ -259,6 +319,23 @@ namespace steem { namespace chain {
       allocator< comment_content_object >
    > comment_content_index;
 
+   struct by_comment_symbol;
+
+   typedef multi_index_container<
+      comment_smt_beneficiaries_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< comment_smt_beneficiaries_object, comment_smt_beneficiaries_id_type, &comment_smt_beneficiaries_object::id > >,
+         ordered_unique< tag< by_comment_symbol >,
+            composite_key< comment_smt_beneficiaries_object,
+               member< comment_smt_beneficiaries_object, comment_id_type, &comment_smt_beneficiaries_object::comment >,
+               member< comment_smt_beneficiaries_object, asset_symbol_type, &comment_smt_beneficiaries_object::smt >
+            >
+         >
+      >,
+      allocator< comment_smt_beneficiaries_object >
+   > comment_smt_beneficiaries_index;
+
+
 } } // steem::chain
 
 #ifdef ENABLE_MIRA
@@ -268,6 +345,13 @@ template<> struct is_static_length< steem::chain::comment_vote_object > : public
 
 } // mira
 #endif
+
+FC_REFLECT( steem::chain::rshare_context,
+            (net_rshares)(abs_rshares)(vote_rshares)(total_vote_weight)(net_votes)(author_rewards) )
+
+FC_REFLECT( steem::chain::comment_votable_asset_options,
+            (max_accepted_payout)(allow_curation_rewards)
+          )
 
 FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
@@ -279,9 +363,7 @@ FC_REFLECT( steem::chain::comment_object,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-#ifdef STEEM_ENABLE_SMT
-             (allowed_vote_assets)
-#endif
+             (allowed_vote_assets)(smt_rshares)
           )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
@@ -291,9 +373,12 @@ FC_REFLECT( steem::chain::comment_content_object,
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_content_object, steem::chain::comment_content_index )
 
 FC_REFLECT( steem::chain::comment_vote_object,
-             (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
+             (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)(symbol)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )
+
+FC_REFLECT( steem::chain::comment_smt_beneficiaries_object, (id)(comment)(smt)(beneficiaries) )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_smt_beneficiaries_object, steem::chain::comment_smt_beneficiaries_index )
 
 namespace helpers
 {
@@ -305,9 +390,7 @@ namespace helpers
    public:
       typedef steem::chain::comment_index IndexType;
       typedef typename steem::chain::comment_object::t_beneficiaries t_beneficiaries;
-#ifdef STEEM_ENABLE_SMT
       typedef typename steem::chain::comment_object::t_votable_assets t_votable_assets;
-#endif
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {
          index_statistic_info info;
@@ -321,9 +404,7 @@ namespace helpers
                info._item_additional_allocation += o.parent_permlink.capacity()*sizeof(shared_string::value_type);
                info._item_additional_allocation += o.permlink.capacity()*sizeof(shared_string::value_type);
                info._item_additional_allocation += o.beneficiaries.capacity()*sizeof(t_beneficiaries::value_type);
-#ifdef STEEM_ENABLE_SMT
                info._item_additional_allocation += o.allowed_vote_assets.capacity()*sizeof(t_votable_assets::value_type);
-#endif
             }
          }
 

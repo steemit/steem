@@ -2454,8 +2454,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    condenser_api::list_proposals_return wallet_api::list_proposals(
       fc::variant start,
-      database_api::sort_order_type order_by,
       uint32_t limit,
+      database_api::sort_order_type order_by,
       database_api::order_direction_type order_type,
       database_api::proposal_status status )
    {
@@ -2469,8 +2469,8 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
 
    condenser_api::list_proposal_votes_return wallet_api::list_proposal_votes(
       fc::variant start,
-      database_api::sort_order_type order_by,
       uint32_t limit,
+      database_api::sort_order_type order_by,
       database_api::order_direction_type order_type,
       database_api::proposal_status status )
    {
@@ -2490,6 +2490,146 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       trx.operations.push_back( rp );
       trx.validate();
       return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::create_smt(
+      account_name_type control_account,
+      asset_symbol_type symbol,
+      asset smt_creation_fee,
+      uint8_t precision,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_create_operation op;
+      op.control_account = control_account;
+      op.symbol = symbol;
+      op.smt_creation_fee = smt_creation_fee;
+      op.precision = precision;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::smt_set_setup_parameters(
+      account_name_type control_account,
+      asset_symbol_type symbol,
+      string json_setup_parameters,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_set_setup_parameters_operation op;
+      op.control_account = control_account;
+      op.symbol = symbol;
+      op.setup_parameters = fc::json::from_string( json_setup_parameters ).as< flat_set< smt_setup_parameter > >();
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::smt_set_runtime_parameters(
+      account_name_type control_account,
+      asset_symbol_type symbol,
+      string json_runtime_parameters,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_set_runtime_parameters_operation op;
+      op.control_account = control_account;
+      op.symbol = symbol;
+      op.runtime_parameters = fc::json::from_string( json_runtime_parameters ).as< flat_set< smt_runtime_parameter > >();
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::smt_setup_emissions(
+      account_name_type control_account,
+      asset_symbol_type symbol,
+      time_point_sec schedule_time,
+      string json_emission_unit,
+      uint32_t interval_seconds,
+      uint32_t interval_count,
+      time_point_sec lep_time,
+      time_point_sec rep_time,
+      asset lep_abs_amount,
+      asset rep_abs_amount,
+      uint32_t lep_rel_amount_numerator,
+      uint32_t rep_rel_amount_numerator,
+      uint8_t rel_amount_denom_bits,
+      bool remove,
+      bool floor_emissions,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_setup_emissions_operation op;
+      op.control_account = control_account;
+      op.symbol = symbol;
+      op.schedule_time = schedule_time;
+      op.emissions_unit = fc::json::from_string( json_emission_unit ).as < smt_emissions_unit >();
+      op.interval_seconds = interval_seconds;
+      op.interval_count = interval_count;
+      op.lep_time = lep_time;
+      op.rep_time = rep_time;
+      op.lep_abs_amount = lep_abs_amount;
+      op.rep_abs_amount = rep_abs_amount;
+      op.lep_rel_amount_numerator = lep_rel_amount_numerator;
+      op.rep_rel_amount_numerator = rep_rel_amount_numerator;
+      op.rel_amount_denom_bits = rel_amount_denom_bits;
+      op.remove = remove;
+      op.floor_emissions = floor_emissions;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::smt_setup(
+      account_name_type control_account,
+      asset_symbol_type symbol,
+      int64_t max_supply,
+      string json_initial_generation_policy,
+      time_point_sec contribution_begin_time,
+      time_point_sec contribution_end_time,
+      time_point_sec launch_time,
+      share_type steem_units_min,
+      share_type steem_units_soft_cap,
+      share_type steem_units_hard_cap,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_setup_operation op;
+      op.control_account = control_account;
+      op.symbol = symbol;
+      op.max_supply = max_supply;
+      op.initial_generation_policy = fc::json::from_string( json_initial_generation_policy ).as< smt_generation_policy >();
+      op.contribution_begin_time = contribution_begin_time;
+      op.contribution_end_time = contribution_end_time;
+      op.launch_time = launch_time;
+      op.steem_units_min = steem_units_min;
+      op.steem_units_soft_cap = steem_units_soft_cap;
+      op.steem_units_hard_cap = steem_units_hard_cap;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   vector< asset_symbol_type > wallet_api::get_nai_pool()
+   {
+      return my->_remote_api->get_nai_pool();
    }
 
 } } // steem::wallet

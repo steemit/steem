@@ -55,6 +55,8 @@ class sps_processor
       void remove_old_proposals( const block_notification& note );
       void make_payments( const block_notification& note );
 
+      void record_funding( const block_notification& note );
+
    public:
 
       sps_processor( chain::database& _db ) : db( _db ){}

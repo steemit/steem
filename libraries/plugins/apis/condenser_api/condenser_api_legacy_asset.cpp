@@ -17,6 +17,11 @@ uint32_t string_to_asset_num( const char* p, uint8_t decimals )
       break;
    }
 
+   if(  *p == '@' )
+   {
+      return asset_symbol_type::from_nai_string( p, decimals ).asset_num;
+   }
+
    // [A-Z]
    uint32_t asset_num = 0;
    switch( *p )
@@ -100,7 +105,7 @@ std::string asset_num_to_string( uint32_t asset_num )
       case STEEM_ASSET_NUM_VESTS:
          return "VESTS";
       default:
-         return "UNKN"; // SMTs will return this symbol if returned as a legacy asset
+         return asset_symbol_type::from_asset_num( asset_num ).to_nai_string(); // SMTs will return precisionless NAI string
    }
 }
 

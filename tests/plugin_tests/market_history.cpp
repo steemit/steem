@@ -82,10 +82,10 @@ BOOST_AUTO_TEST_CASE( mh_test )
       auto fill_order_a_time = db->head_block_time();
       auto time_a = fc::time_point_sec( ( fill_order_a_time.sec_since_epoch() / 15 ) * 15 );
 
-      limit_order_create_operation op;
+      limit_order_create2_operation op;
       op.owner = "alice";
       op.amount_to_sell = ASSET( "1.000 TBD" );
-      op.min_to_receive = ASSET( "2.000 TESTS" );
+      op.exchange_rate  = price( ASSET( "0.500 TBD" ), ASSET( "1.000 TESTS" ) );
       op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       op.owner = "bob";
       op.amount_to_sell = ASSET( "1.500 TESTS" );
-      op.min_to_receive = ASSET( "0.750 TBD" );
+      op.exchange_rate  = price( ASSET( "0.500 TBD" ), ASSET( "1.000 TESTS" ) );
       tx.operations.push_back( op );
       sign(tx, bob_private_key);
       db->push_transaction( tx, 0 );
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       op.owner = "sam";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
-      op.min_to_receive = ASSET( "0.500 TBD" );
+      op.exchange_rate  = price( ASSET( "0.500 TBD" ), ASSET( "1.000 TESTS" ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, sam_private_key );
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       op.owner = "alice";
       op.amount_to_sell = ASSET( "0.500 TBD" );
-      op.min_to_receive = ASSET( "0.900 TESTS" );
+      op.exchange_rate  = price( ASSET( "0.556 TBD" ), ASSET( "1.000 TESTS" ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       op.owner = "bob";
       op.amount_to_sell = ASSET( "0.450 TESTS" );
-      op.min_to_receive = ASSET( "0.250 TBD" );
+      op.exchange_rate  = price( ASSET( "0.556 TBD" ), ASSET( "1.000 TESTS" ) );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, bob_private_key );
@@ -178,11 +178,11 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 15 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) + 60 );
-      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
       BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.950 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.449 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.949 TESTS" ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.low == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.open == ASSET( "0.250 TBD" ).amount );
@@ -220,11 +220,11 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 60 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) + 60 );
-      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
       BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.950 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.449 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.949 TESTS" ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.low == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.open == ASSET( "0.250 TBD" ).amount );
@@ -248,11 +248,11 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 300 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) );
-      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
       BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.450 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.449 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.449 TESTS" ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.low == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.open == ASSET( "0.250 TBD" ).amount );
@@ -276,11 +276,11 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 3600 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 60 ) );
-      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
       BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.450 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.449 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.449 TESTS" ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.low == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.open == ASSET( "0.250 TBD" ).amount );
@@ -290,11 +290,11 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 86400 );
       BOOST_REQUIRE( bucket->open == STEEM_GENESIS_TIME );
-      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
       BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->steem.volume == ASSET( "2.950 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.449 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "2.949 TESTS" ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.low == ASSET( "0.750 TBD" ).amount );
       BOOST_REQUIRE( bucket->non_steem.open == ASSET( "0.750 TBD" ).amount );
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       BOOST_REQUIRE( order->time == fill_order_c_time );
       BOOST_REQUIRE( order->op.current_owner == "bob" );
       BOOST_REQUIRE( order->op.current_orderid == 0 );
-      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.450 TESTS" ) );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.449 TESTS" ) );
       BOOST_REQUIRE( order->op.open_owner == "alice" );
       BOOST_REQUIRE( order->op.open_orderid == 0 );
       BOOST_REQUIRE( order->op.open_pays == ASSET( "0.250 TBD" ) );
