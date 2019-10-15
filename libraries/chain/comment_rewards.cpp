@@ -345,7 +345,7 @@ share_type reward_curators( share_type& tokens, comment_context& c_ctx, const Co
                      db.pre_push_virtual_operation( vop );
                   });
 
-                  FC_TODO( "Update curtation reward count for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
+                  FC_TODO( "Update curation reward count for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
 
 
                   db.post_push_virtual_operation( vop );
