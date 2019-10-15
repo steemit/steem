@@ -170,7 +170,7 @@ int main( int argc, char** argv, char** envp )
 
    errors = 0;
    all_strings = std::vector< std::string >();
-   std::vector< steem::protocol::fixed_string< 24 > > all_fixed_string_24s;
+   //std::vector< steem::protocol::fixed_string< 24 > > all_fixed_string_24s;
    sim_index = std::vector< std::vector< uint32_t > >();
 
    std::cout << "setting up LUT's" << std::endl;
@@ -204,7 +204,7 @@ int main( int argc, char** argv, char** envp )
    }
 
    std::cout << "checking conversions, size(), comparison operators" << std::endl;
-
+/*
    for( size_t i=0; i<all_strings.size(); i++ )
    {
       const std::string& s = all_strings[i];
@@ -238,7 +238,7 @@ int main( int argc, char** argv, char** envp )
    }
 
    std::cout << "test_fixed_string_24 found " << errors << " errors" << std::endl;
-
+*/
    result |= (errors == 0) ? 0 : 1;
 
    errors = 0;
