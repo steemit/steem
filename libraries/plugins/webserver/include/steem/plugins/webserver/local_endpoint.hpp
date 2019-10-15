@@ -82,8 +82,7 @@ protected:
             return socket::make_error_code(socket::error::invalid_state);
         }
 
-        m_socket = lib::make_shared<lib::asio::local::stream_protocol::socket>(
-            lib::ref(*service));
+        m_socket = lib::make_shared<lib::asio::local::stream_protocol::socket>(*service);
 
         m_state = READY;
 
@@ -266,8 +265,7 @@ public:
         m_alog->write(log::alevel::devel,"asio::init_asio");
 
         m_io_service = ptr;
-        m_acceptor = lib::make_shared<lib::asio::local::stream_protocol::acceptor>(
-            lib::ref(*m_io_service));
+        m_acceptor = lib::make_shared<lib::asio::local::stream_protocol::acceptor>(*m_io_service);
 
         m_state = READY;
         ec = lib::error_code();
@@ -513,9 +511,7 @@ public:
      * @since 0.3.0
      */
     void start_perpetual() {
-        m_work = lib::make_shared<lib::asio::io_service::work>(
-            lib::ref(*m_io_service)
-        );
+        m_work.reset(new lib::asio::io_service::work(*m_io_service));
     }
 
     /// Clears the endpoint's perpetual flag, allowing it to exit when empty

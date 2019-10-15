@@ -21,6 +21,8 @@ namespace fc
       erpair() {}
       erpair(const A& a, const B& b)
          : first(a), second(b) {}
+      erpair( const erpair& other )
+         : first( other.first ), second( other.second ) {}
       friend bool operator <  ( const erpair& a, const erpair& b )
       { return std::tie( a.first, a.second ) <  std::tie( b.first, b.second ); }
       friend bool operator <= ( const erpair& a, const erpair& b )
@@ -42,18 +44,10 @@ namespace fc
    erpair<A, B> make_erpair( const A& a, const B& b )
    {  return erpair<A, B>(a, b); }
 
-   template< typename T >
-   T endian_reverse( const T& x )
-   {  return boost::endian::endian_reverse(x);  }
-
-   template<>
-   inline uint128 endian_reverse( const uint128& u )
-   {  return uint128( boost::endian::endian_reverse( u.hi ), boost::endian::endian_reverse( u.lo ) );  }
-
    template<typename A, typename B>
    erpair< A, B > endian_reverse( const erpair< A, B >& p )
    {
-      return make_erpair( endian_reverse( p.first ), endian_reverse( p.second ) );
+      return erpair<A, B>( endian_reverse( p.first ), endian_reverse( p.second ) );
    }
 }
 
@@ -180,7 +174,7 @@ struct fixed_string_size_for_impl< STORAGE_TYPE >                  \
 };
 
 STEEM_DEFINE_FIXED_STRING_IMPL( 16, BOOST_IDENTITY_TYPE((fc::uint128_t)) )
-STEEM_DEFINE_FIXED_STRING_IMPL( 24, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, uint64_t >)) )
+//STEEM_DEFINE_FIXED_STRING_IMPL( 24, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, uint64_t >)) )
 STEEM_DEFINE_FIXED_STRING_IMPL( 32, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, fc::uint128_t >)) )
 
 template< size_t N >

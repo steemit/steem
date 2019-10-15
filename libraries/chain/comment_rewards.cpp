@@ -88,7 +88,7 @@ void process_comment_rewards( database& db )
             rf_ctx.curation_reward_curve = smt_fund.curation_reward_curve;
             rf_ctx.content_constant = smt_fund.content_constant;
             rf_ctx.percent_curation_rewards = smt_fund.percent_curation_rewards;
-            reward_funds.insert_or_assign( smt_rshare.first, std::move( rf_ctx ) );
+            reward_funds[ smt_rshare.first ] = std::move( rf_ctx );
 
             new_claims[ smt_rshare.first ] = 0;
 
@@ -345,7 +345,7 @@ share_type reward_curators( share_type& tokens, comment_context& c_ctx, const Co
                      db.pre_push_virtual_operation( vop );
                   });
 
-                  FC_TODO( "Update curtation reward count for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
+                  FC_TODO( "Update curation reward count for SMTs" ); // This is non-consensus and should probably be done in a plugin/hivemind
 
 
                   db.post_push_virtual_operation( vop );

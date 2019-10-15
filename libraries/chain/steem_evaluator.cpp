@@ -2742,7 +2742,7 @@ void vote2_evaluator::do_apply( const vote2_operation& o )
 
          _db.modify( comment, [&]( comment_object& c )
          {
-            c.smt_rshares.insert_or_assign( symbol_rshare.first, rshare_ctx );
+            c.smt_rshares[ symbol_rshare.first ] = rshare_ctx;
          });
       }
    }
@@ -3238,7 +3238,7 @@ void claim_account_evaluator::do_apply( const claim_account_operation& o )
    else
    {
       FC_ASSERT( o.fee == wso.median_props.account_creation_fee,
-         "Cannot pay more than account creation fee. paid: ${p} fee: ${f}",
+         "Must pay the exact account creation fee. paid: ${p} fee: ${f}",
          ("p", o.fee.amount.value)
          ("f", wso.median_props.account_creation_fee) );
    }

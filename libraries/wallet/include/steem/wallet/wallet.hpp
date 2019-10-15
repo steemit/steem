@@ -719,7 +719,7 @@ class wallet_api
       );
 
       /**
-       * Release funds help in escrow
+       * Release funds held in escrow
        *
        * @param from The account that funded the escrow
        * @param to The account the funds are originally going to
