@@ -228,8 +228,6 @@ void reputation_plugin::plugin_initialize( const boost::program_options::variabl
       my->_pre_apply_operation_conn = my->_db.add_pre_apply_operation_handler( [&]( const operation_notification& note ){ my->pre_operation( note ); }, *this, 0 );
       my->_post_apply_operation_conn = my->_db.add_post_apply_operation_handler( [&]( const operation_notification& note ){ my->post_operation( note ); }, *this, 0 );
       STEEM_ADD_PLUGIN_INDEX(my->_db, reputation_index);
-
-      appbase::app().get_plugin< chain::chain_plugin >().report_state_options( name(), fc::variant_object() );
    }
    FC_CAPTURE_AND_RETHROW()
 }

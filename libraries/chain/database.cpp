@@ -106,6 +106,35 @@ database::~database()
    clear_pending();
 }
 
+#ifdef ENABLE_MIRA
+void set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
+{
+   index_delegate_map delegates;
+
+   if ( indices.size() > 0 )
+   {
+      for ( auto& index_name : indices )
+      {
+         if ( db.has_index_delegate( index_name ) )
+            delegates[ index_name ] = db.get_index_delegate( index_name );
+         else
+            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
+      }
+   }
+   else
+   {
+      delegates = db.index_delegates();
+   }
+
+   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
+   for ( auto const& delegate : delegates )
+   {
+      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
+      delegate.second.set_index_type( db, type, p, cfg );
+   }
+}
+#endif
+
 void database::open( const open_args& args )
 {
    try
@@ -117,10 +146,18 @@ void database::open( const open_args& args )
       initialize_evaluators();
 
       if( !find< dynamic_global_property_object >() )
+      {
          with_write_lock( [&]()
          {
-            init_genesis( args.initial_supply, args.sbd_initial_supply );
+            if( args.genesis_func )
+            {
+               FC_TODO( "Load directly in to mira instead of bmic first" );
+               (*args.genesis_func)( *this, args );
+            }
+            else
+               init_genesis( args.initial_supply, args.sbd_initial_supply );
          });
+      }
 
       _benchmark_dumper.set_enabled( args.benchmark_is_enabled );
 
@@ -188,35 +225,6 @@ void database::open( const open_args& args )
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
-#ifdef ENABLE_MIRA
-void reindex_set_index_helper( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg, std::vector< std::string > indices )
-{
-   index_delegate_map delegates;
-
-   if ( indices.size() > 0 )
-   {
-      for ( auto& index_name : indices )
-      {
-         if ( db.has_index_delegate( index_name ) )
-            delegates[ index_name ] = db.get_index_delegate( index_name );
-         else
-            wlog( "Encountered an unknown index name '${name}'.", ("name", index_name) );
-      }
-   }
-   else
-   {
-      delegates = db.index_delegates();
-   }
-
-   std::string type_str = type == mira::index_type::mira ? "mira" : "bmic";
-   for ( auto const& delegate : delegates )
-   {
-      ilog( "Converting index '${name}' to ${type} type.", ("name", delegate.first)("type", type_str) );
-      delegate.second.set_index_type( db, type, p, cfg );
-   }
-}
-#endif
-
 uint32_t database::reindex( const open_args& args )
 {
    reindex_notification note( args );
@@ -242,7 +250,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Configuring replay to use memory..." );
-         reindex_set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+         set_index_helper( *this, mira::index_type::bmic, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 
@@ -265,60 +273,71 @@ uint32_t database::reindex( const open_args& args )
          skip_validate_invariants |
          skip_block_log;
 
-      with_write_lock( [&]()
+      idump( (head_block_num()) );
+
+      auto last_block_num = _block_log.head()->block_num();
+
+      if( args.stop_at_block > 0 && args.stop_at_block < last_block_num )
+         last_block_num = args.stop_at_block;
+
+      if( head_block_num() < last_block_num )
       {
          _block_log.set_locking( false );
-         auto itr = _block_log.read_block( 0 );
-         auto last_block_num = _block_log.head()->block_num();
-         if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
-            last_block_num = args.stop_replay_at;
          if( args.benchmark.first > 0 )
          {
             args.benchmark.second( 0, get_abstract_index_cntr() );
          }
 
-         while( itr.first.block_num() != last_block_num )
+         auto itr = _block_log.read_block( _block_log.get_block_pos( head_block_num() + 1 ) );
+
+         with_write_lock( [&]()
          {
-            auto cur_block_num = itr.first.block_num();
-            if( cur_block_num % 100000 == 0 )
-            {
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
-#ifdef ENABLE_MIRA
-               get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
-#else
-               (get_free_memory() >> 20) << "M free"
-#endif
-               << ")\n";
+            FC_ASSERT( itr.first.block_num() == head_block_num() + 1 );
 
-               //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
-               //rocksdb::get_perf_context()->Reset();
-            }
-            apply_block( itr.first, skip_flags );
-
-            if( cur_block_num % 100000 == 0 )
+            while( itr.first.block_num() < last_block_num )
             {
-               //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
-               if( cur_block_num % 1000000 == 0 )
+               auto cur_block_num = itr.first.block_num();
+
+               if( cur_block_num % 100000 == 0 )
                {
-                  dump_lb_call_counts();
+                  std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   (" <<
+   #ifdef ENABLE_MIRA
+                  get_cache_size()  << " objects cached using " << (get_cache_usage() >> 20) << "M"
+   #else
+                  (get_free_memory() >> 20) << "M free"
+   #endif
+                  << ")\n";
+
+                  //rocksdb::SetPerfLevel(rocksdb::kEnableCount);
+                  //rocksdb::get_perf_context()->Reset();
                }
+               apply_block( itr.first, skip_flags );
+
+               if( cur_block_num % 100000 == 0 )
+               {
+                  //std::cout << rocksdb::get_perf_context()->ToString() << std::endl;
+                  if( cur_block_num % 1000000 == 0 )
+                  {
+                     dump_lb_call_counts();
+                  }
+               }
+
+               if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
+                  args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
+               itr = _block_log.read_block( itr.second );
             }
 
-            if( (args.benchmark.first > 0) && (cur_block_num % args.benchmark.first == 0) )
-               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
-            itr = _block_log.read_block( itr.second );
-         }
+            apply_block( itr.first, skip_flags );
+            note.last_block_number = itr.first.block_num();
 
-         apply_block( itr.first, skip_flags );
-         note.last_block_number = itr.first.block_num();
+            set_revision( head_block_num() );
+         });
 
          if( (args.benchmark.first > 0) && (note.last_block_number % args.benchmark.first == 0) )
             args.benchmark.second( note.last_block_number, get_abstract_index_cntr() );
-         set_revision( head_block_num() );
-         _block_log.set_locking( true );
 
-         //get_index< account_index >().indices().print_stats();
-      });
+         _block_log.set_locking( true );
+      }
 
       if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
@@ -327,7 +346,7 @@ uint32_t database::reindex( const open_args& args )
       if( args.replay_in_memory )
       {
          ilog( "Migrating state to disk..." );
-         reindex_set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
+         set_index_helper( *this, mira::index_type::mira, args.shared_mem_dir, args.database_cfg, args.replay_memory_indices );
       }
 #endif
 
@@ -336,7 +355,7 @@ uint32_t database::reindex( const open_args& args )
 
       note.reindex_success = true;
 
-      return note.last_block_number;
+      return head_block_num();
    }
    FC_CAPTURE_AND_RETHROW( (args.data_dir)(args.shared_mem_dir) )
 
@@ -1041,6 +1060,7 @@ void database::push_optional_action( const optional_automated_action& a, time_po
    {
       create< pending_optional_action_object >( [&]( pending_optional_action_object& pending_action )
       {
+         pending_action.action_hash = fc::sha256::hash( a );
          pending_action.action = a;
          pending_action.execution_time = execution_time;
       } );
@@ -3526,7 +3546,13 @@ void database::apply_required_action( const required_automated_action& a )
    required_action_notification note( a );
    notify_pre_apply_required_action( note );
 
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_req_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_req_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
 
    notify_post_apply_required_action( note );
 }
@@ -3545,6 +3571,8 @@ void database::process_optional_actions( const optional_automated_actions& actio
       // optional actions from those contained in a block. It is the responsibility of the
       // action evaluator to prevent early execution.
       apply_optional_action( *actions_itr );
+      auto action_itr = find< pending_optional_action_object, by_hash >( fc::sha256::hash( *actions_itr ) );
+      if( action_itr != nullptr ) remove( *action_itr );
    }
 
    // This expiration is based on the timestamp of the last irreversible block. For historical
@@ -3578,7 +3606,13 @@ void database::apply_optional_action( const optional_automated_action& a )
    optional_action_notification note( a );
    notify_pre_apply_optional_action( note );
 
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.begin();
+
    _my->_opt_action_evaluator_registry.get_evaluator( a ).apply( a );
+
+   if( _benchmark_dumper.is_enabled() )
+      _benchmark_dumper.end< true/*APPLY_CONTEXT*/ >( _my->_opt_action_evaluator_registry.get_evaluator( a ).get_name( a ) );
 
    notify_post_apply_optional_action( note );
 }

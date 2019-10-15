@@ -350,7 +350,13 @@ T unpack_from_vector( const steem::chain::buffer_type& s )
    } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) )
 }
 #endif
-} } // namespace fc::raw
+}
+
+#ifndef ENABLE_MIRA
+template<> struct get_typename< steem::chain::shared_string > { static const char* name() { return get_typename< string >::name(); } };
+#endif
+
+} // namespace fc::raw
 
 FC_REFLECT_ENUM( steem::chain::object_type,
                  (dynamic_global_property_object_type)
@@ -396,9 +402,5 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (smt_ico_object_type)
                  (comment_smt_beneficiaries_object_type)
                )
-
-#ifndef ENABLE_MIRA
-FC_REFLECT_TYPENAME( steem::chain::shared_string )
-#endif
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

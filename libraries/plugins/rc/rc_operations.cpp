@@ -17,7 +17,7 @@ namespace steem { namespace plugins { namespace rc {
 
 using namespace steem::chain;
 
-inline bool is_destination_nai( const string& dest )
+bool is_destination_nai( const string& dest )
 {
    return dest.size() == STEEM_ASSET_SYMBOL_NAI_STRING_LENGTH - 1 && dest.c_str()[0] == '@' && dest.c_str()[1] == '@';
 }
@@ -164,6 +164,19 @@ void delegate_to_pool_evaluator::do_apply( const delegate_to_pool_operation& op 
          pool.rc_pool_manabar = rc_pool_manabar;
          pool.max_rc = delta_max_rc;
       } );
+
+      if( is_destination_nai( op.to_pool ) )
+      {
+         _db.create< rc_outdel_drc_edge_object >( [&]( rc_outdel_drc_edge_object& outdel )
+         {
+            outdel.from_pool = op.to_pool;
+            outdel.to_account = op.to_pool;
+            outdel.asset_symbol = VESTS_SYMBOL;
+            outdel.drc_manabar.current_mana = 0;
+            outdel.drc_manabar.last_update_time = now;
+            outdel.drc_max_mana = std::numeric_limits< int64_t >::max();
+         });
+      }
    }
    else
    {

@@ -23,12 +23,12 @@ public:
 
    void on_post_apply_required_action( const required_action_notification& note );
    void on_post_apply_optional_action( const optional_action_notification& note );
-   void on_post_apply_block( const block_notification& note );
+   void on_generate_optional_actions( const generate_optional_actions_notification& note );
 
    chain::database&              _db;
    boost::signals2::connection   post_apply_required_action_connection;
    boost::signals2::connection   post_apply_optional_action_connection;
-   boost::signals2::connection   post_apply_block_connection;
+   boost::signals2::connection   generate_optional_action_connection;
 };
 
 void token_emissions_impl::on_post_apply_required_action( const required_action_notification& note )
@@ -64,7 +64,7 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
 
-   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_token_emission );
+   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_virtual_emission_time );
 
    const auto& emission_obj = _db.get< token_emission_schedule_object, by_symbol >( emission_action.symbol );
    if ( next )
@@ -81,10 +81,9 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
    }
 }
 
-void token_emissions_impl::on_post_apply_block( const block_notification& note )
+void token_emissions_impl::on_generate_optional_actions( const generate_optional_actions_notification& note )
 {
-   // We're creating token emissions for the upcoming block.
-   time_point_sec next_emission_time = note.block.timestamp + STEEM_BLOCK_INTERVAL;
+   time_point_sec next_emission_time = _db.head_block_time();
 
    const auto& next_emission_schedule_idx = _db.get_index< token_emission_schedule_index, by_next_emission_symbol >();
    const auto& token_emissions_idx = _db.get_index< smt_token_emissions_index, by_symbol_end_time >();
@@ -100,15 +99,15 @@ void token_emissions_impl::on_post_apply_block( const block_notification& note )
          smt_token_emission_action action;
          action.control_account = token.control_account;
          action.symbol          = token.liquid_symbol;
-         action.emission_time   = next_emission_time;
-         action.emissions       = util::smt::generate_emissions( token, *emission, next_emission_time );
+         action.emission_time   = itr->next_consensus_emission;
+         action.emissions       = util::smt::generate_emissions( token, *emission, itr->next_consensus_emission );
 
-         _db.push_optional_action( action );
+         _db.push_optional_action( action, next_emission_time );
 
          _db.modify( *itr, [&]( token_emission_schedule_object& o )
          {
             o.next_scheduled_emission += fc::seconds( emission->interval_seconds );
-         });
+         } );
       }
    }
 }
@@ -138,12 +137,12 @@ void token_emissions_plugin::plugin_initialize( const boost::program_options::va
             } FC_LOG_AND_RETHROW()
          }, *this, 0 );
 
-      my->post_apply_block_connection = my->_db.add_post_apply_block_handler(
-         [&]( const block_notification& note )
+      my->generate_optional_action_connection = my->_db.add_generate_optional_actions_handler(
+         [&]( const generate_optional_actions_notification& note )
          {
             try
             {
-               my->on_post_apply_block( note );
+               my->on_generate_optional_actions( note );
             } FC_LOG_AND_RETHROW()
          }, *this, 0 );
 
@@ -166,7 +165,7 @@ void token_emissions_plugin::plugin_shutdown()
 {
    chain::util::disconnect_signal( my->post_apply_required_action_connection );
    chain::util::disconnect_signal( my->post_apply_optional_action_connection );
-   chain::util::disconnect_signal( my->post_apply_block_connection );
+   chain::util::disconnect_signal( my->generate_optional_action_connection );
 }
 
 } } } // steem::plugins::token_emissions

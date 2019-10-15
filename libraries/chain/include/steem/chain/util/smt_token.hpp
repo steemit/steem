@@ -21,7 +21,7 @@ bool schedule_next_refund( database& db, const asset_symbol_type& a );
 bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a );
 bool schedule_founder_payout( database& db, const asset_symbol_type& a );
 
-share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets );
+share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< contribution_payout >& payouts );
 
 } // steem::chain::util::smt::ico
 

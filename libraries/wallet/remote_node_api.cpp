@@ -444,4 +444,9 @@ vector< database_api::api_proposal_vote_object > remote_node_api::list_proposal_
    FC_ASSERT( false );
 }
 
+vector< asset_symbol_type > remote_node_api::get_nai_pool()
+{
+   FC_ASSERT( false );
+}
+
 } }

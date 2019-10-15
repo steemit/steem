@@ -132,8 +132,10 @@ namespace steem { namespace chain {
             bool replay_in_memory = false;
             std::vector< std::string > replay_memory_indices{};
 
+            std::shared_ptr< std::function< void( database&, const open_args& ) > > genesis_func;
+
             // The following fields are only used on reindexing
-            uint32_t stop_replay_at = 0;
+            uint32_t stop_at_block = 0;
             TBenchmark benchmark = TBenchmark(0, []( uint32_t, const abstract_index_cntr_t& ){});
          };
 

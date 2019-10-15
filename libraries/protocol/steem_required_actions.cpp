@@ -75,6 +75,13 @@ void smt_contributor_payout_action::validate() const
    validate_smt_symbol( symbol );
 }
 
+bool operator==( const contribution_payout& rhs, const contribution_payout& lhs )
+{
+   return
+      rhs.payout == lhs.payout &&
+      rhs.to_vesting == lhs.to_vesting;
+}
+
 bool operator==( const smt_contributor_payout_action& lhs, const smt_contributor_payout_action& rhs )
 {
    return

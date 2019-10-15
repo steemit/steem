@@ -264,6 +264,7 @@ void database_fixture::open_database( uint16_t shared_file_size_in_mb )
       args.shared_file_size = 1024 * 1024 * shared_file_size_in_mb; // 8MB(default) or more:  file for testing
       args.database_cfg = steem::utilities::default_database_configuration();
       args.sps_remove_threshold = 20;
+      //args.benchmark_is_enabled = true;
       db->open(args);
    }
    else

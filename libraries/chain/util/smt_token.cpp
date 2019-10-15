@@ -68,15 +68,17 @@ fc::optional< time_point_sec > next_emission_time( const database& db, const ass
 
    if( emission != idx.end() && emission->symbol == symbol )
    {
-      if( last_emission < emission->schedule_time ) emission = schedule_time;
+      if( last_emission < emission->schedule_time ) return emission->schedule_time;
+
+      last_emission -= ( last_emission - emission->schedule_time ).to_seconds() % emission->interval_seconds;
       fc::time_point_sec next_schedule = last_emission + fc::seconds( emission->interval_seconds );
-      if( next_schedule < emission->schedule_end_time() ) return next_schedule;
+      if( next_schedule <= emission->schedule_end_time() ) return next_schedule;
 
       ++emission;
       if( emission != idx.end() && emission->symbol == symbol )
       {
          next_schedule = emission->schedule_time;
-         return next_schedule;
+         return emission->schedule_time;
       }
    }
 
@@ -89,15 +91,8 @@ const smt_token_emissions_object* get_emission_object( const database& db, const
    auto emission = idx.lower_bound( boost::make_tuple( symbol, t ) );
 
    if ( emission != idx.end() && emission->symbol == symbol )
-   {
-      if( t < emission->schedule_end_time() ) return &*emission;
-
-      ++emission;
-      if( emission != idx.end() && emission->symbol == symbol )
-      {
+      if( t >= emission->schedule_time && t <= emission->schedule_end_time() )
          return &*emission;
-      }
-   }
 
    return nullptr;
 }
@@ -135,7 +130,7 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
          rel_amount_numerator = ( ( lep_rel_num * lep_dist + rep_rel_num * rep_dist ) / total_dist ).to_uint64();
       }
 
-      share_type rel_amount = ( fc::uint128( token.max_supply ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
+      share_type rel_amount = ( fc::uint128( token.current_supply.value ) * rel_amount_numerator >> emission.rel_amount_denom_bits ).to_int64();
 
       share_type new_token_supply;
       if ( emission.floor_emissions )
@@ -156,19 +151,19 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
 
 namespace ico {
 
-share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< asset >& assets )
+share_type payout( database& db, const asset_symbol_type& symbol, const account_object& account, const std::vector< contribution_payout >& payouts )
 {
    share_type additional_token_supply = 0;
 
-   for ( auto& _asset : assets )
+   for ( auto& p : payouts )
    {
-      if ( _asset.symbol.is_vesting() )
-         db.create_vesting( account, asset( _asset.amount, _asset.symbol.get_paired_symbol() ) );
+      if ( p.to_vesting )
+         db.create_vesting( account, p.payout );
       else
-         db.adjust_balance( account, _asset );
+         db.adjust_balance( account, p.payout );
 
-      if ( _asset.symbol.space() == asset_symbol_type::smt_nai_space )
-         additional_token_supply += _asset.amount;
+      if ( p.payout.symbol.space() == asset_symbol_type::smt_nai_space )
+         additional_token_supply += p.payout.amount;
    }
 
    return additional_token_supply;
@@ -306,7 +301,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       }
 
       for ( auto it = payout_map.begin(); it != payout_map.end(); ++it )
-         payout_action.payouts.push_back( asset( it->second, it->first ) );
+         payout_action.payouts.push_back( { asset( it->second, it->first.get_liquid_symbol() ), it->first.is_vesting() } );
 
       db.push_required_action( payout_action );
       action_scheduled = true;
@@ -414,7 +409,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       payout_action.symbol = a;
 
       for ( auto it = account_payout_map.begin(); it != account_payout_map.end(); ++it )
-         payout_action.account_payouts[ std::get< 0 >( it->first ) ].push_back( asset( it->second, std::get< 1 >( it->first ) ) );
+         payout_action.account_payouts[ std::get< 0 >( it->first ) ].push_back( { asset( it->second, std::get< 1 >( it->first ).get_liquid_symbol() ), std::get< 1 >( it->first ).is_vesting() } );
 
       payout_action.market_maker_tokens = market_maker_tokens;
       payout_action.market_maker_steem  = market_maker_steem;
