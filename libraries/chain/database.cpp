@@ -3275,14 +3275,11 @@ struct process_header_visitor
       std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
 
-FC_TODO( "Remove when optional automated actions are created" )
-#ifdef IS_TEST_NET
    void operator()( const optional_automated_actions& opt_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
       std::copy( opt_actions.begin(), opt_actions.end(), std::back_inserter( _opt_actions ) );
    }
-#endif
 };
 
 void database::process_header_extensions( const signed_block& next_block, required_automated_actions& req_actions, optional_automated_actions& opt_actions )
@@ -3846,8 +3843,6 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
-FC_TODO( "#ifndef not needed after HF 20 is live" );
-#ifndef IS_TEST_NET
                if( has_hardfork( STEEM_HARDFORK_0_14__278 ) && !has_hardfork( STEEM_HARDFORK_0_20__SP190 ) )
                {
                   if( head_block_num() - w.last_confirmed_block_num  > STEEM_BLOCKS_PER_DAY )
@@ -3856,7 +3851,6 @@ FC_TODO( "#ifndef not needed after HF 20 is live" );
                      push_virtual_operation( shutdown_witness_operation( w.owner ) );
                   }
                }
-#endif
             } );
          }
       }
@@ -4074,27 +4068,21 @@ bool database::apply_order( const limit_order_object& new_order_object )
 
 int database::match( const limit_order_object& new_order, const limit_order_object& old_order, const price& match_price )
 {
-   bool has_hf_20__1815 = has_hardfork( STEEM_HARDFORK_0_20__1815 );
-
-#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
-   if( has_hf_20__1815 )
-   {
-      STEEM_ASSERT( new_order.sell_price.quote.symbol == old_order.sell_price.base.symbol,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-      STEEM_ASSERT( new_order.sell_price.base.symbol  == old_order.sell_price.quote.symbol,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-      STEEM_ASSERT( new_order.for_sale > 0 && old_order.for_sale > 0,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-      STEEM_ASSERT( match_price.quote.symbol == new_order.sell_price.base.symbol,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-      STEEM_ASSERT( match_price.base.symbol == old_order.sell_price.base.symbol,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-   }
+   STEEM_ASSERT( new_order.sell_price.quote.symbol == old_order.sell_price.base.symbol,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   STEEM_ASSERT( new_order.sell_price.base.symbol  == old_order.sell_price.quote.symbol,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   STEEM_ASSERT( new_order.for_sale > 0 && old_order.for_sale > 0,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   STEEM_ASSERT( match_price.quote.symbol == new_order.sell_price.base.symbol,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   STEEM_ASSERT( match_price.base.symbol == old_order.sell_price.base.symbol,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
 
    auto new_order_for_sale = new_order.amount_for_sale();
    auto old_order_for_sale = old_order.amount_for_sale();
@@ -4119,14 +4107,10 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    old_order_pays = new_order_receives;
    new_order_pays = old_order_receives;
 
-#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
-   if( has_hf_20__1815 )
-   {
-      STEEM_ASSERT( new_order_pays == new_order.amount_for_sale() ||
-                    old_order_pays == old_order.amount_for_sale(),
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-   }
+   STEEM_ASSERT( new_order_pays == new_order.amount_for_sale() ||
+                  old_order_pays == old_order.amount_for_sale(),
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
 
    auto age = head_block_time() - old_order.created;
    if( !has_hardfork( STEEM_HARDFORK_0_12__178 ) &&
@@ -4151,13 +4135,10 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    result |= fill_order( new_order, new_order_pays, new_order_receives );
    result |= fill_order( old_order, old_order_pays, old_order_receives ) << 1;
 
-#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
-   if( has_hf_20__1815 )
-   {
-      STEEM_ASSERT( result != 0,
-         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
-         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
-   }
+   STEEM_ASSERT( result != 0,
+      order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+      ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+
    return result;
 }
 
@@ -4223,13 +4204,9 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
       }
       else
       {
-#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
-         if( has_hardfork( STEEM_HARDFORK_0_20__1815 ) )
-         {
-            STEEM_ASSERT( pays < order.amount_for_sale(),
-              order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
-              ("order", order)("pays", pays)("receives", receives) );
-         }
+         STEEM_ASSERT( pays < order.amount_for_sale(),
+            order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
+            ("order", order)("pays", pays)("receives", receives) );
 
          modify( order, [&]( limit_order_object& b )
          {
@@ -5572,9 +5549,7 @@ void database::validate_smt_invariants()const
          asset total_liquid_supply = totalIt == theMap.end() ? asset(0, smt.liquid_symbol) :
             ( totalIt->second.liquid + totalIt->second.pending_liquid );
          total_liquid_supply += asset( smt.total_vesting_fund_smt, smt.liquid_symbol )
-                             /*+ gpo.total_reward_fund_steem */
                              + asset( smt.pending_rewarded_vesting_smt, smt.liquid_symbol );
-#pragma message( "TODO: Supplement ^ once SMT rewards are implemented" )
          FC_ASSERT( asset(smt.current_supply, smt.liquid_symbol) == total_liquid_supply,
                     "", ("smt current_supply",smt.current_supply)("total_liquid_supply",total_liquid_supply) );
          // Check vesting SMT supply.
