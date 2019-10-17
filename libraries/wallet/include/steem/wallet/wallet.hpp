@@ -1249,6 +1249,22 @@ class wallet_api
          bool broadcast );
 
       /**
+       *  Contribute to a token ICO.
+       *
+       *  @param contributor The name of the contributor
+       *  @param symbol The asset symbol of the created token
+       *  @param contribution_id A unique contribution ID number
+       *  @param contribution The contribution
+       *  @param broadcast To broadcast this transaction or not
+       */
+      condenser_api::legacy_signed_transaction smt_contribute(
+         account_name_type contributor,
+         asset_symbol_type symbol,
+         uint32_t contribution_id,
+         asset contribution,
+         bool broadcast );
+
+      /**
        * Retrieve the current NAI pool.
        */
       vector< asset_symbol_type > get_nai_pool();
@@ -1370,6 +1386,7 @@ FC_API( steem::wallet::wallet_api,
         (smt_set_runtime_parameters)
         (smt_setup_emissions)
         (smt_setup)
+        (smt_contribute)
         (get_nai_pool)
       )
 

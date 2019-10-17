@@ -2627,6 +2627,27 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return my->sign_transaction( trx, broadcast );
    }
 
+   condenser_api::legacy_signed_transaction wallet_api::smt_contribute(
+      account_name_type contributor,
+      asset_symbol_type symbol,
+      uint32_t contribution_id,
+      asset contribution,
+      bool broadcast )
+   {
+      FC_ASSERT( !is_locked() );
+
+      smt_contribute_operation op;
+      op.contributor = contributor;
+      op.symbol = symbol;
+      op.contribution_id = contribution_id;
+      op.contribution = contribution;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
    vector< asset_symbol_type > wallet_api::get_nai_pool()
    {
       return my->_remote_api->get_nai_pool();
