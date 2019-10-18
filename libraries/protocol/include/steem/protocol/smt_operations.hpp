@@ -215,6 +215,7 @@ FC_REFLECT(
    (control_account)
    (symbol)
    (smt_creation_fee)
+   (precision)
    (extensions)
 )
 
