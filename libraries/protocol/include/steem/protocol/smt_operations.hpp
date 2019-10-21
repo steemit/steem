@@ -215,6 +215,7 @@ FC_REFLECT(
    (control_account)
    (symbol)
    (smt_creation_fee)
+   (precision)
    (extensions)
 )
 
@@ -227,6 +228,7 @@ FC_REFLECT(
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
+   (steem_units_min)
    (steem_units_soft_cap)
    (steem_units_hard_cap)
    (extensions)

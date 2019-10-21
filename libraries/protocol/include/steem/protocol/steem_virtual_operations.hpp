@@ -207,7 +207,7 @@ FC_REFLECT( steem::protocol::fill_transfer_from_savings_operation, (from)(to)(am
 FC_REFLECT( steem::protocol::hardfork_operation, (hardfork_id) )
 FC_REFLECT( steem::protocol::comment_payout_update_operation, (author)(permlink) )
 FC_REFLECT( steem::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
-FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
+FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(sbd_payout)(steem_payout)(liquid_payout)(vesting_payout) )
 FC_REFLECT( steem::protocol::producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::protocol::clear_null_account_balance_operation, (total_cleared) )
 FC_REFLECT( steem::protocol::sps_fund_operation, (additional_funds) )
