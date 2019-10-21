@@ -1062,6 +1062,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( asset( 1, smt2 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.validate();
+      edump((op));
       op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing invalid rewards" );
@@ -1565,6 +1566,7 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       // If this fails, it could indicate a test above has failed for the wrong reasons
       op.symbol = get_new_smt_symbol( 3, db );
       op.validate();
+      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1883,8 +1885,8 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op1.schedule_time = db->head_block_time() + fc::days(30);
       op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op1.interval_count = 1;
-      op1.lep_abs_amount = asset( 0, alice_symbol );
-      op1.rep_abs_amount = asset( 0, alice_symbol );
+      op1.lep_abs_amount = 0;
+      op1.rep_abs_amount = 0;
       op1.lep_rel_amount_numerator = 1;
       op1.rep_rel_amount_numerator = 0;
 
@@ -1895,8 +1897,8 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op2.schedule_time = op1.schedule_time + fc::days( 365 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 10;
-      op2.lep_abs_amount = asset( 0, alice_symbol );
-      op2.rep_abs_amount = asset( 0, alice_symbol );
+      op2.lep_abs_amount = 0;
+      op2.rep_abs_amount = 0;
       op2.lep_rel_amount_numerator = 1;
       op2.rep_rel_amount_numerator = 0;
 
@@ -2101,8 +2103,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       fc::time_point_sec schedule_end_time = schedule_time + fc::seconds( op.interval_seconds * op.interval_count );
 
       op.schedule_time = schedule_time;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       op.lep_rel_amount_numerator = 1;
       op.rep_rel_amount_numerator = 0;
       op.lep_time = schedule_time;
@@ -2111,22 +2113,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
 
       BOOST_TEST_MESSAGE( " -- Invalid token symbol" );
       op.symbol = STEEM_SYMBOL;
-      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
-      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.symbol = alice_symbol;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
-
-      BOOST_TEST_MESSAGE( " -- Mismatching right endpoint token" );
-      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.rep_abs_amount = asset( 0, alice_symbol );
-
-      BOOST_TEST_MESSAGE( " -- Mismatching left endpoint token" );
-      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.lep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- No emissions" );
       op.lep_rel_amount_numerator = 0;
@@ -2166,14 +2158,14 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
 
       BOOST_TEST_MESSAGE( " -- Negative asset left endpoint" );
-      op.lep_abs_amount = asset( -1, alice_symbol );
+      op.lep_abs_amount = -1;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.lep_abs_amount = asset( 0 , alice_symbol );
+      op.lep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- Negative asset right endpoint" );
-      op.rep_abs_amount = asset( -1 , alice_symbol );
+      op.rep_abs_amount = -1;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.rep_abs_amount = asset( 0 , alice_symbol );
+      op.rep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- Left endpoint time cannot be before schedule time" );
       op.lep_time -= fc::seconds( 1 );
@@ -2191,6 +2183,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.rep_time = tp;
 
       op.validate();
+      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2206,7 +2199,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
       op.emissions_unit.token_unit[ "alice" ] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, alice_symbol );
+      op.lep_abs_amount = op.rep_abs_amount = 1000;
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -2243,8 +2236,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       op.lep_rel_amount_numerator = 1;
       op.rep_rel_amount_numerator = 0;;
       op.validate();
@@ -2275,8 +2268,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 5;
-      op2.lep_abs_amount = asset( 1200, alice_symbol );
-      op2.rep_abs_amount = asset( 1000, alice_symbol );
+      op2.lep_abs_amount = 1200;
+      op2.rep_abs_amount = 1000;
       op2.lep_rel_amount_numerator = 1;
       op2.rep_rel_amount_numerator = 2;;
       op2.validate();
@@ -2294,8 +2287,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op3.interval_count = SMT_EMIT_INDEFINITELY;
-      op3.lep_abs_amount = asset( 0, alice_symbol );
-      op3.rep_abs_amount = asset( 1000, alice_symbol );
+      op3.lep_abs_amount = 0;
+      op3.rep_abs_amount = 1000;
       op3.lep_rel_amount_numerator = 0;
       op3.rep_rel_amount_numerator = 0;;
       op3.validate();
@@ -2315,8 +2308,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op4.schedule_time = op3.schedule_time + fc::days( 365 );
       op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op4.interval_count = 10;
-      op4.lep_abs_amount = asset( 0, alice_symbol );
-      op4.rep_abs_amount = asset( 0, alice_symbol );
+      op4.lep_abs_amount = 0;
+      op4.rep_abs_amount = 0;
       op4.lep_rel_amount_numerator = 1;
       op4.rep_rel_amount_numerator = 0;;
       op4.validate();
@@ -2368,6 +2361,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
       op.setup_parameters.clear();
       op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
       op.validate();
+      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2676,7 +2670,7 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.runtime_parameters.clear();
       op.runtime_parameters.insert( vote_regen );
       op.validate();
-
+      edump((op));
       /*
        * Conditions to test:
        *
@@ -2922,6 +2916,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_validate )
       op.symbol = new_symbol;
 
       op.validate();
+      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3848,6 +3843,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    BOOST_TEST_MESSAGE( " -- Successful sanity check" );
    op.validate();
+   edump((op));
 }
 
 
@@ -4430,6 +4426,8 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_validate )
          op.extensions.clear();
          op.extensions.insert( ava );
          op.validate();
+
+         edump( (op) );
       }
    }
    FC_LOG_AND_RETHROW()
@@ -5090,6 +5088,8 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          tx.signatures.clear();
          tx.operations.push_back( op );
          sign( tx, alice_private_key );
+
+         edump((op));
 
          db->push_transaction( tx, 0 );
 
@@ -5786,6 +5786,10 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana );
          }
       }
+
+      edump( (STEEM_SYMBOL) );
+      edump( (SBD_SYMBOL) );
+      edump( (VESTS_SYMBOL) );
    }
    FC_LOG_AND_RETHROW()
 }

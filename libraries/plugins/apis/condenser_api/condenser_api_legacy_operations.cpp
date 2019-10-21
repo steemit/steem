@@ -88,9 +88,12 @@ void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy
       vo.set_which( ar[0].as_uint64() );
    else
    {
+      idump( (to_tag) );
+      idump( (ar[0].as_string()) );
       auto itr = to_tag.find(ar[0].as_string());
       if( itr == to_tag.end() )
       {
+          idump( (to_full_tag) );
           itr = to_full_tag.find(ar[0].as_string());
           FC_ASSERT( itr != to_full_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
       }

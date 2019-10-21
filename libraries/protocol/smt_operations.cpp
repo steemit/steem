@@ -189,12 +189,10 @@ void smt_setup_emissions_operation::validate()const
    }
 
    FC_ASSERT( symbol.is_vesting() == false, "Use liquid variant of SMT symbol to specify emission amounts" );
-   FC_ASSERT( symbol == lep_abs_amount.symbol, "Left endpoint symbol mismatch" );
-   FC_ASSERT( symbol == rep_abs_amount.symbol, "Right endpoint symbol mismatch" );
-   FC_ASSERT( lep_abs_amount.amount >= 0, "Left endpoint cannot have negative emission" );
-   FC_ASSERT( rep_abs_amount.amount >= 0, "Right endpoint cannot have negative emission" );
+   FC_ASSERT( lep_abs_amount >= 0, "Left endpoint cannot have negative emission" );
+   FC_ASSERT( rep_abs_amount >= 0, "Right endpoint cannot have negative emission" );
 
-   FC_ASSERT( lep_abs_amount.amount > 0 || lep_rel_amount_numerator > 0 || rep_abs_amount.amount > 0 || rep_rel_amount_numerator > 0,
+   FC_ASSERT( lep_abs_amount > 0 || lep_rel_amount_numerator > 0 || rep_abs_amount > 0 || rep_rel_amount_numerator > 0,
       "An emission operation must have positive non-zero emission" );
 
    // rel_amount_denom_bits <- any value of unsigned int is OK

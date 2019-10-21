@@ -1036,8 +1036,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op.schedule_time  = db->head_block_time() + ( STEEM_BLOCK_INTERVAL * 10 );
       emissions_op.lep_time       = emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op.rep_time       = emissions_op.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
-      emissions_op.lep_abs_amount = asset( 20000000, symbol );
-      emissions_op.rep_abs_amount = asset( 40000000, symbol );
+      emissions_op.lep_abs_amount = 20000000;
+      emissions_op.rep_abs_amount = 40000000;
       emissions_op.lep_rel_amount_numerator = 1;
       emissions_op.rep_rel_amount_numerator = 2;
       emissions_op.rel_amount_denom_bits    = 7;
@@ -1062,8 +1062,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * emissions_op.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op2.lep_time       = emissions_op2.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op2.rep_time       = emissions_op2.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
-      emissions_op2.lep_abs_amount = asset( 50000000, symbol );
-      emissions_op2.rep_abs_amount = asset( 100000000, symbol );
+      emissions_op2.lep_abs_amount = 50000000;
+      emissions_op2.rep_abs_amount = 100000000;
       emissions_op2.lep_rel_amount_numerator = 1;
       emissions_op2.rep_rel_amount_numerator = 2;
       emissions_op2.rel_amount_denom_bits    = 10;
@@ -1088,8 +1088,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * emissions_op2.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op3.lep_time       = emissions_op3.schedule_time;
       emissions_op3.rep_time       = emissions_op3.schedule_time;
-      emissions_op3.lep_abs_amount = asset( 100000000, symbol );
-      emissions_op3.rep_abs_amount = asset( 100000000, symbol );
+      emissions_op3.lep_abs_amount = 100000000;
+      emissions_op3.rep_abs_amount = 100000000;
       emissions_op3.lep_rel_amount_numerator = 0;
       emissions_op3.rep_rel_amount_numerator = 0;
       emissions_op3.rel_amount_denom_bits    = 0;
@@ -1232,7 +1232,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          share_type abs_amount;
          if ( emission_time <= emissions_op.lep_time )
          {
-            abs_amount = emissions_op.lep_abs_amount.amount;
+            abs_amount = emissions_op;
             rel_amount_numerator = emissions_op.lep_rel_amount_numerator;
          }
          else if ( emission_time >= emissions_op.rep_time )
@@ -1242,8 +1242,8 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          }
          else
          {
-            fc::uint128 lep_abs_val{ emissions_op.lep_abs_amount.amount.value },
-                        rep_abs_val{ emissions_op.rep_abs_amount.amount.value },
+            fc::uint128 lep_abs_val{ emissions_op.lep_abs_amount.value },
+                        rep_abs_val{ emissions_op.rep_abs_amount.value },
                         lep_rel_num{ emissions_op.lep_rel_amount_numerator    },
                         rep_rel_num{ emissions_op.rep_rel_amount_numerator    };
 

@@ -2554,14 +2554,14 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    condenser_api::legacy_signed_transaction wallet_api::smt_setup_emissions(
       account_name_type control_account,
       asset_symbol_type symbol,
-      time_point_sec schedule_time,
+      time_point_sec schedule_time,g
       string json_emission_unit,
       uint32_t interval_seconds,
       uint32_t interval_count,
       time_point_sec lep_time,
       time_point_sec rep_time,
-      asset lep_abs_amount,
-      asset rep_abs_amount,
+      share_type lep_abs_amount,
+      share_type rep_abs_amount,
       uint32_t lep_rel_amount_numerator,
       uint32_t rep_rel_amount_numerator,
       uint8_t rel_amount_denom_bits,

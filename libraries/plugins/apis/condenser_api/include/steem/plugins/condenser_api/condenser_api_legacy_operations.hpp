@@ -71,6 +71,14 @@ namespace steem { namespace plugins { namespace condenser_api {
    typedef comment_payout_update_operation        legacy_comment_payout_update_operation;
    typedef update_proposal_votes_operation        legacy_update_proposal_votes_operation;
    typedef remove_proposal_operation              legacy_remove_proposal_operation;
+   typedef claim_reward_balance2_operation        legacy_claim_reward_balance2_operation;
+   typedef vote2_operation                        legacy_vote2_operation;
+   typedef smt_setup_operation                    legacy_smt_setup_operation;
+   typedef smt_setup_emissions_operation          legacy_smt_setup_emissions_operation;
+   typedef smt_set_setup_parameters_operation     legacy_smt_set_setup_parameters_operation;
+   typedef smt_set_runtime_parameters_operation   legacy_smt_set_runtime_parameters_operation;
+   typedef smt_create_operation                   legacy_smt_create_operation;
+   typedef smt_contribute_operation               legacy_smt_contribute_operation;
    typedef clear_null_account_balance_operation   legacy_clear_null_account_balance_operation;
 
    struct legacy_price
@@ -1121,6 +1129,14 @@ namespace steem { namespace plugins { namespace condenser_api {
             legacy_create_proposal_operation,
             legacy_update_proposal_votes_operation,
             legacy_remove_proposal_operation,
+            legacy_claim_reward_balance2_operation,
+            legacy_vote2_operation,
+            legacy_smt_setup_operation,
+            legacy_smt_setup_emissions_operation,
+            legacy_smt_set_setup_parameters_operation,
+            legacy_smt_set_runtime_parameters_operation,
+            legacy_smt_create_operation,
+            legacy_smt_contribute_operation,
             legacy_fill_convert_request_operation,
             legacy_author_reward_operation,
             legacy_curation_reward_operation,
@@ -1179,6 +1195,14 @@ namespace steem { namespace plugins { namespace condenser_api {
       bool operator()( const comment_payout_update_operation& op )const          { l_op = op; return true; }
       bool operator()( const update_proposal_votes_operation& op )const          { l_op = op; return true; }
       bool operator()( const remove_proposal_operation& op )const                { l_op = op; return true; }
+      bool operator()( const claim_reward_balance2_operation& op ) const         { l_op = op; return true; }
+      bool operator()( const vote2_operation& op ) const                         { l_op = op; return true; }
+      bool operator()( const smt_setup_operation& op ) const                     { l_op = op; return true; }
+      bool operator()( const smt_setup_emissions_operation& op ) const           { l_op = op; return true; }
+      bool operator()( const smt_set_setup_parameters_operation& op ) const      { l_op = op; return true; }
+      bool operator()( const smt_set_runtime_parameters_operation& op ) const    { l_op = op; return true; }
+      bool operator()( const smt_create_operation& op ) const                    { l_op = op; return true; }
+      bool operator()( const smt_contribute_operation& op ) const                { l_op = op; return true; }
       bool operator()( const clear_null_account_balance_operation& op )const     { l_op = op; return true; }
 
       bool operator()( const transfer_operation& op )const

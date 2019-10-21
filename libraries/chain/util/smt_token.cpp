@@ -108,18 +108,18 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
 
       if ( emission_time <= emission.lep_time )
       {
-         abs_amount = emission.lep_abs_amount.amount;
+         abs_amount = emission.lep_abs_amount;
          rel_amount_numerator = emission.lep_rel_amount_numerator;
       }
       else if ( emission_time >= emission.rep_time )
       {
-         abs_amount = emission.rep_abs_amount.amount;
+         abs_amount = emission.rep_abs_amount;
          rel_amount_numerator = emission.rep_rel_amount_numerator;
       }
       else
       {
-         fc::uint128 lep_abs_val{ emission.lep_abs_amount.amount.value },
-                     rep_abs_val{ emission.rep_abs_amount.amount.value },
+         fc::uint128 lep_abs_val{ emission.lep_abs_amount.value },
+                     rep_abs_val{ emission.rep_abs_amount.value },
                      lep_rel_num{ emission.lep_rel_amount_numerator    },
                      rep_rel_num{ emission.rep_rel_amount_numerator    };
 
