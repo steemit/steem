@@ -289,7 +289,10 @@ void webserver_plugin_impl::handle_ws_message( websocket_server_type* server, co
       try
       {
          if( msg->get_opcode() == websocketpp::frame::opcode::text )
+         {
+            ddump((msg->get_payload()));
             con->send( api->call( msg->get_payload() ) );
+         }
          else
             con->send( "error: string payload expected" );
       }
@@ -326,6 +329,7 @@ void webserver_plugin_impl::handle_http_message( websocket_server_type* server, 
    thread_pool_ios.post( [con, this]()
    {
       auto body = con->get_request_body();
+      ddump((body));
 
       try
       {
@@ -371,6 +375,7 @@ void webserver_plugin_impl::handle_http_request(websocket_local_server_type* ser
    thread_pool_ios.post( [con, this]()
    {
       auto body = con->get_request_body();
+      ddump((body));
 
       try
       {

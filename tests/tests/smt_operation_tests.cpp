@@ -2192,7 +2192,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
 {
    try
    {
-      SMT_SYMBOL( alice, 3, db );
+      //SMT_SYMBOL( alice, 3, db );
 
       smt_setup_emissions_operation op;
       op.control_account = "alice";

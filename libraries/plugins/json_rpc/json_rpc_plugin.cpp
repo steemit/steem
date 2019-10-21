@@ -444,6 +444,7 @@ void json_rpc_plugin::add_api_method( const string& api_name, const string& meth
 
 string json_rpc_plugin::call( const string& message )
 {
+   ddump( (message) );
    STATSD_START_TIMER( "jsonrpc", "overhead", "call", 1.0f );
    try
    {

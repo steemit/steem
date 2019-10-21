@@ -1232,12 +1232,12 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          share_type abs_amount;
          if ( emission_time <= emissions_op.lep_time )
          {
-            abs_amount = emissions_op;
+            abs_amount = emissions_op.lep_abs_amount;
             rel_amount_numerator = emissions_op.lep_rel_amount_numerator;
          }
          else if ( emission_time >= emissions_op.rep_time )
          {
-            abs_amount = emissions_op.rep_abs_amount.amount;
+            abs_amount = emissions_op.rep_abs_amount;
             rel_amount_numerator = emissions_op.rep_rel_amount_numerator;
          }
          else
@@ -1304,18 +1304,18 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          share_type abs_amount;
          if ( emission_time <= emissions_op2.lep_time )
          {
-            abs_amount = emissions_op2.lep_abs_amount.amount;
+            abs_amount = emissions_op2.lep_abs_amount;
             rel_amount_numerator = emissions_op2.lep_rel_amount_numerator;
          }
          else if ( emission_time >= emissions_op2.rep_time )
          {
-            abs_amount = emissions_op2.rep_abs_amount.amount;
+            abs_amount = emissions_op2.rep_abs_amount;
             rel_amount_numerator = emissions_op2.rep_rel_amount_numerator;
          }
          else
          {
-            fc::uint128 lep_abs_val{ emissions_op2.lep_abs_amount.amount.value },
-                        rep_abs_val{ emissions_op2.rep_abs_amount.amount.value },
+            fc::uint128 lep_abs_val{ emissions_op2.lep_abs_amount.value },
+                        rep_abs_val{ emissions_op2.rep_abs_amount.value },
                         lep_rel_num{ emissions_op2.lep_rel_amount_numerator    },
                         rep_rel_num{ emissions_op2.rep_rel_amount_numerator    };
 
@@ -1370,7 +1370,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_TEST_MESSAGE( " --- SMT token emissions catch-up logic" );
 
-      share_type new_token_supply = emissions_op3.lep_abs_amount.amount;
+      share_type new_token_supply = emissions_op3.lep_abs_amount;
       share_type new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
       share_type new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
       share_type new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
@@ -1404,7 +1404,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       generate_blocks( emission_time );
       generate_blocks( 3 );
 
-      new_token_supply = ( emissions_op3.lep_abs_amount.amount * 2 );
+      new_token_supply = ( emissions_op3.lep_abs_amount * 2 );
 
       new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
       new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
@@ -1439,7 +1439,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       generate_blocks( emission_time );
       generate_blocks( 11 );
 
-      new_token_supply = emissions_op3.lep_abs_amount.amount * 6;
+      new_token_supply = emissions_op3.lep_abs_amount * 6;
 
       new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
       new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();

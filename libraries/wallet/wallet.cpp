@@ -2554,7 +2554,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    condenser_api::legacy_signed_transaction wallet_api::smt_setup_emissions(
       account_name_type control_account,
       asset_symbol_type symbol,
-      time_point_sec schedule_time,g
+      time_point_sec schedule_time,
       string json_emission_unit,
       uint32_t interval_seconds,
       uint32_t interval_count,
