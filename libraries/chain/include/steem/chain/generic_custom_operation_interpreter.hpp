@@ -103,6 +103,7 @@ void custom_op_from_variant( const fc::variant& var, CustomOperationType& vo )
    }
    else // new serialization
    {
+      idump( (var) );
       FC_ASSERT( var.is_object(), "Input data have to treated as object." );
       auto v_object = var.get_object();
 
