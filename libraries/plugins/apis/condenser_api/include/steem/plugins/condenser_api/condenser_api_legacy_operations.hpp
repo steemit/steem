@@ -786,7 +786,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          {
             legacy_smt_setup_parameter param;
             p.visit( convert_to_legacy_static_variant< legacy_smt_setup_parameter >( param ) );
-            setup_parameters.insert( param );
+            setup_parameters.push_back( param );
          }
       }
 
@@ -795,16 +795,14 @@ namespace steem { namespace plugins { namespace condenser_api {
          smt_set_setup_parameters_operation op;
          op.control_account = control_account;
          op.symbol = symbol;
-         for( const auto& p : setup_parameters )
-            op.setup_parameters.insert( p );
-         //op.setup_parameters.insert( setup_parameters.begin(), setup_parameters.end() );
+         op.setup_parameters.insert( setup_parameters.begin(), setup_parameters.end() );
 
          return op;
       }
 
       account_name_type                      control_account;
       asset_symbol_type                      symbol;
-      flat_set< legacy_smt_setup_parameter > setup_parameters;
+      vector< legacy_smt_setup_parameter >   setup_parameters;
       extensions_type                        extensions;
    };
 
@@ -819,7 +817,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          {
             legacy_smt_runtime_parameter param;
             p.visit( convert_to_legacy_static_variant< legacy_smt_runtime_parameter >( param ) );
-            runtime_parameters.insert( param );
+            runtime_parameters.push_back( param );
          }
       }
 
@@ -835,7 +833,7 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       account_name_type                         control_account;
       asset_symbol_type                         symbol;
-      flat_set< legacy_smt_runtime_parameter >  runtime_parameters;
+      vector< legacy_smt_runtime_parameter >  runtime_parameters;
       extensions_type                           extensions;
    };
 
