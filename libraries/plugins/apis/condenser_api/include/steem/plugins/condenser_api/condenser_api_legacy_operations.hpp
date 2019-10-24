@@ -1795,7 +1795,6 @@ struct to_old_static_variant
    typedef void result_type;
    template<typename T> void operator()( T& v )const
    {
-      idump( (v) );
       from_variant( var, v );
    }
 };
@@ -1813,7 +1812,6 @@ void old_sv_to_variant( const T& sv, fc::variant& v )
 template< typename T >
 void old_sv_from_variant( const fc::variant& v, T& sv )
 {
-   idump( (v) );
    auto ar = v.get_array();
    if( ar.size() < 2 ) return;
    sv.set_which( static_cast< int64_t >( ar[0].as_uint64() ) );

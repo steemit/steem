@@ -1062,7 +1062,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( asset( 1, smt2 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.validate();
-      edump((op));
+
       op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing invalid rewards" );
@@ -1566,7 +1566,6 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       // If this fails, it could indicate a test above has failed for the wrong reasons
       op.symbol = get_new_smt_symbol( 3, db );
       op.validate();
-      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2183,7 +2182,6 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.rep_time = tp;
 
       op.validate();
-      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2361,7 +2359,6 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
       op.setup_parameters.clear();
       op.setup_parameters.emplace( smt_param_allow_voting { .value = false } );
       op.validate();
-      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2670,7 +2667,7 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.runtime_parameters.clear();
       op.runtime_parameters.insert( vote_regen );
       op.validate();
-      edump((op));
+
       /*
        * Conditions to test:
        *
@@ -2916,7 +2913,6 @@ BOOST_AUTO_TEST_CASE( smt_contribute_validate )
       op.symbol = new_symbol;
 
       op.validate();
-      edump((op));
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3843,7 +3839,6 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    BOOST_TEST_MESSAGE( " -- Successful sanity check" );
    op.validate();
-   edump((op));
 }
 
 
@@ -4426,8 +4421,6 @@ BOOST_AUTO_TEST_CASE( comment_votable_assets_validate )
          op.extensions.clear();
          op.extensions.insert( ava );
          op.validate();
-
-         edump( (op) );
       }
    }
    FC_LOG_AND_RETHROW()
@@ -5088,8 +5081,6 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
          tx.signatures.clear();
          tx.operations.push_back( op );
          sign( tx, alice_private_key );
-
-         edump((op));
 
          db->push_transaction( tx, 0 );
 
@@ -5786,10 +5777,6 @@ BOOST_AUTO_TEST_CASE( vote2_apply )
             BOOST_REQUIRE( sam_smt.downvote_manabar.current_mana == old_smt_downvote_manabar.current_mana );
          }
       }
-
-      edump( (STEEM_SYMBOL) );
-      edump( (SBD_SYMBOL) );
-      edump( (VESTS_SYMBOL) );
    }
    FC_LOG_AND_RETHROW()
 }

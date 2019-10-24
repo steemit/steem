@@ -88,12 +88,9 @@ void from_variant( const fc::variant& var, steem::plugins::condenser_api::legacy
       vo.set_which( ar[0].as_uint64() );
    else
    {
-      idump( (to_tag) );
-      idump( (ar[0].as_string()) );
       auto itr = to_tag.find(ar[0].as_string());
       if( itr == to_tag.end() )
       {
-          idump( (to_full_tag) );
           itr = to_full_tag.find(ar[0].as_string());
           FC_ASSERT( itr != to_full_tag.end(), "Invalid operation name: ${n}", ("n", ar[0]) );
       }
@@ -109,7 +106,6 @@ void to_variant( const steem::plugins::condenser_api::legacy_comment_options_ext
 
 void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_comment_options_extensions& sv )
 {
-   idump( (v) );
    old_sv_from_variant( v, sv );
 }
 
@@ -130,7 +126,6 @@ void to_variant( const steem::plugins::condenser_api::legacy_smt_generation_poli
 
 void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_generation_policy& sv )
 {
-   idump( (v) );
    old_sv_from_variant( v, sv );
 }
 
@@ -141,7 +136,6 @@ void to_variant( const steem::plugins::condenser_api::legacy_smt_setup_parameter
 
 void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_setup_parameter& sv )
 {
-   idump( (v) );
    old_sv_from_variant( v, sv );
 }
 
@@ -152,7 +146,6 @@ void to_variant( const steem::plugins::condenser_api::legacy_smt_runtime_paramet
 
 void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_runtime_parameter& sv )
 {
-   idump( (v) );
    old_sv_from_variant( v, sv );
 }
 

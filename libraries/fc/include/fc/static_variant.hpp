@@ -401,8 +401,6 @@ struct visitor {
          return name_map;
       }();
 
-      idump( (v) );
-
       FC_ASSERT( v.is_object(), "Input data have to treated as object." );
       auto v_object = v.get_object();
 

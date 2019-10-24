@@ -1744,7 +1744,6 @@ DEFINE_API_IMPL( database_api_impl, get_potential_signatures )
 
 DEFINE_API_IMPL( database_api_impl, verify_authority )
 {
-   try{
    args.trx.verify_authority(_db.get_chain_id(),
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
@@ -1754,7 +1753,6 @@ DEFINE_API_IMPL( database_api_impl, verify_authority )
                            STEEM_MAX_SIG_CHECK_ACCOUNTS,
                            _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
    return verify_authority_return( { true } );
-   }FC_LOG_AND_RETHROW()
 }
 
 // TODO: This is broken. By the look of is, it has been since BitShares. verify_authority always
