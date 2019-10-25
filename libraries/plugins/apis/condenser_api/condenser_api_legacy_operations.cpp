@@ -119,4 +119,34 @@ void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_p
    old_sv_from_variant( v, sv );
 }
 
+void to_variant( const steem::plugins::condenser_api::legacy_smt_generation_policy& sv, fc::variant& v )
+{
+   old_sv_to_variant( sv, v );
+}
+
+void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_generation_policy& sv )
+{
+   old_sv_from_variant( v, sv );
+}
+
+void to_variant( const steem::plugins::condenser_api::legacy_smt_setup_parameter& sv, fc::variant& v )
+{
+   old_sv_to_variant( sv, v );
+}
+
+void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_setup_parameter& sv )
+{
+   old_sv_from_variant( v, sv );
+}
+
+void to_variant( const steem::plugins::condenser_api::legacy_smt_runtime_parameter& sv, fc::variant& v )
+{
+   old_sv_to_variant( sv, v );
+}
+
+void from_variant( const fc::variant& v, steem::plugins::condenser_api::legacy_smt_runtime_parameter& sv )
+{
+   old_sv_from_variant( v, sv );
+}
+
 } // fc

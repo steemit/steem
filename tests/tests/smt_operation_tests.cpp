@@ -1062,6 +1062,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( asset( 1, smt2 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.validate();
+
       op.reward_tokens.clear();
 
       BOOST_TEST_MESSAGE( "Testing invalid rewards" );
@@ -1883,8 +1884,8 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op1.schedule_time = db->head_block_time() + fc::days(30);
       op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op1.interval_count = 1;
-      op1.lep_abs_amount = asset( 0, alice_symbol );
-      op1.rep_abs_amount = asset( 0, alice_symbol );
+      op1.lep_abs_amount = 0;
+      op1.rep_abs_amount = 0;
       op1.lep_rel_amount_numerator = 1;
       op1.rep_rel_amount_numerator = 0;
 
@@ -1895,8 +1896,8 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op2.schedule_time = op1.schedule_time + fc::days( 365 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 10;
-      op2.lep_abs_amount = asset( 0, alice_symbol );
-      op2.rep_abs_amount = asset( 0, alice_symbol );
+      op2.lep_abs_amount = 0;
+      op2.rep_abs_amount = 0;
       op2.lep_rel_amount_numerator = 1;
       op2.rep_rel_amount_numerator = 0;
 
@@ -2101,8 +2102,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       fc::time_point_sec schedule_end_time = schedule_time + fc::seconds( op.interval_seconds * op.interval_count );
 
       op.schedule_time = schedule_time;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       op.lep_rel_amount_numerator = 1;
       op.rep_rel_amount_numerator = 0;
       op.lep_time = schedule_time;
@@ -2111,22 +2112,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
 
       BOOST_TEST_MESSAGE( " -- Invalid token symbol" );
       op.symbol = STEEM_SYMBOL;
-      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
-      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.symbol = alice_symbol;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
-
-      BOOST_TEST_MESSAGE( " -- Mismatching right endpoint token" );
-      op.rep_abs_amount = asset( 0, STEEM_SYMBOL );
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.rep_abs_amount = asset( 0, alice_symbol );
-
-      BOOST_TEST_MESSAGE( " -- Mismatching left endpoint token" );
-      op.lep_abs_amount = asset( 0, STEEM_SYMBOL );
-      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.lep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- No emissions" );
       op.lep_rel_amount_numerator = 0;
@@ -2166,14 +2157,14 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
 
       BOOST_TEST_MESSAGE( " -- Negative asset left endpoint" );
-      op.lep_abs_amount = asset( -1, alice_symbol );
+      op.lep_abs_amount = -1;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.lep_abs_amount = asset( 0 , alice_symbol );
+      op.lep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- Negative asset right endpoint" );
-      op.rep_abs_amount = asset( -1 , alice_symbol );
+      op.rep_abs_amount = -1;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.rep_abs_amount = asset( 0 , alice_symbol );
+      op.rep_abs_amount = 0;
 
       BOOST_TEST_MESSAGE( " -- Left endpoint time cannot be before schedule time" );
       op.lep_time -= fc::seconds( 1 );
@@ -2199,14 +2190,14 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_authorities )
 {
    try
    {
-      SMT_SYMBOL( alice, 3, db );
+      //SMT_SYMBOL( alice, 3, db );
 
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
       op.emissions_unit.token_unit[ "alice" ] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, alice_symbol );
+      op.lep_abs_amount = op.rep_abs_amount = 1000;
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -2243,8 +2234,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.interval_count = 1;
-      op.lep_abs_amount = asset( 0, alice_symbol );
-      op.rep_abs_amount = asset( 0, alice_symbol );
+      op.lep_abs_amount = 0;
+      op.rep_abs_amount = 0;
       op.lep_rel_amount_numerator = 1;
       op.rep_rel_amount_numerator = 0;;
       op.validate();
@@ -2275,8 +2266,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.interval_count = 5;
-      op2.lep_abs_amount = asset( 1200, alice_symbol );
-      op2.rep_abs_amount = asset( 1000, alice_symbol );
+      op2.lep_abs_amount = 1200;
+      op2.rep_abs_amount = 1000;
       op2.lep_rel_amount_numerator = 1;
       op2.rep_rel_amount_numerator = 2;;
       op2.validate();
@@ -2294,8 +2285,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op3.interval_count = SMT_EMIT_INDEFINITELY;
-      op3.lep_abs_amount = asset( 0, alice_symbol );
-      op3.rep_abs_amount = asset( 1000, alice_symbol );
+      op3.lep_abs_amount = 0;
+      op3.rep_abs_amount = 1000;
       op3.lep_rel_amount_numerator = 0;
       op3.rep_rel_amount_numerator = 0;;
       op3.validate();
@@ -2315,8 +2306,8 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op4.schedule_time = op3.schedule_time + fc::days( 365 );
       op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op4.interval_count = 10;
-      op4.lep_abs_amount = asset( 0, alice_symbol );
-      op4.rep_abs_amount = asset( 0, alice_symbol );
+      op4.lep_abs_amount = 0;
+      op4.rep_abs_amount = 0;
       op4.lep_rel_amount_numerator = 1;
       op4.rep_rel_amount_numerator = 0;;
       op4.validate();

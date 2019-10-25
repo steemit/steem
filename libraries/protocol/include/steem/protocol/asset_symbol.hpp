@@ -56,7 +56,7 @@
 #define SMT_ASSET_NUM_VESTING_MASK     0x20
 
 #define ASSET_SYMBOL_NAI_KEY      "nai"
-#define ASSET_SYMBOL_DECIMALS_KEY "decimals"
+#define ASSET_SYMBOL_DECIMALS_KEY "precision"
 
 namespace steem { namespace protocol {
 

@@ -164,8 +164,8 @@ public:
    uint32_t                              interval_count = 0;
    time_point_sec                        lep_time = STEEM_GENESIS_TIME;
    time_point_sec                        rep_time = STEEM_GENESIS_TIME;
-   asset                                 lep_abs_amount = asset();
-   asset                                 rep_abs_amount = asset();
+   share_type                            lep_abs_amount;
+   share_type                            rep_abs_amount;
    uint32_t                              lep_rel_amount_numerator = 0;
    uint32_t                              rep_rel_amount_numerator = 0;
    uint8_t                               rel_amount_denom_bits = 0;

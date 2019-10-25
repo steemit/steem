@@ -111,8 +111,8 @@ struct smt_setup_emissions_operation : public base_operation
    time_point_sec      lep_time;
    time_point_sec      rep_time;
 
-   asset               lep_abs_amount;
-   asset               rep_abs_amount;
+   share_type          lep_abs_amount;
+   share_type          rep_abs_amount;
    uint32_t            lep_rel_amount_numerator = 0;
    uint32_t            rep_rel_amount_numerator = 0;
 
