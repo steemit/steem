@@ -3499,7 +3499,7 @@ struct action_equal_visitor
 
 void database::process_required_actions( const required_automated_actions& actions )
 {
-   const auto& pending_action_idx = get_index< pending_required_action_index, by_id >();
+   const auto& pending_action_idx = get_index< pending_required_action_index, by_execution >();
    auto actions_itr = actions.begin();
    uint64_t total_actions_size = 0;
 

@@ -173,20 +173,21 @@ BOOST_AUTO_TEST_CASE( pending_required_execution )
 
    db_plugin->debug_update( [&req_action](database& db)
    {
-      req_action.account = STEEM_INIT_MINER_NAME;
-      db.push_required_action( req_action, db.head_block_time() );
-
+      // Actions are pushed out of order to test they are included in order.
       req_action.account = STEEM_NULL_ACCOUNT;
       db.push_required_action( req_action, db.head_block_time() + (2 * STEEM_BLOCK_INTERVAL ) );
+
+      req_action.account = STEEM_INIT_MINER_NAME;
+      db.push_required_action( req_action, db.head_block_time() );
    });
 
    auto pending_itr = db->get_index< pending_required_action_index, by_execution >().begin();
-   BOOST_REQUIRE( !( pending_itr->action.get< example_required_action >() == req_action ) );
+   BOOST_REQUIRE( pending_itr->action.get< example_required_action >() == req_action );
 
    generate_block();
 
    pending_itr = db->get_index< pending_required_action_index, by_execution >().begin();
-   BOOST_REQUIRE( pending_itr->action.get< example_required_action >() == req_action );
+   BOOST_REQUIRE( !( pending_itr->action.get< example_required_action >() == req_action ) );
 
 } FC_LOG_AND_RETHROW() }
 
