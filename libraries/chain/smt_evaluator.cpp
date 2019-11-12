@@ -110,6 +110,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       token.liquid_symbol = o.symbol;
       token.control_account = o.control_account;
       token.market_maker.token_balance = asset( 0, token.liquid_symbol );
+      token.reward_balance = asset( 0, token.liquid_symbol );
    });
 
    remove_from_nai_pool( _db, o.symbol );
