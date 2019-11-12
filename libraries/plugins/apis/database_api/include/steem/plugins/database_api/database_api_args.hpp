@@ -520,7 +520,8 @@ typedef get_required_signatures_return get_potential_signatures_return;
 
 struct verify_authority_args
 {
-   signed_transaction trx;
+   signed_transaction         trx;
+   fc::optional< authority >  auth;
 };
 
 struct verify_authority_return
@@ -818,7 +819,8 @@ FC_REFLECT( steem::plugins::database_api::get_potential_signatures_args,
    (trx) )
 
 FC_REFLECT( steem::plugins::database_api::verify_authority_args,
-   (trx) )
+   (trx)
+   (auth) )
 
 FC_REFLECT( steem::plugins::database_api::verify_authority_return,
    (valid) )

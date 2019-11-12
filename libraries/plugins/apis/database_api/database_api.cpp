@@ -1744,14 +1744,29 @@ DEFINE_API_IMPL( database_api_impl, get_potential_signatures )
 
 DEFINE_API_IMPL( database_api_impl, verify_authority )
 {
-   args.trx.verify_authority(_db.get_chain_id(),
-                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
-                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
-                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
-                           STEEM_MAX_SIG_CHECK_DEPTH,
-                           STEEM_MAX_AUTHORITY_MEMBERSHIP,
-                           STEEM_MAX_SIG_CHECK_ACCOUNTS,
-                           _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
+   if( args.auth.valid() )
+   {
+         args.trx.verify_authority(_db.get_chain_id(),
+                              [&]( string account_name ){ return *(args.auth); },
+                              [&]( string account_name ){ return *(args.auth); },
+                              [&]( string account_name ){ return *(args.auth); },
+                              STEEM_MAX_SIG_CHECK_DEPTH,
+                              STEEM_MAX_AUTHORITY_MEMBERSHIP,
+                              STEEM_MAX_SIG_CHECK_ACCOUNTS,
+                              _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
+   }
+   else
+   {
+         args.trx.verify_authority(_db.get_chain_id(),
+                              [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
+                              [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
+                              [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
+                              STEEM_MAX_SIG_CHECK_DEPTH,
+                              STEEM_MAX_AUTHORITY_MEMBERSHIP,
+                              STEEM_MAX_SIG_CHECK_ACCOUNTS,
+                              _db.has_hardfork( STEEM_HARDFORK_0_20__1944 ) ? fc::ecc::canonical_signature_type::bip_0062 : fc::ecc::canonical_signature_type::fc_canonical );
+   }
+
    return verify_authority_return( { true } );
 }
 

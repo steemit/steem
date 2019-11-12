@@ -1252,8 +1252,14 @@ namespace detail
 
    DEFINE_API_IMPL( condenser_api_impl, verify_authority )
    {
-      CHECK_ARG_SIZE( 1 )
-      return _database_api->verify_authority( { signed_transaction( args[0].as< legacy_signed_transaction >() ) } ).valid;
+      FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+
+      database_api::verify_authority_args a;
+      a.trx = signed_transaction( args[0].as< legacy_signed_transaction >() );
+      if( args.size() == 2 )
+         a.auth = args[1].as< authority >();
+
+      return _database_api->verify_authority( a ).valid;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, verify_account_authority )
