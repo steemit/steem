@@ -274,21 +274,27 @@ struct smt_set_runtime_parameters_operation_visitor
 
       switch( param_rewards.author_reward_curve )
       {
-         case linear:
          case quadratic:
+         case linear:
+         case square_root:
+         case convergent_linear:
+         case convergent_square_root:
             break;
          default:
-            FC_ASSERT( false, "Author Reward Curve must be linear or quadratic" );
+            FC_ASSERT( false, "Author Reward Curve must be quadratic, linear, square_root, convergent_linear, or convergent_square_root." );
       }
 
       switch( param_rewards.curation_reward_curve )
       {
+         case quadratic:
          case linear:
          case square_root:
+         case convergent_linear:
+         case convergent_square_root:
          case bounded_curation:
             break;
          default:
-            FC_ASSERT( false, "Curation Reward Curve must be linear, square_root, or bounded_curation." );
+            FC_ASSERT( false, "Curation Reward Curve must be quadratic, linear, square_root, convergent_linear, convergent_square_root or bounded_curation." );
       }
    }
 
