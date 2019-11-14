@@ -120,8 +120,8 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
       {
          fc::uint128 lep_abs_val{ emission.lep_abs_amount.value },
                      rep_abs_val{ emission.rep_abs_amount.value },
-                     lep_rel_num{ emission.lep_rel_amount_numerator    },
-                     rep_rel_num{ emission.rep_rel_amount_numerator    };
+                     lep_rel_num{ emission.lep_rel_amount_numerator },
+                     rep_rel_num{ emission.rep_rel_amount_numerator };
 
          uint32_t lep_dist    = emission_time.sec_since_epoch() - emission.lep_time.sec_since_epoch();
          uint32_t rep_dist    = emission.rep_time.sec_since_epoch() - emission_time.sec_since_epoch();
@@ -138,10 +138,13 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
       else
          new_token_supply = std::max( abs_amount, rel_amount );
 
-      uint32_t unit_sum = emission.emissions_unit.token_unit_sum();
+      if ( token.current_supply + new_token_supply <= token.max_supply )
+      {
+         uint32_t unit_sum = emission.emissions_unit.token_unit_sum();
 
-      for ( auto& e : emission.emissions_unit.token_unit )
-         emissions[ e.first ] = ( ( fc::uint128( e.second ) * new_token_supply.value ) / unit_sum ).to_int64();
+         for ( auto& e : emission.emissions_unit.token_unit )
+            emissions[ e.first ] = ( ( fc::uint128( e.second ) * new_token_supply.value ) / unit_sum ).to_int64();
+      }
 
    }
    FC_CAPTURE_AND_RETHROW( (token)(emission)(emission_time) );

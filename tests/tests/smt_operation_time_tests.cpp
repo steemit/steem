@@ -1113,7 +1113,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       setup_op.steem_units_min      = 0;
       setup_op.steem_units_soft_cap = 100000000;
       setup_op.steem_units_hard_cap = 150000000;
-      setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.max_supply = 22400000000;
       setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
       setup_op.initial_generation_policy = get_capped_generation_policy
       (
@@ -1462,6 +1462,27 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       george_share += new_george;
       BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+      BOOST_REQUIRE( token.current_supply == 22307937127 );
+
+      emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 6;
+      generate_blocks( emission_time );
+      generate_blocks( 11 );
+
+      BOOST_TEST_MESSAGE( " --- SMT token emissions do not emit passed max supply" );
+
+      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
+
+      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
+
+      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
+
+      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
+
+      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
+
+      BOOST_REQUIRE( token.current_supply == 22307937127 );
+      BOOST_REQUIRE( token.max_supply >= token.current_supply );
 
       validate_database();
    }

@@ -63,16 +63,28 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
       return;
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
+   const auto& token = _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol );
 
-   auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_virtual_emission_time );
+   auto next = util::smt::next_emission_time( _db, emission_action.symbol, token.last_virtual_emission_time );
 
    const auto& emission_obj = _db.get< token_emission_schedule_object, by_symbol >( emission_action.symbol );
+
+   flat_map< unit_target_type, share_type > emissions;
+   time_point_sec next_emission_time;
+
    if ( next )
    {
-      _db.modify( emission_obj, [ next ]( token_emission_schedule_object& o )
+      next_emission_time = *next;
+      auto emission = _db.get_index< smt_token_emissions_index, by_symbol_end_time >().lower_bound( boost::make_tuple( token.liquid_symbol, next_emission_time ) );
+      emissions = util::smt::generate_emissions( token, *emission, next_emission_time );
+   }
+
+   if ( !emissions.empty() )
+   {
+      _db.modify( emission_obj, [ next_emission_time ]( token_emission_schedule_object& o )
       {
-         o.next_consensus_emission = *next;
-         o.next_scheduled_emission = *next;
+         o.next_consensus_emission = next_emission_time;
+         o.next_scheduled_emission = next_emission_time;
       } );
    }
    else
