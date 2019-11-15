@@ -2684,30 +2684,17 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.runtime_parameters.insert( rewards );
       op.validate();
 
-      auto invalid_author_reward_curves = {
-         curve_id::bounded_curation
-      };
-
-      rewards = {};
-      for ( auto& curve : invalid_author_reward_curves )
-      {
-         BOOST_TEST_MESSAGE( std::string( "--- Failure when author curve is " ) + fc::reflector< steem::protocol::curve_id >::to_string( curve ) );
-         rewards.author_reward_curve = curve;
-         op.runtime_parameters.clear();
-         op.runtime_parameters.insert( rewards );
-         BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
-      }
-
-      auto valid_author_reward_curves = {
+      auto valid_curves = {
          curve_id::quadratic,
          curve_id::linear,
          curve_id::square_root,
          curve_id::convergent_linear,
-         curve_id::convergent_square_root
+         curve_id::convergent_square_root,
+         curve_id::bounded
       };
 
       rewards = {};
-      for ( auto& curve : valid_author_reward_curves )
+      for ( auto& curve : valid_curves )
       {
          BOOST_TEST_MESSAGE( std::string( "--- Success when author curve is " ) + fc::reflector< steem::protocol::curve_id >::to_string( curve ) );
          rewards.author_reward_curve = curve;
@@ -2716,17 +2703,8 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
          op.validate();
       }
 
-      auto valid_curation_reward_curves = {
-         curve_id::quadratic,
-         curve_id::linear,
-         curve_id::square_root,
-         curve_id::convergent_linear,
-         curve_id::convergent_square_root,
-         curve_id::bounded_curation
-      };
-
       rewards = {};
-      for ( auto& curve : valid_curation_reward_curves )
+      for ( auto& curve : valid_curves )
       {
          BOOST_TEST_MESSAGE( std::string( "--- Success when curation curve is " ) + fc::reflector< steem::protocol::curve_id >::to_string( curve ) );
          rewards.curation_reward_curve = curve;
