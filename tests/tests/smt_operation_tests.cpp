@@ -2668,17 +2668,6 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.runtime_parameters.insert( vote_regen );
       op.validate();
 
-      /*
-       * Conditions to test:
-       *
-       * percent_curation_rewards <= 10000
-       *
-       * percent_content_rewards + percent_curation_rewards == 10000
-       *
-       * author_reward_curve must be quadratic or linear
-       *
-       * curation_reward_curve must be bounded_curation, linear, or square_root
-       */
       BOOST_TEST_MESSAGE( "--- Failure when percent_curation_rewards greater than 10000" );
       smt_param_rewards_v1 rewards;
       rewards.content_constant = STEEM_CONTENT_CONSTANT_HF0;
@@ -2695,42 +2684,34 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.runtime_parameters.insert( rewards );
       op.validate();
 
-      BOOST_TEST_MESSAGE( "--- Success when author curve is quadratic" );
-      rewards.author_reward_curve = curve_id::quadratic;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      op.validate();
+      auto valid_curves = {
+         curve_id::quadratic,
+         curve_id::linear,
+         curve_id::square_root,
+         curve_id::convergent_linear,
+         curve_id::convergent_square_root,
+         curve_id::bounded
+      };
 
-      BOOST_TEST_MESSAGE( "--- Failure when author curve is bounded_curation" );
-      rewards.author_reward_curve = curve_id::bounded_curation;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      rewards = {};
+      for ( auto& curve : valid_curves )
+      {
+         BOOST_TEST_MESSAGE( std::string( "--- Success when author curve is " ) + fc::reflector< steem::protocol::curve_id >::to_string( curve ) );
+         rewards.author_reward_curve = curve;
+         op.runtime_parameters.clear();
+         op.runtime_parameters.insert( rewards );
+         op.validate();
+      }
 
-      BOOST_TEST_MESSAGE( "--- Failure when author curve is square_root" );
-      rewards.author_reward_curve = curve_id::square_root;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
-
-      BOOST_TEST_MESSAGE( "--- Success when curation curve is bounded_curation" );
-      rewards.author_reward_curve = curve_id::linear;
-      rewards.curation_reward_curve = curve_id::bounded_curation;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      op.validate();
-
-      BOOST_TEST_MESSAGE( "--- Success when curation curve is linear" );
-      rewards.curation_reward_curve = curve_id::linear;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      op.validate();
-
-      BOOST_TEST_MESSAGE( "--- Failure when curation curve is quadratic" );
-      rewards.curation_reward_curve = curve_id::quadratic;
-      op.runtime_parameters.clear();
-      op.runtime_parameters.insert( rewards );
-      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      rewards = {};
+      for ( auto& curve : valid_curves )
+      {
+         BOOST_TEST_MESSAGE( std::string( "--- Success when curation curve is " ) + fc::reflector< steem::protocol::curve_id >::to_string( curve ) );
+         rewards.curation_reward_curve = curve;
+         op.runtime_parameters.clear();
+         op.runtime_parameters.insert( rewards );
+         op.validate();
+      }
 
       // Literally nothing to test for smt_param_allow_downvotes because it can only be true or false.
       // Inclusion success was tested in initial positive validation at the beginning of the test.

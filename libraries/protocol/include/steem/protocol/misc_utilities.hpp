@@ -5,7 +5,7 @@ namespace steem { namespace protocol {
 enum curve_id
 {
    quadratic,
-   bounded_curation,
+   bounded,
    linear,
    square_root,
    convergent_linear,
@@ -18,7 +18,7 @@ enum curve_id
 FC_REFLECT_ENUM(
    steem::protocol::curve_id,
    (quadratic)
-   (bounded_curation)
+   (bounded)
    (linear)
    (square_root)
    (convergent_linear)
