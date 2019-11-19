@@ -138,10 +138,13 @@ flat_map< unit_target_type, share_type > generate_emissions( const smt_token_obj
       else
          new_token_supply = std::max( abs_amount, rel_amount );
 
-      if ( token.current_supply + new_token_supply <= token.max_supply )
-      {
-         uint32_t unit_sum = emission.emissions_unit.token_unit_sum();
+      if ( token.current_supply + new_token_supply > token.max_supply )
+         new_token_supply = token.max_supply - token.current_supply;
 
+      uint32_t unit_sum = emission.emissions_unit.token_unit_sum();
+
+      if ( new_token_supply >= unit_sum )
+      {
          for ( auto& e : emission.emissions_unit.token_unit )
             emissions[ e.first ] = ( ( fc::uint128( e.second ) * new_token_supply.value ) / unit_sum ).to_int64();
       }
