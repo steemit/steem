@@ -63,10 +63,9 @@ void token_emissions_impl::on_post_apply_optional_action( const optional_action_
       return;
 
    smt_token_emission_action emission_action = note.action.get< smt_token_emission_action >();
-
    auto next = util::smt::next_emission_time( _db, emission_action.symbol, _db.get< smt_token_object, steem::chain::by_symbol >( emission_action.symbol ).last_virtual_emission_time );
-
    const auto& emission_obj = _db.get< token_emission_schedule_object, by_symbol >( emission_action.symbol );
+
    if ( next )
    {
       _db.modify( emission_obj, [ next ]( token_emission_schedule_object& o )
@@ -96,13 +95,18 @@ void token_emissions_impl::on_generate_optional_actions( const generate_optional
       {
          const auto& token = _db.get< smt_token_object, chain::by_symbol >( itr->symbol );
 
-         smt_token_emission_action action;
-         action.control_account = token.control_account;
-         action.symbol          = token.liquid_symbol;
-         action.emission_time   = itr->next_consensus_emission;
-         action.emissions       = util::smt::generate_emissions( token, *emission, itr->next_consensus_emission );
+         auto emissions = util::smt::generate_emissions( token, *emission, itr->next_consensus_emission );
 
-         _db.push_optional_action( action, next_emission_time );
+         if ( !emissions.empty() )
+         {
+            smt_token_emission_action action;
+            action.control_account = token.control_account;
+            action.symbol          = token.liquid_symbol;
+            action.emission_time   = itr->next_consensus_emission;
+            action.emissions       = std::move( emissions );
+
+            _db.push_optional_action( action, next_emission_time );
+         }
 
          _db.modify( *itr, [&]( token_emission_schedule_object& o )
          {
