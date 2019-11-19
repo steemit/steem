@@ -1365,6 +1365,8 @@ void database::clear_witness_votes( const account_object& a )
       });
 }
 
+FC_TODO( "After the SMT hardfork is applied and we verify that no NOTIFYALERT!s have been logged through this function, "
+         "We can remove the clearing of null acccount balances from per-block-processing altogether." );
 void database::clear_null_account_balance()
 {
    if( !has_hardfork( STEEM_HARDFORK_0_14__327 ) ) return;
@@ -1435,26 +1437,6 @@ void database::clear_null_account_balance()
 
    /////////////////////////////////////////////////////////////////////////////////////
 
-   if( null_account.balance.amount > 0 )
-   {
-      adjust_balance( null_account, -null_account.balance );
-   }
-
-   if( null_account.savings_balance.amount > 0 )
-   {
-      adjust_savings_balance( null_account, -null_account.savings_balance );
-   }
-
-   if( null_account.sbd_balance.amount > 0 )
-   {
-      adjust_balance( null_account, -null_account.sbd_balance );
-   }
-
-   if( null_account.savings_sbd_balance.amount > 0 )
-   {
-      adjust_savings_balance( null_account, -null_account.savings_sbd_balance );
-   }
-
    if( null_account.vesting_shares.amount > 0 )
    {
       const auto& gpo = get_dynamic_global_properties();
@@ -1464,21 +1446,6 @@ void database::clear_null_account_balance()
          g.total_vesting_shares -= null_account.vesting_shares;
          g.total_vesting_fund_steem -= vesting_shares_steem_value;
       });
-
-      modify( null_account, [&]( account_object& a )
-      {
-         a.vesting_shares.amount = 0;
-      });
-   }
-
-   if( null_account.reward_steem_balance.amount > 0 )
-   {
-      adjust_reward_balance( null_account, -null_account.reward_steem_balance );
-   }
-
-   if( null_account.reward_sbd_balance.amount > 0 )
-   {
-      adjust_reward_balance( null_account, -null_account.reward_sbd_balance );
    }
 
    if( null_account.reward_vesting_balance.amount > 0 )
@@ -1490,13 +1457,23 @@ void database::clear_null_account_balance()
          g.pending_rewarded_vesting_shares -= null_account.reward_vesting_balance;
          g.pending_rewarded_vesting_steem -= null_account.reward_vesting_steem;
       });
-
-      modify( null_account, [&]( account_object& a )
-      {
-         a.reward_vesting_steem.amount = 0;
-         a.reward_vesting_balance.amount = 0;
-      });
    }
+
+   // We simply set all account balances to zero here because of the newly added
+   // assertions in the `adjust_*` family of functions that prevents negative deltas
+   // to the null account.
+   modify( null_account, [&]( account_object& a )
+   {
+      a.balance.amount                = 0;
+      a.savings_balance.amount        = 0;
+      a.sbd_balance.amount            = 0;
+      a.savings_sbd_balance.amount    = 0;
+      a.vesting_shares.amount         = 0;
+      a.reward_steem_balance.amount   = 0;
+      a.reward_sbd_balance.amount     = 0;
+      a.reward_vesting_balance.amount = 0;
+      a.reward_vesting_steem.amount   = 0;
+   });
 
    //////////////////////////////////////////////////////////////
 
