@@ -1459,33 +1459,40 @@ void database::clear_null_account_balance()
       });
    }
 
-   // We simply set all account balances to zero here because of the newly added
-   // assertions in the `adjust_*` family of functions that prevents negative deltas
-   // to the null account.
-   modify( null_account, [&]( account_object& a )
+   if ( total_steem.amount > 0 || total_sbd.amount > 0 )
    {
-      a.balance.amount                = 0;
-      a.savings_balance.amount        = 0;
-      a.sbd_balance.amount            = 0;
-      a.savings_sbd_balance.amount    = 0;
-      a.vesting_shares.amount         = 0;
-      a.reward_steem_balance.amount   = 0;
-      a.reward_sbd_balance.amount     = 0;
-      a.reward_vesting_balance.amount = 0;
-      a.reward_vesting_steem.amount   = 0;
-   });
+      // We simply set all account balances to zero here because of the newly added
+      // assertions in the `adjust_*` family of functions that prevent negative deltas
+      // to the null account.
+      modify( null_account, [&]( account_object& a )
+      {
+         a.balance.amount                = 0;
+         a.savings_balance.amount        = 0;
+         a.sbd_balance.amount            = 0;
+         a.savings_sbd_balance.amount    = 0;
+         a.vesting_shares.amount         = 0;
+         a.reward_steem_balance.amount   = 0;
+         a.reward_sbd_balance.amount     = 0;
+         a.reward_vesting_balance.amount = 0;
+         a.reward_vesting_steem.amount   = 0;
+      });
+   }
 
    //////////////////////////////////////////////////////////////
 
    if( total_steem.amount > 0 )
    {
-      wlog( "NOTIFYALERT! Adjusting total STEEM supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_steem) );
+      if ( has_hardfork( STEEM_SMT_HARDFORK ) )
+         wlog( "NOTIFYALERT! Adjusting total STEEM supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_steem) );
+
       adjust_supply( -total_steem );
    }
 
    if( total_sbd.amount > 0 )
    {
-      wlog( "NOTIFYALERT! Adjusting total SBD supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_sbd) );
+      if ( has_hardfork( STEEM_SMT_HARDFORK ) )
+         wlog( "NOTIFYALERT! Adjusting total SBD supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_sbd) );
+
       adjust_supply( -total_sbd );
    }
 
