@@ -143,15 +143,42 @@ struct smt_setup_evaluator_visitor
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.steem_unit );
-      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.token_unit );
-      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.steem_unit );
-      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.token_unit );
+      verify_accounts( _db, capped_generation_policy.generation_unit.steem_unit );
+      verify_accounts( _db, capped_generation_policy.generation_unit.token_unit );
 
       _db.modify( _ico, [&]( smt_ico_object& ico )
       {
          ico.capped_generation_policy = capped_generation_policy;
       });
+   }
+};
+
+struct smt_generation_policy_validator
+{
+   database& _db;
+
+   smt_generation_policy_validator( database& db ): _db( db ){}
+
+   typedef void result_type;
+
+   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
+   {
+      verify_accounts( _db, capped_generation_policy.generation_unit.steem_unit );
+      verify_accounts( _db, capped_generation_policy.generation_unit.token_unit );
+   }
+};
+
+struct smt_setup_ico_tier_visitor
+{
+   smt_ico_tier_object& _ito;
+
+   smt_setup_ico_tier_visitor( smt_ico_tier_object& ito ): _ito( ito ) {}
+
+   typedef void result_type;
+
+   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
+   {
+      _ito.capped_generation_policy = capped_generation_policy;
    }
 };
 
@@ -185,6 +212,40 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    ico_launch_action.control_account = _token.control_account;
    ico_launch_action.symbol = _token.liquid_symbol;
    _db.push_required_action( ico_launch_action, o.contribution_begin_time );
+}
+
+void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+
+   const smt_token_object& token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
+
+   if ( o.remove )
+   {
+      auto key = boost::make_tuple( token.liquid_symbol, o.steem_units_cap );
+      const auto* ito = _db.find< smt_ico_tier_object, by_steem_unit_cap >( key );
+
+      FC_ASSERT( ito != nullptr,
+         "The specified ICO tier does not exist. Symbol: ${s}, Steem Units Cap: ${c}",
+         ("s", token.liquid_symbol)("c", o.steem_units_cap)
+      );
+
+      _db.remove( *ito );
+   }
+   else
+   {
+      smt_generation_policy_validator generation_policy_validator( _db );
+      o.generation_policy.visit( generation_policy_validator );
+
+      _db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& ito )
+      {
+         ito.symbol            = token.liquid_symbol;
+         ito.steem_units_cap   = o.steem_units_cap;
+
+         smt_setup_ico_tier_visitor visitor( ito );
+         o.generation_policy.visit( visitor );
+      });
+   }
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )

@@ -77,6 +77,7 @@ namespace steem { namespace protocol {
 
             smt_setup_operation,
             smt_setup_emissions_operation,
+            smt_setup_ico_tier_operation,
             smt_set_setup_parameters_operation,
             smt_set_runtime_parameters_operation,
             smt_create_operation,

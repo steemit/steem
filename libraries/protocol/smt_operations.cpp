@@ -118,31 +118,18 @@ uint32_t smt_emissions_unit::token_unit_sum() const
 
 void smt_capped_generation_policy::validate()const
 {
-   pre_soft_cap_unit.validate();
-   post_soft_cap_unit.validate();
+   generation_unit.validate();
 
-   FC_ASSERT( pre_soft_cap_unit.steem_unit.size() > 0 );
-   FC_ASSERT( pre_soft_cap_unit.token_unit.size() > 0 );
-   FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
+   FC_ASSERT( generation_unit.steem_unit.size() > 0 );
+   FC_ASSERT( generation_unit.token_unit.size() > 0 );
+   FC_ASSERT( generation_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
+   FC_ASSERT( generation_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 
-   for ( auto& unit : pre_soft_cap_unit.steem_unit )
+   for ( auto& unit : generation_unit.steem_unit )
       FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
          "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
 
-   for ( auto& unit : pre_soft_cap_unit.token_unit )
-      FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
-         "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
-
-   FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
-   FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-
-   for ( auto& unit : post_soft_cap_unit.steem_unit )
-      FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
-         "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
-
-   for ( auto& unit : post_soft_cap_unit.token_unit )
+   for ( auto& unit : generation_unit.token_unit )
       FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
          "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
 }
@@ -157,6 +144,17 @@ struct validate_visitor
       x.validate();
    }
 };
+
+void smt_setup_ico_tier_operation::validate()const
+{
+   smt_admin_operation_validate( *this );
+
+   FC_ASSERT( steem_units_cap > 0, "Steem units cap must be greater than 0" );
+   FC_ASSERT( steem_units_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
+
+   validate_visitor vtor;
+   generation_policy.visit( vtor );
+}
 
 void smt_setup_emissions_operation::validate()const
 {
