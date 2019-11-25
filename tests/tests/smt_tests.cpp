@@ -523,12 +523,13 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.launch_time = t200;
+/*
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
-         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
-         1/*min_unit_ratio*/,
-         2/*max_unit_ratio*/
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } ),
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } ),
+         1,
+         2
       );
       op.initial_generation_policy = gp;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
@@ -689,6 +690,7 @@ BOOST_AUTO_TEST_CASE( setup_validate )
       gp.pre_soft_cap_unit.steem_unit = { { "abc34", max_val_16 } };
       op.initial_generation_policy = gp;
       op.validate();
+*/
    }
    FC_LOG_AND_RETHROW()
 }
@@ -731,21 +733,21 @@ BOOST_AUTO_TEST_CASE( setup_apply )
 
       smt_setup_operation op;
       op.control_account = "alice";
-      op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
-      op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
-
+//      op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+//      op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+/*
       smt_capped_generation_policy gp = get_capped_generation_policy
       (
-         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*pre_soft_cap_unit*/,
-         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } )/*post_soft_cap_unit*/,
-         1/*min_unit_ratio*/,
-         2/*max_unit_ratio*/
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } ),
+         get_generation_unit( { { "xyz", 1 } }, { { "xyz2", 2 } } ),
+         1,
+         2
       );
-
+*/
       fc::time_point_sec start_time        = fc::variant( "2021-01-01T00:00:00" ).as< fc::time_point_sec >();
       fc::time_point_sec start_time_plus_1 = start_time + fc::seconds(1);
 
-      op.initial_generation_policy = gp;
+//      op.initial_generation_policy = gp;
       op.contribution_begin_time = start_time;
       op.contribution_end_time = op.launch_time = start_time_plus_1;
 

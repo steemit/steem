@@ -813,7 +813,7 @@ smt_generation_unit database_fixture::get_generation_unit( const units& steem_un
 
    return ret;
 }
-
+/*
 smt_capped_generation_policy database_fixture::get_capped_generation_policy
 (
    const smt_generation_unit& pre_soft_cap_unit,
@@ -832,7 +832,7 @@ smt_capped_generation_policy database_fixture::get_capped_generation_policy
 
    return ret;
 }
-
+*/
 
 void sps_proposal_database_fixture::plugin_prepare()
 {

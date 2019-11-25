@@ -2932,8 +2932,8 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          db.create< smt_ico_object >( [&]( smt_ico_object& o )
          {
             o.symbol = alice_symbol;
-            o.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
-            o.steem_units_hard_cap = 99000;
+//            o.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+//            o.steem_units_hard_cap = 99000;
          } );
       } );
 
@@ -3261,10 +3261,12 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    op.launch_time = op.contribution_end_time + fc::days( 1 );
    op.max_supply  = STEEM_MAX_SHARE_SUPPLY;
-   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
-   op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
-   op.steem_units_min      = 0;
-
+//   op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+//   op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+   op.min_unit_ratio  = 50;
+   op.max_unit_ratio  = 100;
+   op.steem_units_min = 0;
+/*
    smt_capped_generation_policy valid_generation_policy;
    valid_generation_policy.pre_soft_cap_unit = {
       {
@@ -3299,7 +3301,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    valid_generation_policy.max_unit_ratio = 100;
    valid_generation_policy.min_unit_ratio = 50;
    op.initial_generation_policy = valid_generation_policy;
-
+*/
    op.validate();
 
    BOOST_TEST_MESSAGE( " -- Failure on invalid control acount name" );
@@ -3316,7 +3318,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    op.launch_time = op.contribution_end_time - fc::seconds( 1 );
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
    op.launch_time = op.contribution_end_time + fc::days( 1 );
-
+/*
    BOOST_TEST_MESSAGE( " -- Failure on steem_units_hard_cap > SMT_MIN_HARD_CAP_STEEM_UNITS" );
    op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS - 1;
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
@@ -3336,7 +3338,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    op.steem_units_min = op.steem_units_soft_cap + 1;
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
    op.steem_units_min = 0;
-
+*/
    BOOST_TEST_MESSAGE( " -- Failure on max_supply > STEEM_MAX_SHARE_SUPPLY" );
    op.max_supply = STEEM_MAX_SHARE_SUPPLY + 1;
    BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
@@ -3344,7 +3346,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    BOOST_TEST_MESSAGE( " -- Successful sanity check" );
    op.validate();
-
+/*
    smt_capped_generation_policy invalid_generation_policy;
    invalid_generation_policy.pre_soft_cap_unit = {
       {
@@ -3820,6 +3822,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
 
    BOOST_TEST_MESSAGE( " -- Successful sanity check" );
    op.validate();
+*/
 }
 
 
@@ -3861,11 +3864,13 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
    setup_op.contribution_end_time = setup_op.contribution_begin_time + fc::days( 30 );
    setup_op.steem_units_min      = 0;
-   setup_op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
-   setup_op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+//   setup_op.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
+//   setup_op.steem_units_hard_cap = SMT_MIN_HARD_CAP_STEEM_UNITS;
+   setup_op.min_unit_ratio = 50;
+   setup_op.max_unit_ratio = 100;
    setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
    setup_op.launch_time = setup_op.contribution_end_time + fc::days( 1 );
-
+/*
    smt_capped_generation_policy invalid_generation_policy;
    invalid_generation_policy.pre_soft_cap_unit = {
       {
@@ -4247,7 +4252,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
    tx.operations.clear();
    tx.signatures.clear();
-
+*/
    setup_op.control_account = "alice";
 
    BOOST_TEST_MESSAGE( " -- Success on valid SMT setup" );
