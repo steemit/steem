@@ -223,7 +223,7 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
    if ( o.remove )
    {
       auto key = boost::make_tuple( token.liquid_symbol, o.steem_units_cap );
-      const auto* ito = _db.find< smt_ico_tier_object, by_steem_unit_cap >( key );
+      const auto* ito = _db.find< smt_ico_tier_object, by_symbol_steem_unit_cap >( key );
 
       FC_ASSERT( ito != nullptr,
          "The specified ICO tier does not exist. Symbol: ${s}, Steem Units Cap: ${c}",

@@ -286,14 +286,14 @@ typedef multi_index_container <
    allocator< smt_ico_object >
 > smt_ico_index;
 
-struct by_steem_unit_cap;
+struct by_symbol_steem_unit_cap;
 
 typedef multi_index_container <
    smt_ico_tier_object,
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_ico_tier_object, smt_ico_tier_object_id_type, &smt_ico_tier_object::id > >,
-      ordered_unique< tag< by_steem_unit_cap >,
+      ordered_unique< tag< by_symbol_steem_unit_cap >,
          composite_key< smt_ico_tier_object,
             member< smt_ico_tier_object, asset_symbol_type, &smt_ico_tier_object::symbol >,
             member< smt_ico_tier_object, share_type, &smt_ico_tier_object::steem_units_cap >
