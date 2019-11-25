@@ -1226,26 +1226,40 @@ class wallet_api
        *  @param control_account The name of the controlling account
        *  @param symbol The asset symbol of the created token
        *  @param max_supply The maximum supply of a smart media token
-       *  @param json_initial_generation_policy The steem and token destination routes of the ICO process
        *  @param contribution_begin_time The start time of the ICO contribution process
        *  @param contribution_end_time The end time of the ICO contribution process
        *  @param launch_time The time in which a token should launch
        *  @param steem_units_min The minimum steem units required for a successful ICO
-       *  @param steem_units_soft_cap The steem unit cap in which the pre_soft_cap_unit generation policy applies
-       *  @param steem_units_hard_cap The steem unit cap in which the post_soft_cap_unit generation policy applies
+       *  @param min_unit_ratio The minimum token unit ratio
+       *  @param max_unit_ratio The maximum token unit ratio
        *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_setup(
          account_name_type control_account,
          asset_symbol_type symbol,
          int64_t max_supply,
-         string json_initial_generation_policy,
          time_point_sec contribution_begin_time,
          time_point_sec contribution_end_time,
          time_point_sec launch_time,
          share_type steem_units_min,
-         share_type steem_units_soft_cap,
-         share_type steem_units_hard_cap,
+         uint32_t min_unit_ratio,
+         uint32_t max_unit_ratio,
+         bool broadcast );
+
+      /**
+       * Setup an ICO tier.
+       *
+       *  @param control_account The name of the controlling account
+       *  @param symbol The asset symbol of the created token
+       *  @param steem_units_cap The maximum amount of STEEM this ICO tier applies to
+       *  @param json_generation_policy The steem and token destination routes of the ICO process
+       *  @param broadcast To broadcast this transaction or not
+       */
+      condenser_api::legacy_signed_transaction smt_setup_ico_tier(
+         account_name_type control_account,
+         asset_symbol_type symbol,
+         share_type steem_units_cap,
+         string json_generation_policy,
          bool broadcast );
 
       /**

@@ -133,15 +133,13 @@ public:
 
    id_type id;
    asset_symbol_type             symbol;
-   steem::protocol::
-   smt_capped_generation_policy  capped_generation_policy;
    time_point_sec                contribution_begin_time;
    time_point_sec                contribution_end_time;
    time_point_sec                launch_time;
-   share_type                    steem_units_soft_cap = -1;
-   share_type                    steem_units_hard_cap = -1;
-   share_type                    steem_units_min      = -1;
-   asset                         contributed = asset( 0, STEEM_SYMBOL );
+   share_type                    steem_units_min         = -1;
+   uint32_t                      min_unit_ratio          = 0;
+   uint32_t                      max_unit_ratio          = 0;
+   asset                         contributed             = asset( 0, STEEM_SYMBOL );
    share_type                    processed_contributions = 0;
 };
 
@@ -297,7 +295,8 @@ typedef multi_index_container <
          composite_key< smt_ico_tier_object,
             member< smt_ico_tier_object, asset_symbol_type, &smt_ico_tier_object::symbol >,
             member< smt_ico_tier_object, share_type, &smt_ico_tier_object::steem_units_cap >
-         >
+         >,
+         composite_key_compare< std::less< asset_symbol_type >, std::less< share_type > >
       >
    >,
    allocator< smt_ico_tier_object >
@@ -377,13 +376,12 @@ FC_REFLECT( steem::chain::smt_token_object,
 FC_REFLECT( steem::chain::smt_ico_object,
    (id)
    (symbol)
-   (capped_generation_policy)
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
-   (steem_units_soft_cap)
-   (steem_units_hard_cap)
    (steem_units_min)
+   (min_unit_ratio)
+   (max_unit_ratio)
    (contributed)
    (processed_contributions)
 )

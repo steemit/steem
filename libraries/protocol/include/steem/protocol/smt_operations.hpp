@@ -51,9 +51,6 @@ struct smt_capped_generation_policy
 {
    smt_generation_unit generation_unit;
 
-   uint32_t            min_unit_ratio = 0;
-   uint32_t            max_unit_ratio = 0;
-
    extensions_type     extensions;
 
    void validate()const;
@@ -70,15 +67,14 @@ struct smt_setup_operation : public base_operation
 
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
-   smt_generation_policy   initial_generation_policy;
-
    time_point_sec          contribution_begin_time;
    time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
    share_type              steem_units_min;
-   share_type              steem_units_soft_cap;
-   share_type              steem_units_hard_cap;
+
+   uint32_t                min_unit_ratio = 0;
+   uint32_t                max_unit_ratio = 0;
 
    extensions_type         extensions;
 
@@ -240,13 +236,12 @@ FC_REFLECT(
    (control_account)
    (symbol)
    (max_supply)
-   (initial_generation_policy)
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
    (steem_units_min)
-   (steem_units_soft_cap)
-   (steem_units_hard_cap)
+   (min_unit_ratio)
+   (max_unit_ratio)
    (extensions)
    )
 
@@ -260,8 +255,6 @@ FC_REFLECT(
 FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
    (generation_unit)
-   (min_unit_ratio)
-   (max_unit_ratio)
    (extensions)
    )
 

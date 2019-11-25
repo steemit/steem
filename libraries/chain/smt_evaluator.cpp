@@ -132,27 +132,6 @@ static void verify_accounts( database& db, const flat_map< unit_target_type, uin
    }
 }
 
-struct smt_setup_evaluator_visitor
-{
-   const smt_ico_object& _ico;
-   database& _db;
-
-   smt_setup_evaluator_visitor( const smt_ico_object& ico, database& db ): _ico( ico ), _db( db ){}
-
-   typedef void result_type;
-
-   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
-   {
-      verify_accounts( _db, capped_generation_policy.generation_unit.steem_unit );
-      verify_accounts( _db, capped_generation_policy.generation_unit.token_unit );
-
-      _db.modify( _ico, [&]( smt_ico_object& ico )
-      {
-         ico.capped_generation_policy = capped_generation_policy;
-      });
-   }
-};
-
 struct smt_generation_policy_validator
 {
    database& _db;
@@ -194,19 +173,16 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token.max_supply = o.max_supply;
    } );
 
-   const auto& token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
+   _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
       token_ico_obj.symbol = _token.liquid_symbol;
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
-      token_ico_obj.steem_units_soft_cap = o.steem_units_soft_cap;
-      token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
       token_ico_obj.steem_units_min = o.steem_units_min;
+      token_ico_obj.min_unit_ratio = o.min_unit_ratio;
+      token_ico_obj.max_unit_ratio = o.max_unit_ratio;
    } );
-
-   smt_setup_evaluator_visitor visitor( token_ico, _db );
-   o.initial_generation_policy.visit( visitor );
 
    smt_ico_launch_action ico_launch_action;
    ico_launch_action.control_account = _token.control_account;
@@ -385,12 +361,16 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase >= smt_phase::ico, "SMT has not begun accepting contributions" );
       FC_ASSERT( token->phase < smt_phase::ico_completed, "SMT is no longer accepting contributions" );
 
+      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+      FC_ASSERT( possible_hard_cap.valid(), "The specified token does not have an ICO tier." );
+      share_type hard_cap = *possible_hard_cap;
+
       const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
       FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
-      FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
-      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= token_ico->steem_units_hard_cap,
+      FC_ASSERT( token_ico->contributed.amount < hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
+      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= hard_cap,
          "The proposed contribution would exceed the ICO hard cap, maximum possible contribution: ${c}",
-         ("c", asset( token_ico->steem_units_hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
+         ("c", asset( hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
 
       auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
       auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );
