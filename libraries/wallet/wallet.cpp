@@ -2619,7 +2619,6 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       account_name_type control_account,
       asset_symbol_type symbol,
       int64_t max_supply,
-      string json_initial_generation_policy,
       time_point_sec contribution_begin_time,
       time_point_sec contribution_end_time,
       time_point_sec launch_time,
@@ -2634,7 +2633,6 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       op.control_account = control_account;
       op.symbol = symbol;
       op.max_supply = max_supply;
-      //op.initial_generation_policy = fc::json::from_string( json_initial_generation_policy ).as< smt_generation_policy >();
       op.contribution_begin_time = contribution_begin_time;
       op.contribution_end_time = contribution_end_time;
       op.launch_time = launch_time;
