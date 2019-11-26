@@ -804,36 +804,6 @@ void database_fixture::create_conflicting_smt( const asset_symbol_type existing_
    push_invalid_operation (op_same_nai, key, this->db );
 }
 
-smt_generation_unit database_fixture::get_generation_unit( const units& steem_unit, const units& token_unit )
-{
-   smt_generation_unit ret;
-
-   ret.steem_unit = steem_unit;
-   ret.token_unit = token_unit;
-
-   return ret;
-}
-/*
-smt_capped_generation_policy database_fixture::get_capped_generation_policy
-(
-   const smt_generation_unit& pre_soft_cap_unit,
-   const smt_generation_unit& post_soft_cap_unit,
-   uint32_t min_unit_ratio,
-   uint32_t max_unit_ratio
-)
-{
-   smt_capped_generation_policy ret;
-
-   ret.pre_soft_cap_unit = pre_soft_cap_unit;
-   ret.post_soft_cap_unit = post_soft_cap_unit;
-
-   ret.min_unit_ratio = min_unit_ratio;
-   ret.max_unit_ratio = max_unit_ratio;
-
-   return ret;
-}
-*/
-
 void sps_proposal_database_fixture::plugin_prepare()
 {
    int argc = boost::unit_test::framework::master_test_suite().argc;

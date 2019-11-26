@@ -67,19 +67,29 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
       setup_op.steem_units_min      = 2400001;
-//      setup_op.steem_units_soft_cap = 2400001;
-//      setup_op.steem_units_hard_cap = 4000000;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.min_unit_ratio = 1;
+      setup_op.max_unit_ratio = 2;
       setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
-/*
-      setup_op.initial_generation_policy = get_capped_generation_policy
-      (
-         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ),
-         get_generation_unit( { { "alice", 1 } }, { { "alice", 2 } } ),
-         1,
-         2
-      );
-*/
+
+      smt_capped_generation_policy capped_generation_policy;
+      capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 1;
+      capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op1;
+      ico_tier_op1.control_account = "alice";
+      ico_tier_op1.symbol = symbol;
+      ico_tier_op1.generation_policy = capped_generation_policy;
+      ico_tier_op1.steem_units_cap = 2400001;
+
+      smt_setup_ico_tier_operation ico_tier_op2;
+      ico_tier_op2.control_account = "alice";
+      ico_tier_op2.symbol = symbol;
+      ico_tier_op2.generation_policy = capped_generation_policy;
+      ico_tier_op2.steem_units_cap = 4000000;
+
+      tx.operations.push_back( ico_tier_op1 );
+      tx.operations.push_back( ico_tier_op2 );
       tx.operations.push_back( setup_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
@@ -225,42 +235,38 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       smt_setup_operation setup_op;
 
       uint64_t contribution_window_blocks = 5;
-      setup_op.control_account = "creator";
-      setup_op.symbol = symbol;
+      setup_op.control_account         = "creator";
+      setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min      = 0;
-//      setup_op.steem_units_soft_cap = 100000000;
-//      setup_op.steem_units_hard_cap = 150000000;
-      setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
-      setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
-/*
-      setup_op.initial_generation_policy = get_capped_generation_policy
-      (
-         get_generation_unit(
-         {
-            { "fred", 3 },
-            { "george", 2 }
-         },
-         {
-            { SMT_DESTINATION_FROM, 7 },
-            { "george", 1 },
-            { "henry", 2 }
-         } ),
-         get_generation_unit(
-         {
-            { "fred", 3 },
-            { "george", 2 }
-         },
-         {
-            { SMT_DESTINATION_FROM, 7 },
-            { "george", 1 },
-            { "henry", 2 }
-         } ),
-         50,
-         100
-      );
-*/
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_min         = 0;
+      setup_op.min_unit_ratio          = 50;
+      setup_op.max_unit_ratio          = 100;
+      setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+
+      smt_capped_generation_policy capped_generation_policy;
+      capped_generation_policy.generation_unit.steem_unit[ "fred" ] = 3;
+      capped_generation_policy.generation_unit.steem_unit[ "george" ] = 2;
+
+      capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 7;
+      capped_generation_policy.generation_unit.token_unit[ "george" ] = 1;
+      capped_generation_policy.generation_unit.token_unit[ "henry" ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op1;
+      ico_tier_op1.control_account = "creator";
+      ico_tier_op1.symbol = symbol;
+      ico_tier_op1.generation_policy = capped_generation_policy;
+      ico_tier_op1.steem_units_cap = 100000000;
+
+      smt_setup_ico_tier_operation ico_tier_op2;
+      ico_tier_op2.control_account = "creator";
+      ico_tier_op2.symbol = symbol;
+      ico_tier_op2.generation_policy = capped_generation_policy;
+      ico_tier_op2.steem_units_cap = 150000000;
+
+      tx.operations.push_back( ico_tier_op1 );
+      tx.operations.push_back( ico_tier_op2 );
       tx.operations.push_back( setup_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, creator_private_key );
@@ -389,15 +395,17 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       smt_setup_operation setup_op;
 
       uint64_t contribution_window_blocks = 5;
-      setup_op.control_account = "creator";
-      setup_op.symbol = symbol;
+      setup_op.control_account         = "creator";
+      setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min      = 0;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_min         = 0;
 //      setup_op.steem_units_soft_cap = 100000000;
 //      setup_op.steem_units_hard_cap = 150000000;
-      setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
-      setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+      setup_op.min_unit_ratio          = 50;
+      setup_op.max_unit_ratio          = 100;
+      setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
 /*
       setup_op.initial_generation_policy = get_capped_generation_policy
       (
@@ -426,6 +434,37 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
          100
       );
 */
+      smt_capped_generation_policy capped_generation_policy1;
+      capped_generation_policy1.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 3;
+      capped_generation_policy1.generation_unit.steem_unit[ "george" ] = 2;
+
+      capped_generation_policy1.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 7;
+      capped_generation_policy1.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      capped_generation_policy1.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op1;
+      ico_tier_op1.control_account = "creator";
+      ico_tier_op1.symbol = symbol;
+      ico_tier_op1.generation_policy = capped_generation_policy1;
+      ico_tier_op1.steem_units_cap = 100000000;
+
+      smt_capped_generation_policy capped_generation_policy2;
+      capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 3;
+      capped_generation_policy2.generation_unit.steem_unit[ "$!george.vesting" ] = 2;
+
+      capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 5;
+      capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
+      capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
+      capped_generation_policy2.generation_unit.token_unit[ "$!george.vesting" ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op2;
+      ico_tier_op2.control_account = "creator";
+      ico_tier_op2.symbol = symbol;
+      ico_tier_op2.generation_policy = capped_generation_policy2;
+      ico_tier_op2.steem_units_cap = 150000000;
+
+      tx.operations.push_back( ico_tier_op1 );
+      tx.operations.push_back( ico_tier_op2 );
       tx.operations.push_back( setup_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, creator_private_key );
@@ -480,6 +519,8 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       generate_blocks( num_contributions / 2 + 1 );
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
+
+      ilog("george: ${b}", ("b", db->get_balance( "george", STEEM_SYMBOL )) );
 
       BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ).amount == 0 );
@@ -1109,42 +1150,39 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       smt_setup_operation setup_op;
 
       uint64_t contribution_window_blocks = 5;
+
       setup_op.control_account = "creator";
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min      = 0;
-//      setup_op.steem_units_soft_cap = 100000000;
-//      setup_op.steem_units_hard_cap = 150000000;
-      setup_op.max_supply = 22400000000;
-      setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
-/*
-      setup_op.initial_generation_policy = get_capped_generation_policy
-      (
-         get_generation_unit(
-         {
-            { "fred", 3 },
-            { "george", 2 }
-         },
-         {
-            { SMT_DESTINATION_FROM, 7 },
-            { "george", 1 },
-            { "henry", 2 }
-         } ),
-         get_generation_unit(
-         {
-            { "fred", 3 },
-            { "george", 2 }
-         },
-         {
-            { SMT_DESTINATION_FROM, 7 },
-            { "george", 1 },
-            { "henry", 2 }
-         } ),
-         50,
-         100
-      );
-*/
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_min         = 0;
+      setup_op.max_supply              = 22400000000;
+      setup_op.max_unit_ratio          = 100;
+      setup_op.min_unit_ratio          = 50;
+      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+
+      smt_capped_generation_policy capped_generation_policy;
+      capped_generation_policy.generation_unit.steem_unit[ "fred" ] = 3;
+      capped_generation_policy.generation_unit.steem_unit[ "george" ] = 2;
+
+      capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 7;
+      capped_generation_policy.generation_unit.token_unit[ "george" ] = 1;
+      capped_generation_policy.generation_unit.token_unit[ "henry" ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op1;
+      ico_tier_op1.control_account = "creator";
+      ico_tier_op1.symbol = symbol;
+      ico_tier_op1.generation_policy = capped_generation_policy;
+      ico_tier_op1.steem_units_cap = 100000000;
+
+      smt_setup_ico_tier_operation ico_tier_op2;
+      ico_tier_op2.control_account = "creator";
+      ico_tier_op2.symbol = symbol;
+      ico_tier_op2.generation_policy = capped_generation_policy;
+      ico_tier_op2.steem_units_cap = 150000000;
+
+      tx.operations.push_back( ico_tier_op1 );
+      tx.operations.push_back( ico_tier_op2 );
       tx.operations.push_back( setup_op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, creator_private_key );

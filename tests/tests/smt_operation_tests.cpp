@@ -2932,8 +2932,18 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          db.create< smt_ico_object >( [&]( smt_ico_object& o )
          {
             o.symbol = alice_symbol;
-//            o.steem_units_soft_cap = SMT_MIN_SOFT_CAP_STEEM_UNITS;
-//            o.steem_units_hard_cap = 99000;
+         } );
+
+         db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& o )
+         {
+            o.symbol = alice_symbol;
+            o.steem_units_cap = 1000;
+         } );
+
+         db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& o )
+         {
+            o.symbol = alice_symbol;
+            o.steem_units_cap = 99000;
          } );
       } );
 
