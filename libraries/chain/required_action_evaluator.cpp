@@ -68,7 +68,7 @@ void smt_token_launch_evaluator::do_apply( const smt_token_launch_action& a )
    } );
 
    if ( !util::smt::ico::schedule_next_contributor_payout( _db, token.liquid_symbol ) )
-      _db.remove( _db.get< smt_ico_object, by_symbol >( token.liquid_symbol ) );
+      util::smt::ico::remove_objects( _db, token.liquid_symbol );
 }
 
 void smt_refund_evaluator::do_apply( const smt_refund_action& a )
@@ -86,7 +86,7 @@ void smt_refund_evaluator::do_apply( const smt_refund_action& a )
    _db.remove( _db.get< smt_contribution_object, by_symbol_contributor >( key ) );
 
    if ( !smt::ico::schedule_next_refund( _db, a.symbol ) )
-      _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+      util::smt::ico::remove_objects( _db, a.symbol );
 }
 
 void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_action& a )
@@ -108,7 +108,7 @@ void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_ac
 
    if ( !smt::ico::schedule_next_contributor_payout( _db, a.symbol ) )
       if ( !smt::ico::schedule_founder_payout( _db, a.symbol ) )
-         _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+         util::smt::ico::remove_objects( _db, a.symbol );
 }
 
 void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a )
@@ -140,7 +140,7 @@ void smt_founder_payout_evaluator::do_apply( const smt_founder_payout_action& a 
       obj.total_vesting_shares_ballast = obj.total_vesting_fund_ballast * SMT_INITIAL_VESTING_PER_UNIT;
    } );
 
-   _db.remove( _db.get< smt_ico_object, by_symbol >( a.symbol ) );
+   util::smt::ico::remove_objects( _db, a.symbol );
 }
 
 

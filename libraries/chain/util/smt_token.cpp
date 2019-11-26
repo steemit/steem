@@ -459,6 +459,18 @@ fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbo
    return {};
 }
 
+void remove_objects( database& db, const asset_symbol_type& symbol )
+{
+   db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
+
+   const smt_ico_tier_object* tier_obj = db.find< smt_ico_tier_object, by_symbol_steem_unit_cap >( symbol );
+   while ( tier_obj != nullptr && tier_obj->symbol == symbol )
+   {
+      db.remove( *tier_obj );
+      tier_obj = db.find< smt_ico_tier_object, by_symbol_steem_unit_cap >( symbol );
+   }
+}
+
 } // steem::chain::util::smt::ico
 
 } } } } // steem::chain::util::smt
