@@ -31,8 +31,6 @@ struct index_info
    virtual int64_t count( const database& db ) = 0;
    virtual int64_t next_id( const database& db ) = 0;
    virtual void set_next_id( database&db, int64_t next_id ) = 0;
-   virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
-   virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
 #ifdef ENABLE_MIRA
    virtual void set_index_type( database& db, mira::index_type type, const boost::filesystem::path& p, const boost::any& cfg ) = 0;
 #endif
@@ -154,22 +152,6 @@ struct index_info_impl
    {
       auto& idx = db.template get_mutable_index< MultiIndexType >();
       idx.set_next_id( next_id );
-   }
-
-   virtual void begin_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
-   {
-#ifdef ENABLE_MIRA
-      auto& idx = db.template get_mutable_index< MultiIndexType >();
-      idx.mutable_indices().begin_bulk_load( p, cfg );
-#endif
-   }
-
-   virtual void end_bulk_load( database& db, const boost::filesystem::path& p, const boost::any& cfg ) override
-   {
-#ifdef ENABLE_MIRA
-      auto& idx = db.template get_mutable_index< MultiIndexType >();
-      idx.mutable_indices().end_bulk_load( p, cfg );
-#endif
    }
 
 #ifdef ENABLE_MIRA
