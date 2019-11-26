@@ -167,6 +167,20 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
+   if ( o.steem_units_min > 0 )
+   {
+      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+
+      FC_ASSERT( possible_hard_cap.valid(),
+         "An SMT with a Steem Units Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_units_min) );
+
+      share_type hard_cap = *possible_hard_cap;
+
+      FC_ASSERT( o.steem_units_min <= hard_cap,
+         "The Steem Units Minimum must be less than the hard cap. Steem Units Minimum: ${s}, Hard Cap: ${c}",
+         ("s", o.steem_units_min)("c", hard_cap) );
+   }
+
    _db.modify( _token, [&]( smt_token_object& token )
    {
       token.phase = smt_phase::setup_completed;
@@ -210,6 +224,19 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
    }
    else
    {
+      std::size_t num_ico_tiers = 0;
+
+      const auto& ico_tier_idx = _db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+      auto ico_tier_itr = ico_tier_idx.lower_bound( o.symbol );
+      while ( ico_tier_itr != ico_tier_idx.end() && ico_tier_itr->symbol == o.symbol )
+      {
+         num_ico_tiers++;
+         ++ico_tier_itr;
+      }
+
+      FC_ASSERT( num_ico_tiers < SMT_MAX_ICO_TIERS,
+         "There can be a maximum of ${n} ICO tiers. Current: ${c}", ("n", SMT_MAX_ICO_TIERS)("c", num_ico_tiers) );
+
       smt_generation_policy_validator generation_policy_validator( _db );
       o.generation_policy.visit( generation_policy_validator );
 
@@ -362,7 +389,7 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase < smt_phase::ico_completed, "SMT is no longer accepting contributions" );
 
       auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
-      FC_ASSERT( possible_hard_cap.valid(), "The specified token does not have an ICO tier." );
+      FC_ASSERT( possible_hard_cap.valid(), "The specified token does not feature an ICO" );
       share_type hard_cap = *possible_hard_cap;
 
       const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );

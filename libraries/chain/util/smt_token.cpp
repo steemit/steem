@@ -463,11 +463,13 @@ void remove_objects( database& db, const asset_symbol_type& symbol )
 {
    db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
 
-   const smt_ico_tier_object* tier_obj = db.find< smt_ico_tier_object, by_symbol_steem_unit_cap >( symbol );
-   while ( tier_obj != nullptr && tier_obj->symbol == symbol )
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+   auto itr = ico_tier_idx.lower_bound( symbol );
+   while( itr != ico_tier_idx.end() && itr->symbol == symbol )
    {
-      db.remove( *tier_obj );
-      tier_obj = db.find< smt_ico_tier_object, by_symbol_steem_unit_cap >( symbol );
+      const auto& current = *itr;
+      ++itr;
+      db.remove( current );
    }
 }
 
