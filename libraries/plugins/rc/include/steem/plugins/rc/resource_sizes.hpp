@@ -98,7 +98,7 @@ struct state_object_size_info
    int64_t smt_token_object_size                = 240 *STATE_BYTES_SCALE;
    int64_t smt_ico_object_size                  = 208 *STATE_TMP_OBJ_BYTE_SIZE;
    int64_t smt_token_emissions_object_size      = 104 *STATE_BYTES_SCALE;
-   int64_t smt_ico_tier_object_size             = 0;
+   int64_t smt_ico_tier_object_size             = 96  *STATE_TMP_OBJ_BYTE_SIZE;
    int64_t smt_contribution_object_size         = 56  *STATE_TMP_OBJ_BYTE_SIZE;
    int64_t votable_assets_item_size             = 20  *STATE_BYTES_SCALE;
 };
@@ -151,7 +151,7 @@ struct operation_exec_info
    int64_t smt_set_runtime_parameters_operation_exec_time      = 39000;
    int64_t smt_create_operation_exec_time                      = 50000;
    int64_t smt_contribute_operation_exec_time                  = 32000;
-   int64_t smt_setup_ico_tier_operation_exec_time              = 0;
+   int64_t smt_setup_ico_tier_operation_exec_time              = 13000;
 
    int64_t smt_contributor_payout_action_exec_time             = 60000;
    int64_t smt_founder_payout_action_exec_time                 = 69000;
