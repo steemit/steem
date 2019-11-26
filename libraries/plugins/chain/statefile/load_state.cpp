@@ -58,15 +58,11 @@ void init_genesis_from_state( database& db, const std::string& state_filename, c
       std::map< std::string, std::string > expected_plugin_options;
       fill_plugin_options( expected_plugin_options );
 
-      idump( (expected_plugin_options) );
-
       for( auto& plugin_opt : expected_plugin_options )
       {
          auto itr = top_header.plugin_options.find( plugin_opt.first );
          FC_ASSERT( itr != top_header.plugin_options.end(), "Did not find expected options for plugin: ${p}",
             ("p", plugin_opt.first) );
-         idump( (plugin_opt.second) );
-         idump( (itr->second) );
          FC_ASSERT( plugin_opt.second == itr->second, "Plugin option mismatch for plugin: ${p}.\nExpected: ${e}\nActual: ${a}",
             ("p", plugin_opt.first)("e", plugin_opt.second)("a", itr->second) );
       }
