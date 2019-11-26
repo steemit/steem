@@ -121,7 +121,7 @@ void smt_capped_generation_policy::validate()const
    generation_unit.validate();
 
    FC_ASSERT( generation_unit.steem_unit.size() > 0 );
-   FC_ASSERT( generation_unit.token_unit.size() > 0 );
+   FC_ASSERT( generation_unit.token_unit.size() >= 0 );
    FC_ASSERT( generation_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
    FC_ASSERT( generation_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 

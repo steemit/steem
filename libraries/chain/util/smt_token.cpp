@@ -252,7 +252,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
          auto tier_contributions = unprocessed_contributions;
 
          if ( ico.processed_contributions + unprocessed_contributions > ico_tier->steem_units_cap )
-            tier_contributions = ico.processed_contributions + unprocessed_contributions - ico_tier->steem_units_cap;
+            tier_contributions = ico_tier->steem_units_cap - ico.processed_contributions;
 
          generation_unit_shares.push_back( std::make_tuple( ico_tier->capped_generation_policy.generation_unit, tier_contributions ) );
 
@@ -329,16 +329,23 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
    std::vector< generation_unit_share > generation_unit_shares;
 
    share_type unprocessed_contributions = ico.contributed.amount;
+   auto last_ico_tier = ico_tier_idx.end();
    for ( auto ico_tier = ico_tier_idx.begin(); unprocessed_contributions > 0 && ico_tier != ico_tier_idx.end(); ++ico_tier )
    {
       auto tier_contributions = unprocessed_contributions;
 
-      if ( ico.processed_contributions + unprocessed_contributions > ico_tier->steem_units_cap )
-         tier_contributions = ico.processed_contributions + unprocessed_contributions - ico_tier->steem_units_cap;
+      if ( ico.contributed.amount > ico_tier->steem_units_cap )
+      {
+         if ( last_ico_tier != ico_tier_idx.end() )
+            tier_contributions = last_ico_tier->steem_units_cap - ico_tier->steem_units_cap;
+         else
+            tier_contributions = ico_tier->steem_units_cap;
+      }
 
       generation_unit_shares.push_back( std::make_tuple( ico_tier->capped_generation_policy.generation_unit, tier_contributions ) );
 
       unprocessed_contributions -= tier_contributions;
+      last_ico_tier = ico_tier;
    }
 
 

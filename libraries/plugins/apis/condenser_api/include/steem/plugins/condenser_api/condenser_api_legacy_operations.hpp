@@ -792,6 +792,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.symbol = symbol;
          op.steem_units_cap = steem_units_cap;
          op.generation_policy = generation_policy;
+         op.remove = remove;
 
          return op;
       }
