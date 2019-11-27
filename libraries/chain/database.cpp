@@ -3139,6 +3139,13 @@ void database::_apply_block( const signed_block& next_block )
       );
    }
 
+   wlog( "head_block_id: ${h}", ("h", head_block_id()) );
+   std::size_t nai_idx = 0;
+   for ( auto& nai : get< nai_pool_object >().pool() )
+      wlog( "nai[${n}]: ${nai}", ("n", nai_idx++)("nai", nai) );
+
+   wlog( "num nais: ${n}", ("n", nai_idx) );
+
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction

@@ -56,7 +56,9 @@ void replenish_nai_pool( database& db )
                return;
             }
 
+            wlog( "Last Block Id: ${id}", ("id", last_block_id) );
             next_sym = util::nai_generator::generate( last_block_id._hash[ NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX ] + attempts_per_block );
+            wlog( "New NAI: ${n}", ("n", next_sym) );
 
             attempts_per_block++;
 

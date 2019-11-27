@@ -115,8 +115,15 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    remove_from_nai_pool( _db, o.symbol );
 
+   wlog( "Removed NAI: ${nai}", ("nai", o.symbol) );
+
    if ( !_db.is_pending_tx() )
+   {
+      wlog( "Replenishing NAIs" );
+      wlog( "Pool Before: ${p}", ("p", _db.get< nai_pool_object >()) );
       replenish_nai_pool( _db );
+      wlog( "Pool After: ${p}", ("p", _db.get< nai_pool_object >()) );
+   }
 }
 
 static void verify_accounts( database& db, const flat_map< unit_target_type, uint16_t >& units )
