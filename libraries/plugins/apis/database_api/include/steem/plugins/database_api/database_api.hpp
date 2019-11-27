@@ -158,6 +158,9 @@ class database_api
 
          (list_smt_token_emissions)
          (find_smt_token_emissions)
+
+         (list_smt_token_balances)
+         (find_smt_token_balances)
       )
 
    private:

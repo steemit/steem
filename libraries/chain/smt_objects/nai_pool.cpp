@@ -67,10 +67,14 @@ void replenish_nai_pool( database& db )
             collisions_per_block++;
          }
 
+         wlog( "Adding NAI ${n}", ("n", next_sym) );
+
          db.modify( npo, [&]( nai_pool_object& obj )
          {
+            idump( (obj.pool()) );
             obj.nais[ obj.num_available_nais ] = next_sym;
             obj.num_available_nais++;
+            idump( (obj.pool()) );
          } );
       }
    }
@@ -86,11 +90,16 @@ void remove_from_nai_pool( database &db, const asset_symbol_type& a )
    if ( it != end )
    {
       auto index = std::distance( nais.begin(), it );
+
+      wlog( "Using NAI ${n}", ("n",a) );
+
       db.modify( npo, [&] ( nai_pool_object& obj )
       {
+         idump( (obj.pool()) );
          obj.nais[ index ] = asset_symbol_type();
          std::swap( obj.nais[ index ], obj.nais[ obj.num_available_nais - 1 ] );
          obj.num_available_nais--;
+         idump( (obj.pool()) );
       } );
    }
 }

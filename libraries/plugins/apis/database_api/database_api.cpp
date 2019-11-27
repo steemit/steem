@@ -84,6 +84,8 @@ class database_api_impl
          (find_smt_tokens)
          (list_smt_token_emissions)
          (find_smt_token_emissions)
+         (list_smt_token_balances)
+         (find_smt_token_balances)
       )
 
       template< typename ResultType >
@@ -2053,6 +2055,51 @@ DEFINE_API_IMPL( database_api_impl, find_smt_token_emissions )
    return result;
 }
 
+DEFINE_API_IMPL( database_api_impl, find_smt_token_balances )
+{
+   FC_ASSERT( args.account_symbols.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
+   find_smt_token_balances_return result;
+   result.balances.reserve( args.account_symbols.size() );
+
+   for( auto& acc_sym : args.account_symbols )
+   {
+      auto itr = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( acc_sym.first, acc_sym.second ) );
+      if( itr != nullptr ) result.balances.push_back( api_smt_account_balance_object( *itr, _db ) );
+   }
+
+   return result;
+}
+
+DEFINE_API_IMPL( database_api_impl, list_smt_token_balances )
+{
+   FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
+   list_smt_token_balances_return result;
+   result.balances.reserve( args.limit );
+
+   switch( args.order )
+   {
+      case( by_account_symbol ):
+      {
+         auto key = args.start.get_array();
+         FC_ASSERT( key.size() == 2, "The parameter 'start' must consist of account_name_type and asset_symbol_type" );
+
+         boost::tuple< account_name_type, asset_symbol_type > start;
+         start = boost::make_tuple( key[ 0 ].as< account_name_type >(), key[ 1 ].as< asset_symbol_type >() );
+
+         iterate_results< chain::account_regular_balance_index, chain::by_name_liquid_symbol >(
+            start,
+            result.balances,
+            args.limit,
+            [&]( const chain::account_regular_balance_object& b ){ return api_smt_account_balance_object( b, _db ); },
+            &database_api_impl::filter_default< chain::account_regular_balance_object > );
+         break;
+      }
+      default:
+         FC_ASSERT( false, "Unknown or unsupported sort order" );
+   }
+
+   return result;
+}
 
 DEFINE_LOCKLESS_APIS( database_api, (get_config)(get_version) )
 
@@ -2112,6 +2159,8 @@ DEFINE_READ_APIS( database_api,
    (find_smt_tokens)
    (list_smt_token_emissions)
    (find_smt_token_emissions)
+   (list_smt_token_balances)
+   (find_smt_token_balances)
 )
 
 } } } // steem::plugins::database_api
