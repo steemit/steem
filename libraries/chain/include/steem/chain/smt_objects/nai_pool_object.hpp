@@ -19,7 +19,11 @@ namespace steem { namespace chain {
 
       id_type id;
 
-      uint8_t num_available_nais = 0;
+      uint8_t num_available_nais    = 0;
+      uint32_t attempts_per_block   = 0;
+      uint32_t collisions_per_block = 0;
+      block_id_type last_block_id   = block_id_type();
+
       fc::array< asset_symbol_type, SMT_MAX_NAI_POOL_COUNT > nais;
 
       std::vector< asset_symbol_type > pool() const
