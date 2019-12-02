@@ -287,6 +287,9 @@ add_boost_test( chain_test
    smt_operation_tests/smt_setup_validate
    smt_operation_tests/smt_setup_authorities
    smt_operation_tests/smt_setup_apply
+   smt_operation_tests/smt_setup_ico_tier_validate
+   smt_operation_tests/smt_setup_ico_tier_authorities
+   smt_operation_tests/smt_setup_ico_tier_apply
    smt_operation_tests/comment_votable_assets_validate
    smt_operation_tests/comment_votable_assets_apply
    smt_operation_tests/smt_delegate_vesting_shares_validate

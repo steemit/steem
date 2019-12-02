@@ -149,7 +149,7 @@ void smt_setup_ico_tier_operation::validate()const
 {
    smt_admin_operation_validate( *this );
 
-   FC_ASSERT( steem_units_cap > 0, "Steem units cap must be greater than 0" );
+   FC_ASSERT( steem_units_cap >= 0, "Steem units cap must be greater than or equal to 0" );
    FC_ASSERT( steem_units_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
 
    validate_visitor vtor;
