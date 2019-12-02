@@ -239,7 +239,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       payout_action.symbol = itr->symbol;
 
       const auto& ico = db.get< smt_ico_object, by_symbol >( itr->symbol );
-      const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+      const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
       using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
@@ -322,7 +322,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
    const auto& ico = db.get< smt_ico_object, by_symbol >( a );
-   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
    using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
@@ -445,7 +445,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 
 fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbol_type& a )
 {
-   const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+   const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
    const auto range = idx.equal_range( a );
 
@@ -463,7 +463,7 @@ void remove_objects( database& db, const asset_symbol_type& symbol )
 {
    db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
 
-   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_unit_cap >();
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
    auto itr = ico_tier_idx.lower_bound( symbol );
    while( itr != ico_tier_idx.end() && itr->symbol == symbol )
    {
