@@ -48,6 +48,6 @@ namespace steem { namespace chain {
 
 } } // namespace steem::chain
 
-FC_REFLECT( steem::chain::nai_pool_object, (id)(num_available_nais)(nais) )
+FC_REFLECT( steem::chain::nai_pool_object, (id)(num_available_nais)(attempts_per_block)(collisions_per_block)(last_block_id)(nais) )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::nai_pool_object, steem::chain::nai_pool_index )
