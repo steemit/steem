@@ -491,8 +491,6 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
 
       BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
 
-      ilog("george: ${b}", ("b", db->get_balance( "george", STEEM_SYMBOL )) );
-
       BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ).amount == 0 );
       BOOST_REQUIRE( db->get_balance( "charlie", STEEM_SYMBOL ).amount == 0 );
