@@ -9,6 +9,14 @@
 
 namespace steem { namespace chain {
 
+static void refill_nais(
+   database& db,
+   const block_id_type& last_block_id,
+   uint32_t& collisions_per_block,
+   uint32_t& attempts_per_block,
+   uint8_t& num_available_nais,
+   nai_pool_object::pool_type& nais );
+
 /**
  * Refill the NAI pool with newly generated values
  *
@@ -22,11 +30,14 @@ void replenish_nai_pool( database& db )
 {
    try
    {
-      static block_id_type last_block_id = db.head_block_id();
-      static uint32_t collisions_per_block = 0;
-      static uint32_t attempts_per_block = 0;
-
+      const nai_pool_object& npo = db.get< nai_pool_object >();
       auto head_block_id = db.head_block_id();
+
+      block_id_type last_block_id     = npo.last_block_id;
+      uint32_t collisions_per_block   = npo.collisions_per_block;
+      uint32_t attempts_per_block     = npo.attempts_per_block;
+      uint8_t num_available_nais      = npo.num_available_nais;
+      nai_pool_object::pool_type nais = npo.nais;
 
       // If this is the first time we're encountering this block, reset our variables and set the last block */
       if ( last_block_id != head_block_id )
@@ -40,41 +51,57 @@ void replenish_nai_pool( database& db )
        * No reason to attempt NAI generation or inform the user again if we have already
        * reached the maximum acceptable collisions for this particular block.
        */
-      if ( collisions_per_block >= SMT_MAX_NAI_GENERATION_TRIES )
-         return;
-
-      const nai_pool_object& npo = db.get< nai_pool_object >();
-      while ( npo.num_available_nais < SMT_MAX_NAI_POOL_COUNT )
+      if ( collisions_per_block < SMT_MAX_NAI_GENERATION_TRIES )
       {
-         asset_symbol_type next_sym;
-         for (;;)
-         {
-            if ( collisions_per_block >= SMT_MAX_NAI_GENERATION_TRIES )
-            {
-               ilog( "Encountered ${collisions} collisions while attempting to generate NAI, generation will resume at the next block",
-                  ("collisions", collisions_per_block) );
-               return;
-            }
-
-            next_sym = util::nai_generator::generate( last_block_id._hash[ NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX ] + attempts_per_block );
-
-            attempts_per_block++;
-
-            // We must ensure the NAI is not an SMT, and it is not already contained within the NAI pool
-            if ( !util::smt::find_token( db, next_sym, true ) && !npo.contains( next_sym ) )
-               break;
-
-            collisions_per_block++;
-         }
+         refill_nais( db, last_block_id, collisions_per_block, attempts_per_block, num_available_nais, nais );
 
          db.modify( npo, [&]( nai_pool_object& obj )
          {
-            obj.nais[ obj.num_available_nais ] = next_sym;
-            obj.num_available_nais++;
-         } );
+            obj.last_block_id = last_block_id;
+            obj.collisions_per_block = collisions_per_block;
+            obj.attempts_per_block = attempts_per_block;
+            obj.nais = nais;
+            obj.num_available_nais = num_available_nais;
+         });
       }
    }
    FC_CAPTURE_AND_RETHROW()
+}
+
+static void refill_nais(
+   database& db,
+   const block_id_type& last_block_id,
+   uint32_t& collisions_per_block,
+   uint32_t& attempts_per_block,
+   uint8_t& num_available_nais,
+   nai_pool_object::pool_type& nais )
+{
+   while ( num_available_nais < SMT_MAX_NAI_POOL_COUNT )
+   {
+      asset_symbol_type next_sym;
+      for (;;)
+      {
+         if ( collisions_per_block >= SMT_MAX_NAI_GENERATION_TRIES )
+         {
+            ilog( "Encountered ${collisions} collisions while attempting to generate NAI, generation will resume at the next block",
+               ("collisions", collisions_per_block) );
+            return;
+         }
+
+         next_sym = util::nai_generator::generate( last_block_id._hash[ NAI_GENERATION_SEED_BLOCK_ID_HASH_INDEX ] + attempts_per_block );
+
+         attempts_per_block++;
+
+         // We must ensure the NAI is not an SMT, and it is not already contained within the NAI pool
+         if ( !util::smt::find_token( db, next_sym, true ) && std::find( std::begin( nais ), std::begin( nais ) + num_available_nais, next_sym ) != std::end( nais ) )
+            break;
+
+         collisions_per_block++;
+      }
+
+      nais[ num_available_nais ] = next_sym;
+      num_available_nais++;
+   }
 }
 
 void remove_from_nai_pool( database &db, const asset_symbol_type& a )
@@ -91,7 +118,7 @@ void remove_from_nai_pool( database &db, const asset_symbol_type& a )
          obj.nais[ index ] = asset_symbol_type();
          std::swap( obj.nais[ index ], obj.nais[ obj.num_available_nais - 1 ] );
          obj.num_available_nais--;
-      } );
+      });
    }
 }
 
