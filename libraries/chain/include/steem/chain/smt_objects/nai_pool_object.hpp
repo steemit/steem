@@ -11,6 +11,8 @@ namespace steem { namespace chain {
       STEEM_STD_ALLOCATOR_CONSTRUCTOR( nai_pool_object );
 
    public:
+      using pool_type = fc::array< asset_symbol_type, SMT_MAX_NAI_POOL_COUNT >;
+
       template< typename Constructor, typename Allocator >
       nai_pool_object( Constructor&& c, allocator< Allocator > a )
       {
@@ -24,7 +26,7 @@ namespace steem { namespace chain {
       uint32_t collisions_per_block = 0;
       block_id_type last_block_id   = block_id_type();
 
-      fc::array< asset_symbol_type, SMT_MAX_NAI_POOL_COUNT > nais;
+      pool_type nais;
 
       std::vector< asset_symbol_type > pool() const
       {
