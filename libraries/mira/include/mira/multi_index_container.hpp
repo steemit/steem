@@ -166,22 +166,16 @@ public:
       _name = "rocksdb_" + *(split_v.rbegin());
       _wopts.disableWAL = true;
 
-      open( p, cfg, true );
-
-      while( first != last )
-      {
-         super::insert_rocksdb_( *first );
-         ++first;
-         ++_entry_count;
-
-         super::commit_first_key_update();
-      }
-
-      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
-      super::_write_buffer.Clear();
-
-      close();
       open( p, cfg );
+
+      bulk_load( [&]()
+      {
+         while( first != last )
+         {
+            insert_( *first );
+            ++first;
+         }
+      });
 
       BOOST_MULTI_INDEX_CHECK_INVARIANT;
    }
@@ -233,7 +227,7 @@ public:
       return *this;
    }
 
-   bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr, bool bulk_load = false )
+   bool open( const boost::filesystem::path& p, const boost::any& cfg = nullptr )
    {
       assert( p.is_absolute() );
 
@@ -252,9 +246,6 @@ public:
          detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
 
          opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
-
-         if( bulk_load )
-            opts.PrepareForBulkLoad();
 
          if ( configuration::gather_statistics( cfg ) )
             opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
@@ -657,6 +648,9 @@ primary_iterator erase( primary_iterator position )
       else
       {
          ++_entry_count;
+         super::commit_first_key_update();
+
+         if( _batch_count > 1000 ) flush_bulk_load();
       }
 
       return status;
@@ -781,26 +775,35 @@ primary_iterator erase( primary_iterator position )
       return status.ok();
    }
 
-   void begin_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   void flush_bulk_load()
    {
-      close();
-      open( p, cfg, true );
+      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
+      super::_write_buffer.Clear();
+      _batch_count = 0;
+   }
+
+   void begin_bulk_load()
+   {
       _bulk_load = true;
    }
 
-   void end_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   void end_bulk_load()
    {
-      super::_db->Write( _wopts, super::_write_buffer.GetWriteBatch() );
-      super::commit_first_key_update();
-      super::_write_buffer.Clear();
-
-      close();
-      open( p, cfg );
+      flush_bulk_load();
       _bulk_load = false;
+   }
+
+   template< typename Lambda >
+   void bulk_load( Lambda&& l )
+   {
+      begin_bulk_load();
+      l();
+      end_bulk_load();
    }
 
 private:
    uint64_t _entry_count = 0;
+   uint64_t _batch_count = 0;
    bool     _bulk_load = false;
 
    size_t get_column_size() const { return super::COLUMN_INDEX; }

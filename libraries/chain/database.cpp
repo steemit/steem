@@ -242,6 +242,8 @@ uint32_t database::reindex( const open_args& args )
 #endif
 
       wipe( args.data_dir, args.shared_mem_dir, false );
+
+      auto start = fc::time_point::now();
       open( args );
 
       STEEM_TRY_NOTIFY(_pre_reindex_signal, note);
@@ -256,7 +258,6 @@ uint32_t database::reindex( const open_args& args )
 
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
-      auto start = fc::time_point::now();
       STEEM_ASSERT( _block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain." );
 
       ilog( "Replaying blocks..." );

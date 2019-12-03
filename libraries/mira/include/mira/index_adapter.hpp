@@ -402,24 +402,44 @@ struct multi_index_adapter
       return result;
    }
 
-   void begin_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   void begin_bulk_load()
    {
       return boost::apply_visitor(
          [&]( auto& index )
          {
-            index.begin_bulk_load( p, cfg );
+            index.begin_bulk_load();
          },
          _index
       );
    }
 
-   void end_bulk_load( const boost::filesystem::path& p, const boost::any& cfg )
+   void end_bulk_load()
    {
       return boost::apply_visitor(
          [&]( auto& index )
          {
-            index.end_bulk_load( p, cfg );
+            index.end_bulk_load();
          },
+         _index
+      );
+   }
+
+   void flush_bulk_load()
+   {
+      return boost::apply_visitor(
+         [&]( auto& index )
+         {
+            index.end_bulk_load();
+         },
+         _index
+      );
+   }
+
+   template< typename Lambda >
+   void bulk_load( Lambda&& l )
+   {
+      return boost::apply_visitor(
+         [&]( auto& index ){ index.bulk_load( l ); },
          _index
       );
    }
