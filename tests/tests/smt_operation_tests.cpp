@@ -5126,6 +5126,32 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       tx.operations.clear();
       tx.signatures.clear();
 
+      BOOST_REQUIRE( util::smt::ico::tier_size( *db, symbol ) == 1 );
+
+      BOOST_TEST_MESSAGE( " -- Success while removing an SMT ICO tier" );
+
+      op.remove = true;
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_REQUIRE( util::smt::ico::tier_size( *db, symbol ) == 0 );
+
+      BOOST_TEST_MESSAGE( " -- Success re-adding an SMT ICO tier" );
+
+      op.remove = false;
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION - 1 );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_REQUIRE( util::smt::ico::tier_size( *db, symbol ) == 1 );
+
       BOOST_TEST_MESSAGE( " -- SMT setup" );
       smt_setup_operation setup_op;
 

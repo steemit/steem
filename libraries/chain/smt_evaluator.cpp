@@ -147,17 +147,18 @@ struct smt_generation_policy_validator
    }
 };
 
-struct smt_setup_ico_tier_visitor
+template< class T >
+struct smt_generation_policy_visitor
 {
-   smt_ico_tier_object& _ito;
+   T& _obj;
 
-   smt_setup_ico_tier_visitor( smt_ico_tier_object& ito ): _ito( ito ) {}
+   smt_generation_policy_visitor( T& o ): _obj( o ) {}
 
    typedef void result_type;
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      _ito.capped_generation_policy = capped_generation_policy;
+      _obj = capped_generation_policy;
    }
 };
 
@@ -210,6 +211,10 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
 
    const smt_token_object& token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
+   smt_capped_generation_policy generation_policy;
+   smt_generation_policy_visitor< smt_capped_generation_policy > visitor( generation_policy );
+   o.generation_policy.visit( visitor );
+
    if ( o.remove )
    {
       auto key = boost::make_tuple( token.liquid_symbol, o.steem_units_cap );
@@ -220,20 +225,19 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
          ("s", token.liquid_symbol)("c", o.steem_units_cap)
       );
 
+      FC_ASSERT(
+         ito->symbol == o.symbol &&
+         ito->steem_units_cap == o.steem_units_cap &&
+         ito->capped_generation_policy.generation_unit.steem_unit == generation_policy.generation_unit.steem_unit &&
+         ito->capped_generation_policy.generation_unit.token_unit == generation_policy.generation_unit.token_unit,
+         "The removal operation must match the SMT ICO tier, ICO Tier: ${ito}. Current: ${c}", ("ito", *ito)("c", o)
+      );
+
       _db.remove( *ito );
    }
    else
    {
-      std::size_t num_ico_tiers = 0;
-
-      const auto& ico_tier_idx = _db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
-      auto ico_tier_itr = ico_tier_idx.lower_bound( o.symbol );
-      while ( ico_tier_itr != ico_tier_idx.end() && ico_tier_itr->symbol == o.symbol )
-      {
-         num_ico_tiers++;
-         ++ico_tier_itr;
-      }
-
+      auto num_ico_tiers = util::smt::ico::tier_size( _db, o.symbol );
       FC_ASSERT( num_ico_tiers < SMT_MAX_ICO_TIERS,
          "There can be a maximum of ${n} ICO tiers. Current: ${c}", ("n", SMT_MAX_ICO_TIERS)("c", num_ico_tiers) );
 
@@ -242,11 +246,9 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
 
       _db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& ito )
       {
-         ito.symbol            = token.liquid_symbol;
-         ito.steem_units_cap   = o.steem_units_cap;
-
-         smt_setup_ico_tier_visitor visitor( ito );
-         o.generation_policy.visit( visitor );
+         ito.symbol                   = token.liquid_symbol;
+         ito.steem_units_cap          = o.steem_units_cap;
+         ito.capped_generation_policy = generation_policy;
       });
    }
 }
