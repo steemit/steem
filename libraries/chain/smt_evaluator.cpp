@@ -225,14 +225,6 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
          ("s", token.liquid_symbol)("c", o.steem_units_cap)
       );
 
-      FC_ASSERT(
-         ito->symbol == o.symbol &&
-         ito->steem_units_cap == o.steem_units_cap &&
-         ito->capped_generation_policy.generation_unit.steem_unit == generation_policy.generation_unit.steem_unit &&
-         ito->capped_generation_policy.generation_unit.token_unit == generation_policy.generation_unit.token_unit,
-         "The removal operation must match the SMT ICO tier, ICO Tier: ${ito}. Current: ${c}", ("ito", *ito)("c", o)
-      );
-
       _db.remove( *ito );
    }
    else
