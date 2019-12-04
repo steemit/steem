@@ -459,7 +459,7 @@ fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbo
    return {};
 }
 
-void remove_objects( database& db, const asset_symbol_type& symbol )
+void remove_ico_objects( database& db, const asset_symbol_type& symbol )
 {
    db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
 
@@ -473,7 +473,8 @@ void remove_objects( database& db, const asset_symbol_type& symbol )
    }
 }
 
-std::size_t tier_size( database& db, const asset_symbol_type& symbol )
+// If we increase the value of SMT_MAX_ICO_TIERS, we should track the size in the ICO object
+std::size_t ico_tier_size( database& db, const asset_symbol_type& symbol )
 {
    std::size_t num_ico_tiers = 0;
 

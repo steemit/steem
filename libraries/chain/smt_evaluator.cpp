@@ -237,7 +237,7 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
    }
    else
    {
-      auto num_ico_tiers = util::smt::ico::tier_size( _db, o.symbol );
+      auto num_ico_tiers = util::smt::ico::ico_tier_size( _db, o.symbol );
       FC_ASSERT( num_ico_tiers < SMT_MAX_ICO_TIERS,
          "There can be a maximum of ${n} ICO tiers. Current: ${c}", ("n", SMT_MAX_ICO_TIERS)("c", num_ico_tiers) );
 
