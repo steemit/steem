@@ -258,18 +258,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
       FC_ASSERT(
          last_emission->symbol == o.symbol &&
-         last_emission->schedule_time == o.schedule_time &&
-         last_emission->emissions_unit.token_unit == o.emissions_unit.token_unit &&
-         last_emission->interval_seconds == o.interval_seconds &&
-         last_emission->interval_count == o.interval_count &&
-         last_emission->lep_time == o.lep_time &&
-         last_emission->rep_time == o.rep_time &&
-         last_emission->lep_abs_amount == o.lep_abs_amount &&
-         last_emission->rep_abs_amount == o.rep_abs_amount &&
-         last_emission->lep_rel_amount_numerator == o.lep_rel_amount_numerator &&
-         last_emission->rep_rel_amount_numerator == o.rep_rel_amount_numerator &&
-         last_emission->rel_amount_denom_bits == o.rel_amount_denom_bits &&
-         last_emission->floor_emissions == o.floor_emissions,
+         last_emission->schedule_time == o.schedule_time,
          "SMT emissions must be removed from latest to earliest, last emission: ${le}. Current: ${c}", ("le", *last_emission)("c", o)
       );
 
