@@ -132,7 +132,7 @@ static void verify_accounts( database& db, const flat_map< unit_target_type, uin
    }
 }
 
-struct smt_generation_policy_validator
+struct smt_generation_policy_verifier
 {
    database& _db;
 
@@ -241,8 +241,8 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
       FC_ASSERT( num_ico_tiers < SMT_MAX_ICO_TIERS,
          "There can be a maximum of ${n} ICO tiers. Current: ${c}", ("n", SMT_MAX_ICO_TIERS)("c", num_ico_tiers) );
 
-      smt_generation_policy_validator generation_policy_validator( _db );
-      o.generation_policy.visit( generation_policy_validator );
+      smt_generation_policy_verifier generation_policy_verifier( _db );
+      o.generation_policy.visit( generation_policy_verifier );
 
       _db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& ito )
       {
