@@ -568,19 +568,62 @@ public:
       // std::merge lets us de-duplicate account_id's that occur in both
       //   sets, and dump them into a vector (as required by remote_db api)
       //   at the same time
-      vector< account_name_type > v_approving_account_names;
-      std::merge(req_active_approvals.begin(), req_active_approvals.end(),
-                 req_owner_approvals.begin() , req_owner_approvals.end(),
-                 std::back_inserter( v_approving_account_names ) );
+      flat_set< account_name_type > req_approvals;
+      req_approvals.insert( req_owner_approvals.begin(), req_owner_approvals.end() );
+      req_approvals.insert( req_active_approvals.begin(), req_active_approvals.end() );
+      req_approvals.insert( req_posting_approvals.begin(), req_posting_approvals.end() );
 
-      for( const auto& a : req_posting_approvals )
-         v_approving_account_names.push_back(a);
+      vector< account_name_type > v_approving_account_names;
+      //std::merge(req_active_approvals.begin(), req_active_approvals.end(),
+      //           req_owner_approvals.begin() , req_owner_approvals.end(),
+      //           std::back_inserter( v_approving_account_names ) );
+
+      //for( const auto& a : req_posting_approvals )
+      //   v_approving_account_names.push_back(a);
 
       /// TODO: fetch the accounts specified via other_auths as well.
+      v_approving_account_names.insert( v_approving_account_names.end(), req_approvals.begin(), req_approvals.end() );
 
       auto approving_account_objects = _remote_api->get_accounts( v_approving_account_names );
 
-      /// TODO: recursively check one layer deeper in the authority tree for keys
+      vector< account_name_type > req_account_auths;
+      for( const auto& acc : approving_account_objects )
+      {
+         if( req_owner_approvals.find( acc.name ) != req_owner_approvals.end() )
+            for( const auto& auth : acc.owner.account_auths )
+            {
+               if( req_approvals.insert( auth.first ).second )
+               {
+                  req_owner_approvals.insert( auth.first );
+                  req_account_auths.push_back( auth.first );
+               }
+            }
+
+         if( req_active_approvals.find( acc.name ) != req_active_approvals.end() )
+            for( const auto& auth : acc.active.account_auths )
+            {
+               if( req_approvals.insert( auth.first ).second )
+               {
+                  req_active_approvals.insert( auth.first );
+                  req_account_auths.push_back( auth.first );
+               }
+            }
+
+         if( req_posting_approvals.find( acc.name ) != req_posting_approvals.end() )
+            for( const auto& auth : acc.posting.account_auths )
+            {
+               if( req_approvals.insert( auth.first ).second )
+               {
+                  req_posting_approvals.insert( auth.first );
+                  req_account_auths.push_back( auth.first );
+               }
+            }
+      }
+
+      v_approving_account_names.insert( v_approving_account_names.end(), req_account_auths.begin(), req_account_auths.end() );
+
+      auto approving_account_auth_objects = _remote_api->get_accounts( req_account_auths );
+      approving_account_objects.insert( approving_account_objects.end(), approving_account_auth_objects.begin(), approving_account_auth_objects.end() );
 
       FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
 
@@ -605,11 +648,6 @@ public:
          if( it != approving_account_lut.end() )
          {
             result = &(it->second);
-         }
-         else
-         {
-            elog( "Tried to access authority for account ${a}.", ("a", name) );
-            elog( "Is it possible you are using an account authority? Signing with an account authority is currently not supported." );
          }
 
          return result;
