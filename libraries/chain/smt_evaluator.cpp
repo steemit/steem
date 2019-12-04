@@ -136,7 +136,7 @@ struct smt_generation_policy_verifier
 {
    database& _db;
 
-   smt_generation_policy_validator( database& db ): _db( db ){}
+   smt_generation_policy_verifier( database& db ): _db( db ){}
 
    typedef void result_type;
 
