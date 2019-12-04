@@ -299,6 +299,7 @@ add_boost_test( chain_test
    smt_operation_time_tests/smt_refunds
    smt_operation_time_tests/smt_ico_payouts
    smt_operation_time_tests/smt_ico_payouts_special_destinations
+   smt_operation_time_tests/smt_without_ico
    smt_operation_time_tests/smt_vesting_withdrawals
    smt_operation_time_tests/recent_claims_decay
    smt_operation_time_tests/smt_rewards

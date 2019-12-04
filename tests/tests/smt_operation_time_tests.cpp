@@ -1572,5 +1572,69 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_without_ico )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing SMT without ICO" );
+      ACTORS( (creator)(alice) )
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( " --- SMT creation" );
+      auto symbol = create_smt( "creator", creator_private_key, 3 );
+      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+
+      BOOST_TEST_MESSAGE( " --- SMT setup and token emission" );
+      signed_transaction tx;
+      smt_setup_operation setup_op;
+
+      setup_op.control_account         = "creator";
+      setup_op.symbol                  = symbol;
+      setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + STEEM_BLOCK_INTERVAL;
+      setup_op.steem_units_min         = 0;
+      setup_op.min_unit_ratio          = 50;
+      setup_op.max_unit_ratio          = 100;
+      setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+
+      smt_setup_emissions_operation token_emission_op;
+      token_emission_op.symbol = symbol;
+      token_emission_op.control_account = "creator";
+      token_emission_op.emissions_unit.token_unit[ "alice" ] = 1;
+      token_emission_op.schedule_time = setup_op.launch_time + STEEM_BLOCK_INTERVAL;
+      token_emission_op.interval_count = 1;
+      token_emission_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      token_emission_op.lep_abs_amount = 1000000;
+      token_emission_op.rep_abs_amount = 1000000;
+
+      tx.operations.push_back( token_emission_op );
+      tx.operations.push_back( setup_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, creator_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
+
+      generate_blocks( setup_op.contribution_begin_time );
+      generate_blocks( setup_op.contribution_end_time );
+      generate_blocks( setup_op.launch_time );
+      generate_blocks( token_emission_op.schedule_time );
+
+      BOOST_REQUIRE( token.phase == smt_phase::launch_success );
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( " --- Checking account balance" );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 1000000 );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
 BOOST_AUTO_TEST_SUITE_END()
 #endif
