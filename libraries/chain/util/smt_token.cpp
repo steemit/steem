@@ -202,17 +202,21 @@ struct payout_vars
    share_type unit_ratio;
 };
 
-static payout_vars calculate_payout_vars( const smt_ico_object& ico, const smt_generation_unit& generation_unit, share_type contribution_amount )
+static payout_vars calculate_payout_vars( database& db, const smt_ico_object& ico, const smt_generation_unit& generation_unit, share_type contribution_amount )
 {
    payout_vars vars;
 
+   auto hard_cap = util::smt::ico::steem_units_hard_cap( db, ico.symbol );
+   FC_ASSERT( hard_cap.valid(), "Unable to find ICO hard cap." );
+   share_type steem_hard_cap = *hard_cap;
+
    vars.steem_units_sent = contribution_amount / generation_unit.steem_unit_sum();
    auto contributed_steem_units = ico.contributed.amount / generation_unit.steem_unit_sum();
-   auto steem_units_hard_cap = ico.steem_units_hard_cap / generation_unit.steem_unit_sum();
+   auto steem_units_hard_cap = steem_hard_cap / generation_unit.steem_unit_sum();
 
    auto generated_token_units = std::min(
-      contributed_steem_units * ico.capped_generation_policy.max_unit_ratio,
-      steem_units_hard_cap * ico.capped_generation_policy.min_unit_ratio
+      contributed_steem_units * ico.max_unit_ratio,
+      steem_units_hard_cap * ico.min_unit_ratio
    );
 
    vars.unit_ratio = generated_token_units / contributed_steem_units;
@@ -235,26 +239,24 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       payout_action.symbol = itr->symbol;
 
       const auto& ico = db.get< smt_ico_object, by_symbol >( itr->symbol );
+      const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
       using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
       std::vector< generation_unit_share > generation_unit_shares;
-      if ( ico.processed_contributions < ico.steem_units_soft_cap )
-      {
-         auto post_processed_contributions = ico.processed_contributions + itr->contribution.amount;
-         share_type post_soft_cap_steem_units = 0;
 
-         if ( post_processed_contributions > ico.steem_units_soft_cap )
-         {
-            post_soft_cap_steem_units = post_processed_contributions - ico.steem_units_soft_cap;
-            generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.post_soft_cap_unit, post_soft_cap_steem_units ) );
-         }
-
-         generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, itr->contribution.amount - post_soft_cap_steem_units ) );
-      }
-      else
+      auto begin_key = boost::make_tuple( itr->symbol, ico.processed_contributions );
+      share_type unprocessed_contributions = itr->contribution.amount;
+      for ( auto ico_tier = ico_tier_idx.lower_bound( begin_key ); unprocessed_contributions > 0 && ico_tier != ico_tier_idx.end(); ++ico_tier )
       {
-         generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.post_soft_cap_unit, itr->contribution.amount ) );
+         auto tier_contributions = unprocessed_contributions;
+
+         if ( ico.processed_contributions + unprocessed_contributions > ico_tier->steem_units_cap )
+            tier_contributions = ico_tier->steem_units_cap - ico.processed_contributions;
+
+         generation_unit_shares.push_back( std::make_tuple( ico_tier->capped_generation_policy.generation_unit, tier_contributions ) );
+
+         unprocessed_contributions -= tier_contributions;
       }
 
       std::map< asset_symbol_type, share_type > payout_map;
@@ -267,7 +269,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
          const auto& token_unit = effective_generation_unit.token_unit;
          const auto& steem_unit = effective_generation_unit.steem_unit;
 
-         auto vars = calculate_payout_vars( ico, effective_generation_unit, contributed_amount );
+         auto vars = calculate_payout_vars( db, ico, effective_generation_unit, contributed_amount );
 
          for ( auto& e : token_unit )
          {
@@ -320,19 +322,32 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
    const auto& ico = db.get< smt_ico_object, by_symbol >( a );
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
    using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
    std::vector< generation_unit_share > generation_unit_shares;
-   if ( ico.contributed.amount > ico.steem_units_soft_cap )
+
+   share_type unprocessed_contributions = ico.contributed.amount;
+   auto last_ico_tier = ico_tier_idx.end();
+   for ( auto ico_tier = ico_tier_idx.begin(); unprocessed_contributions > 0 && ico_tier != ico_tier_idx.end(); ++ico_tier )
    {
-      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.steem_units_soft_cap ) );
-      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.post_soft_cap_unit, ico.contributed.amount - ico.steem_units_soft_cap ) );
+      auto tier_contributions = unprocessed_contributions;
+
+      if ( ico.contributed.amount > ico_tier->steem_units_cap )
+      {
+         if ( last_ico_tier != ico_tier_idx.end() )
+            tier_contributions = last_ico_tier->steem_units_cap - ico_tier->steem_units_cap;
+         else
+            tier_contributions = ico_tier->steem_units_cap;
+      }
+
+      generation_unit_shares.push_back( std::make_tuple( ico_tier->capped_generation_policy.generation_unit, tier_contributions ) );
+
+      unprocessed_contributions -= tier_contributions;
+      last_ico_tier = ico_tier;
    }
-   else
-   {
-      generation_unit_shares.push_back( std::make_tuple( ico.capped_generation_policy.pre_soft_cap_unit, ico.contributed.amount ) );
-   }
+
 
    using account_asset_symbol_type = std::tuple< account_name_type, asset_symbol_type >;
    std::map< account_asset_symbol_type, share_type > account_payout_map;
@@ -348,7 +363,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
       const auto& token_unit = effective_generation_unit.token_unit;
       const auto& steem_unit = effective_generation_unit.steem_unit;
 
-      auto vars = calculate_payout_vars( ico, effective_generation_unit, contributed_amount );
+      auto vars = calculate_payout_vars( db, ico, effective_generation_unit, contributed_amount );
 
       for ( auto& e : token_unit )
       {
@@ -426,6 +441,52 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
    }
 
    return action_scheduled;
+}
+
+fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbol_type& a )
+{
+   const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+
+   const auto range = idx.equal_range( a );
+
+   auto itr = range.second;
+   while ( itr != range.first )
+   {
+      --itr;
+      return itr->steem_units_cap;
+   }
+
+   return {};
+}
+
+void remove_ico_objects( database& db, const asset_symbol_type& symbol )
+{
+   db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
+
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   auto itr = ico_tier_idx.lower_bound( symbol );
+   while( itr != ico_tier_idx.end() && itr->symbol == symbol )
+   {
+      const auto& current = *itr;
+      ++itr;
+      db.remove( current );
+   }
+}
+
+// If we increase the value of SMT_MAX_ICO_TIERS, we should track the size in the ICO object
+std::size_t ico_tier_size( database& db, const asset_symbol_type& symbol )
+{
+   std::size_t num_ico_tiers = 0;
+
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   auto ico_tier_itr = ico_tier_idx.lower_bound( symbol );
+   while ( ico_tier_itr != ico_tier_idx.end() && ico_tier_itr->symbol == symbol )
+   {
+      num_ico_tiers++;
+      ++ico_tier_itr;
+   }
+
+   return num_ico_tiers;
 }
 
 } // steem::chain::util::smt::ico

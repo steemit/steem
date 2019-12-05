@@ -133,16 +133,31 @@ public:
 
    id_type id;
    asset_symbol_type             symbol;
-   steem::protocol::
-   smt_capped_generation_policy  capped_generation_policy;
    time_point_sec                contribution_begin_time;
    time_point_sec                contribution_end_time;
    time_point_sec                launch_time;
-   share_type                    steem_units_soft_cap = -1;
-   share_type                    steem_units_hard_cap = -1;
-   share_type                    steem_units_min      = -1;
-   asset                         contributed = asset( 0, STEEM_SYMBOL );
+   share_type                    steem_units_min         = -1;
+   uint32_t                      min_unit_ratio          = 0;
+   uint32_t                      max_unit_ratio          = 0;
+   asset                         contributed             = asset( 0, STEEM_SYMBOL );
    share_type                    processed_contributions = 0;
+};
+
+class smt_ico_tier_object : public object< smt_ico_tier_object_type, smt_ico_tier_object >
+{
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_ico_tier_object );
+
+public:
+   template< typename Constructor, typename Allocator >
+   smt_ico_tier_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type                                        id;
+   asset_symbol_type                              symbol;
+   share_type                                     steem_units_cap = -1;
+   steem::protocol::smt_capped_generation_policy  capped_generation_policy;
 };
 
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
@@ -269,6 +284,24 @@ typedef multi_index_container <
    allocator< smt_ico_object >
 > smt_ico_index;
 
+struct by_symbol_steem_units_cap;
+
+typedef multi_index_container <
+   smt_ico_tier_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< smt_ico_tier_object, smt_ico_tier_object_id_type, &smt_ico_tier_object::id > >,
+      ordered_unique< tag< by_symbol_steem_units_cap >,
+         composite_key< smt_ico_tier_object,
+            member< smt_ico_tier_object, asset_symbol_type, &smt_ico_tier_object::symbol >,
+            member< smt_ico_tier_object, share_type, &smt_ico_tier_object::steem_units_cap >
+         >,
+         composite_key_compare< std::less< asset_symbol_type >, std::less< share_type > >
+      >
+   >,
+   allocator< smt_ico_tier_object >
+> smt_ico_tier_index;
+
 struct by_symbol_time;
 struct by_symbol_end_time;
 
@@ -343,15 +376,21 @@ FC_REFLECT( steem::chain::smt_token_object,
 FC_REFLECT( steem::chain::smt_ico_object,
    (id)
    (symbol)
-   (capped_generation_policy)
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
-   (steem_units_soft_cap)
-   (steem_units_hard_cap)
    (steem_units_min)
+   (min_unit_ratio)
+   (max_unit_ratio)
    (contributed)
    (processed_contributions)
+)
+
+FC_REFLECT( steem::chain::smt_ico_tier_object,
+   (id)
+   (symbol)
+   (steem_units_cap)
+   (capped_generation_policy)
 )
 
 FC_REFLECT( steem::chain::smt_token_emissions_object,
@@ -383,3 +422,4 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_toke
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_object, steem::chain::smt_ico_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_emissions_object, steem::chain::smt_token_emissions_index )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_contribution_object, steem::chain::smt_contribution_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_ico_tier_object, steem::chain::smt_ico_tier_index )

@@ -7,9 +7,6 @@
 #define SMT_MAX_UNIT_ROUTES            10
 #define SMT_MAX_UNIT_COUNT             20
 #define SMT_MAX_DECIMAL_PLACES         8
-#define SMT_MIN_HARD_CAP_STEEM_UNITS   10000
-#define SMT_MIN_SATURATION_STEEM_UNITS 1000
-#define SMT_MIN_SOFT_CAP_STEEM_UNITS   1000
 
 namespace steem { namespace protocol {
 
@@ -49,11 +46,7 @@ struct smt_generation_unit
 
 struct smt_capped_generation_policy
 {
-   smt_generation_unit pre_soft_cap_unit;
-   smt_generation_unit post_soft_cap_unit;
-
-   uint32_t            min_unit_ratio = 0;
-   uint32_t            max_unit_ratio = 0;
+   smt_generation_unit generation_unit;
 
    extensions_type     extensions;
 
@@ -71,15 +64,14 @@ struct smt_setup_operation : public base_operation
 
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
-   smt_generation_policy   initial_generation_policy;
-
    time_point_sec          contribution_begin_time;
    time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
    share_type              steem_units_min;
-   share_type              steem_units_soft_cap;
-   share_type              steem_units_hard_cap;
+
+   uint32_t                min_unit_ratio = 0;
+   uint32_t                max_unit_ratio = 0;
 
    extensions_type         extensions;
 
@@ -95,6 +87,23 @@ struct smt_emissions_unit
 
    void validate()const;
    uint32_t token_unit_sum()const;
+};
+
+struct smt_setup_ico_tier_operation : public base_operation
+{
+   account_name_type     control_account;
+   asset_symbol_type     symbol;
+
+   share_type            steem_units_cap;
+   smt_generation_policy generation_policy;
+   bool                  remove = false;
+
+   extensions_type       extensions;
+
+   void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( control_account ); }
 };
 
 struct smt_setup_emissions_operation : public base_operation
@@ -224,13 +233,12 @@ FC_REFLECT(
    (control_account)
    (symbol)
    (max_supply)
-   (initial_generation_policy)
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
    (steem_units_min)
-   (steem_units_soft_cap)
-   (steem_units_hard_cap)
+   (min_unit_ratio)
+   (max_unit_ratio)
    (extensions)
    )
 
@@ -243,16 +251,23 @@ FC_REFLECT(
 
 FC_REFLECT(
    steem::protocol::smt_capped_generation_policy,
-   (pre_soft_cap_unit)
-   (post_soft_cap_unit)
-   (min_unit_ratio)
-   (max_unit_ratio)
+   (generation_unit)
    (extensions)
    )
 
 FC_REFLECT(
    steem::protocol::smt_emissions_unit,
    (token_unit)
+   )
+
+FC_REFLECT(
+   steem::protocol::smt_setup_ico_tier_operation,
+   (control_account)
+   (symbol)
+   (steem_units_cap)
+   (generation_policy)
+   (remove)
+   (extensions)
    )
 
 FC_REFLECT(

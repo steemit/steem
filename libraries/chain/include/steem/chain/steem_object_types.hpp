@@ -96,7 +96,8 @@ enum object_type
    smt_token_emissions_object_type,
    smt_contribution_object_type,
    smt_ico_object_type,
-   comment_smt_beneficiaries_object_type
+   comment_smt_beneficiaries_object_type,
+   smt_ico_tier_object_type
 };
 
 class dynamic_global_property_object;
@@ -140,6 +141,7 @@ class smt_token_emissions_object;
 class smt_contribution_object;
 class smt_ico_object;
 class comment_smt_beneficiaries_object;
+class smt_ico_tier_object;
 
 class proposal_object;
 class proposal_vote_object;
@@ -185,6 +187,7 @@ typedef oid< smt_token_emissions_object             > smt_token_emissions_object
 typedef oid< smt_contribution_object                > smt_contribution_object_id_type;
 typedef oid< smt_ico_object                         > smt_ico_object_id_type;
 typedef oid< comment_smt_beneficiaries_object       > comment_smt_beneficiaries_id_type;
+typedef oid< smt_ico_tier_object                    > smt_ico_tier_object_id_type;
 
 typedef oid< proposal_object > proposal_id_type;
 typedef oid< proposal_vote_object > proposal_vote_id_type;
@@ -401,6 +404,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
                  (smt_contribution_object_type)
                  (smt_ico_object_type)
                  (comment_smt_beneficiaries_object_type)
+                 (smt_ico_tier_object_type)
                )
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

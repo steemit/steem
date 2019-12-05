@@ -132,26 +132,33 @@ static void verify_accounts( database& db, const flat_map< unit_target_type, uin
    }
 }
 
-struct smt_setup_evaluator_visitor
+struct smt_generation_policy_verifier
 {
-   const smt_ico_object& _ico;
    database& _db;
 
-   smt_setup_evaluator_visitor( const smt_ico_object& ico, database& db ): _ico( ico ), _db( db ){}
+   smt_generation_policy_verifier( database& db ): _db( db ){}
 
    typedef void result_type;
 
    void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
    {
-      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.steem_unit );
-      verify_accounts( _db, capped_generation_policy.pre_soft_cap_unit.token_unit );
-      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.steem_unit );
-      verify_accounts( _db, capped_generation_policy.post_soft_cap_unit.token_unit );
+      verify_accounts( _db, capped_generation_policy.generation_unit.steem_unit );
+      verify_accounts( _db, capped_generation_policy.generation_unit.token_unit );
+   }
+};
 
-      _db.modify( _ico, [&]( smt_ico_object& ico )
-      {
-         ico.capped_generation_policy = capped_generation_policy;
-      });
+template< class T >
+struct smt_generation_policy_visitor
+{
+   T& _obj;
+
+   smt_generation_policy_visitor( T& o ): _obj( o ) {}
+
+   typedef void result_type;
+
+   void operator()( const smt_capped_generation_policy& capped_generation_policy ) const
+   {
+      _obj = capped_generation_policy;
    }
 };
 
@@ -161,30 +168,81 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
+   if ( o.steem_units_min > 0 )
+   {
+      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+
+      FC_ASSERT( possible_hard_cap.valid(),
+         "An SMT with a Steem Units Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_units_min) );
+
+      share_type hard_cap = *possible_hard_cap;
+
+      FC_ASSERT( o.steem_units_min <= hard_cap,
+         "The Steem Units Minimum must be less than the hard cap. Steem Units Minimum: ${s}, Hard Cap: ${c}",
+         ("s", o.steem_units_min)("c", hard_cap) );
+   }
+
    _db.modify( _token, [&]( smt_token_object& token )
    {
       token.phase = smt_phase::setup_completed;
       token.max_supply = o.max_supply;
    } );
 
-   const auto& token_ico = _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
+   _db.create< smt_ico_object >( [&] ( smt_ico_object& token_ico_obj )
    {
       token_ico_obj.symbol = _token.liquid_symbol;
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
-      token_ico_obj.steem_units_soft_cap = o.steem_units_soft_cap;
-      token_ico_obj.steem_units_hard_cap = o.steem_units_hard_cap;
       token_ico_obj.steem_units_min = o.steem_units_min;
+      token_ico_obj.min_unit_ratio = o.min_unit_ratio;
+      token_ico_obj.max_unit_ratio = o.max_unit_ratio;
    } );
-
-   smt_setup_evaluator_visitor visitor( token_ico, _db );
-   o.initial_generation_policy.visit( visitor );
 
    smt_ico_launch_action ico_launch_action;
    ico_launch_action.control_account = _token.control_account;
    ico_launch_action.symbol = _token.liquid_symbol;
    _db.push_required_action( ico_launch_action, o.contribution_begin_time );
+}
+
+void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+
+   const smt_token_object& token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
+
+   smt_capped_generation_policy generation_policy;
+   smt_generation_policy_visitor< smt_capped_generation_policy > visitor( generation_policy );
+   o.generation_policy.visit( visitor );
+
+   if ( o.remove )
+   {
+      auto key = boost::make_tuple( token.liquid_symbol, o.steem_units_cap );
+      const auto* ito = _db.find< smt_ico_tier_object, by_symbol_steem_units_cap >( key );
+
+      FC_ASSERT( ito != nullptr,
+         "The specified ICO tier does not exist. Symbol: ${s}, Steem Units Cap: ${c}",
+         ("s", token.liquid_symbol)("c", o.steem_units_cap)
+      );
+
+      _db.remove( *ito );
+   }
+   else
+   {
+      auto num_ico_tiers = util::smt::ico::ico_tier_size( _db, o.symbol );
+      FC_ASSERT( num_ico_tiers < SMT_MAX_ICO_TIERS,
+         "There can be a maximum of ${n} ICO tiers. Current: ${c}", ("n", SMT_MAX_ICO_TIERS)("c", num_ico_tiers) );
+
+      smt_generation_policy_verifier generation_policy_verifier( _db );
+      o.generation_policy.visit( generation_policy_verifier );
+
+      _db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& ito )
+      {
+         ito.symbol                   = token.liquid_symbol;
+         ito.steem_units_cap          = o.steem_units_cap;
+         ito.capped_generation_policy = generation_policy;
+      });
+   }
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
@@ -200,18 +258,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
       FC_ASSERT(
          last_emission->symbol == o.symbol &&
-         last_emission->schedule_time == o.schedule_time &&
-         last_emission->emissions_unit.token_unit == o.emissions_unit.token_unit &&
-         last_emission->interval_seconds == o.interval_seconds &&
-         last_emission->interval_count == o.interval_count &&
-         last_emission->lep_time == o.lep_time &&
-         last_emission->rep_time == o.rep_time &&
-         last_emission->lep_abs_amount == o.lep_abs_amount &&
-         last_emission->rep_abs_amount == o.rep_abs_amount &&
-         last_emission->lep_rel_amount_numerator == o.lep_rel_amount_numerator &&
-         last_emission->rep_rel_amount_numerator == o.rep_rel_amount_numerator &&
-         last_emission->rel_amount_denom_bits == o.rel_amount_denom_bits &&
-         last_emission->floor_emissions == o.floor_emissions,
+         last_emission->schedule_time == o.schedule_time,
          "SMT emissions must be removed from latest to earliest, last emission: ${le}. Current: ${c}", ("le", *last_emission)("c", o)
       );
 
@@ -324,12 +371,16 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase >= smt_phase::ico, "SMT has not begun accepting contributions" );
       FC_ASSERT( token->phase < smt_phase::ico_completed, "SMT is no longer accepting contributions" );
 
+      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+      FC_ASSERT( possible_hard_cap.valid(), "The specified token does not feature an ICO" );
+      share_type hard_cap = *possible_hard_cap;
+
       const smt_ico_object* token_ico = _db.find< smt_ico_object, by_symbol >( token->liquid_symbol );
       FC_ASSERT( token_ico != nullptr, "Unable to find ICO data for symbol: ${sym}", ("sym", token->liquid_symbol) );
-      FC_ASSERT( token_ico->contributed.amount < token_ico->steem_units_hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
-      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= token_ico->steem_units_hard_cap,
+      FC_ASSERT( token_ico->contributed.amount < hard_cap, "SMT ICO has reached its hard cap and no longer accepts contributions" );
+      FC_ASSERT( token_ico->contributed.amount + o.contribution.amount <= hard_cap,
          "The proposed contribution would exceed the ICO hard cap, maximum possible contribution: ${c}",
-         ("c", asset( token_ico->steem_units_hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
+         ("c", asset( hard_cap - token_ico->contributed.amount, STEEM_SYMBOL )) );
 
       auto key = boost::tuple< asset_symbol_type, account_name_type, uint32_t >( o.contribution.symbol, o.contributor, o.contribution_id );
       auto contrib_ptr = _db.find< smt_contribution_object, by_symbol_contributor >( key );

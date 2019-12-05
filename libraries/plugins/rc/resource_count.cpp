@@ -325,6 +325,12 @@ struct count_operation_visitor
       execution_time_count += _e.smt_setup_emissions_operation_exec_time;
    }
 
+   void operator()( const smt_setup_ico_tier_operation& op )const
+   {
+      state_bytes_count += _w.smt_ico_tier_object_size;
+      execution_time_count += _e.smt_setup_ico_tier_operation_exec_time;
+   }
+
    void operator()( const smt_set_setup_parameters_operation& op )const
    {
       execution_time_count += _e.smt_set_setup_parameters_operation_exec_time;

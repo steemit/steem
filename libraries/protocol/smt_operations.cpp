@@ -118,31 +118,18 @@ uint32_t smt_emissions_unit::token_unit_sum() const
 
 void smt_capped_generation_policy::validate()const
 {
-   pre_soft_cap_unit.validate();
-   post_soft_cap_unit.validate();
+   generation_unit.validate();
 
-   FC_ASSERT( pre_soft_cap_unit.steem_unit.size() > 0 );
-   FC_ASSERT( pre_soft_cap_unit.token_unit.size() > 0 );
-   FC_ASSERT( pre_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( pre_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
+   FC_ASSERT( generation_unit.steem_unit.size() > 0 );
+   FC_ASSERT( generation_unit.token_unit.size() >= 0 );
+   FC_ASSERT( generation_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
+   FC_ASSERT( generation_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
 
-   for ( auto& unit : pre_soft_cap_unit.steem_unit )
+   for ( auto& unit : generation_unit.steem_unit )
       FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
          "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
 
-   for ( auto& unit : pre_soft_cap_unit.token_unit )
-      FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
-         "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
-
-   FC_ASSERT( post_soft_cap_unit.steem_unit.size() > 0 );
-   FC_ASSERT( post_soft_cap_unit.steem_unit.size() <= SMT_MAX_UNIT_COUNT );
-   FC_ASSERT( post_soft_cap_unit.token_unit.size() <= SMT_MAX_UNIT_COUNT );
-
-   for ( auto& unit : post_soft_cap_unit.steem_unit )
-      FC_ASSERT( is_valid_smt_ico_steem_destination( unit.first ),
-         "${unit_target} is not a valid STEEM unit target.", ("unit_target", unit.first) );
-
-   for ( auto& unit : post_soft_cap_unit.token_unit )
+   for ( auto& unit : generation_unit.token_unit )
       FC_ASSERT( is_valid_smt_ico_token_destination( unit.first ),
          "${unit_target} is not a valid token unit target.", ("unit_target", unit.first) );
 }
@@ -157,6 +144,17 @@ struct validate_visitor
       x.validate();
    }
 };
+
+void smt_setup_ico_tier_operation::validate()const
+{
+   smt_admin_operation_validate( *this );
+
+   FC_ASSERT( steem_units_cap >= 0, "Steem units cap must be greater than or equal to 0" );
+   FC_ASSERT( steem_units_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
+
+   validate_visitor vtor;
+   generation_policy.visit( vtor );
+}
 
 void smt_setup_emissions_operation::validate()const
 {
@@ -205,17 +203,9 @@ void smt_setup_operation::validate()const
    FC_ASSERT( max_supply > 0, "Max supply must be greater than 0" );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY, "Max supply must be less than ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
    FC_ASSERT( contribution_begin_time > STEEM_GENESIS_TIME, "Contribution begin time must be greater than ${t}", ("t", STEEM_GENESIS_TIME) );
-   FC_ASSERT( contribution_end_time > contribution_begin_time, "Contribution end time must be after contribution begin time" );
-   FC_ASSERT( launch_time >= contribution_end_time, "SMT ICO launch time must be after the contribution end time" );
-   FC_ASSERT( steem_units_soft_cap <= steem_units_hard_cap, "Steem units soft cap must less than or equal to steem units hard cap" );
-   FC_ASSERT( steem_units_soft_cap >= SMT_MIN_SOFT_CAP_STEEM_UNITS, "Steem units soft cap must be greater than or equal to ${n}", ("n", SMT_MIN_SOFT_CAP_STEEM_UNITS) );
-   FC_ASSERT( steem_units_hard_cap >= SMT_MIN_HARD_CAP_STEEM_UNITS, "Steem units hard cap must be greater than or equal to ${n}", ("n", SMT_MIN_HARD_CAP_STEEM_UNITS) );
-   FC_ASSERT( steem_units_hard_cap <= STEEM_MAX_SHARE_SUPPLY, "Steem units hard cap must be less than or equal to ${n}", ("n", STEEM_MAX_SHARE_SUPPLY) );
+   FC_ASSERT( contribution_end_time >= contribution_begin_time, "Contribution end time must be equal to or later than contribution begin time" );
+   FC_ASSERT( launch_time >= contribution_end_time, "Launch time must be equal to or later than the contribution end time" );
    FC_ASSERT( steem_units_min >= 0, "Steem units min must be greater than or equal to 0" );
-   FC_ASSERT( steem_units_min <= steem_units_soft_cap, "Steem units min must be less than or equal to the steem units soft cap" );
-
-   validate_visitor vtor;
-   initial_generation_policy.visit( vtor );
 }
 
 struct smt_set_runtime_parameters_operation_visitor

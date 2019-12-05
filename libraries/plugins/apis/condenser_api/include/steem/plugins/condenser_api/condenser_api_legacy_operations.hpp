@@ -734,10 +734,9 @@ namespace steem { namespace plugins { namespace condenser_api {
          contribution_end_time( op.contribution_end_time ),
          launch_time( op.launch_time ),
          steem_units_min( op.steem_units_min ),
-         steem_units_soft_cap( op.steem_units_soft_cap ),
-         steem_units_hard_cap( op.steem_units_hard_cap )
+         min_unit_ratio( op.min_unit_ratio ),
+         max_unit_ratio( op.max_unit_ratio )
       {
-         op.initial_generation_policy.visit( convert_to_legacy_static_variant< legacy_smt_generation_policy >( initial_generation_policy ) );
       }
 
       operator smt_setup_operation()const
@@ -746,13 +745,12 @@ namespace steem { namespace plugins { namespace condenser_api {
          op.control_account = control_account;
          op.symbol = symbol;
          op.max_supply = max_supply;
-         op.initial_generation_policy = initial_generation_policy;
          op.contribution_begin_time = contribution_begin_time;
          op.contribution_end_time = contribution_end_time;
          op.launch_time = launch_time;
          op.steem_units_min = steem_units_min;
-         op.steem_units_soft_cap = steem_units_soft_cap;
-         op.steem_units_hard_cap = steem_units_hard_cap;
+         op.min_unit_ratio = min_unit_ratio;
+         op.max_unit_ratio = max_unit_ratio;
 
          return op;
       }
@@ -762,17 +760,48 @@ namespace steem { namespace plugins { namespace condenser_api {
 
       int64_t                       max_supply = STEEM_MAX_SHARE_SUPPLY;
 
-      legacy_smt_generation_policy  initial_generation_policy;
-
       time_point_sec                contribution_begin_time;
       time_point_sec                contribution_end_time;
       time_point_sec                launch_time;
 
       share_type                    steem_units_min;
-      share_type                    steem_units_soft_cap;
-      share_type                    steem_units_hard_cap;
+      uint32_t                      min_unit_ratio = 0;
+      uint32_t                      max_unit_ratio = 0;
 
       extensions_type               extensions;
+   };
+
+   struct legacy_smt_setup_ico_tier_operation
+   {
+      legacy_smt_setup_ico_tier_operation() {}
+      legacy_smt_setup_ico_tier_operation( const smt_setup_ico_tier_operation& op ) :
+         control_account( op.control_account ),
+         symbol( op.symbol ),
+         steem_units_cap( op.steem_units_cap ),
+         remove( op.remove )
+      {
+         op.generation_policy.visit( convert_to_legacy_static_variant< legacy_smt_generation_policy >( generation_policy ) );
+      }
+
+      operator smt_setup_ico_tier_operation()const
+      {
+         smt_setup_ico_tier_operation op;
+         op.control_account = control_account;
+         op.symbol = symbol;
+         op.steem_units_cap = steem_units_cap;
+         op.generation_policy = generation_policy;
+         op.remove = remove;
+
+         return op;
+      }
+
+      account_name_type            control_account;
+      asset_symbol_type            symbol;
+
+      share_type                   steem_units_cap;
+      legacy_smt_generation_policy generation_policy;
+      bool                         remove = false;
+      extensions_type              extensions;
    };
 
    struct legacy_smt_set_setup_parameters_operation
@@ -1259,6 +1288,7 @@ namespace steem { namespace plugins { namespace condenser_api {
             legacy_vote2_operation,
             legacy_smt_setup_operation,
             legacy_smt_setup_emissions_operation,
+            legacy_smt_setup_ico_tier_operation,
             legacy_smt_set_setup_parameters_operation,
             legacy_smt_set_runtime_parameters_operation,
             legacy_smt_create_operation,
@@ -1439,6 +1469,12 @@ namespace steem { namespace plugins { namespace condenser_api {
       bool operator()( const smt_setup_operation& op )const
       {
          l_op = legacy_smt_setup_operation( op );
+         return true;
+      }
+
+      bool operator()( const smt_setup_ico_tier_operation& op )const
+      {
+         l_op = legacy_smt_setup_ico_tier_operation( op );
          return true;
       }
 
@@ -1656,6 +1692,11 @@ struct convert_from_legacy_operation_visitor
       return operation( smt_setup_operation( op ) );
    }
 
+   operation operator()( const legacy_smt_setup_ico_tier_operation& op )const
+   {
+      return operation( smt_setup_ico_tier_operation( op ) );
+   }
+
    operation operator()( const legacy_smt_set_setup_parameters_operation& op )const
    {
       return operation( smt_set_setup_parameters_operation( op ) );
@@ -1867,8 +1908,9 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_delegate_vesting_shares_operat
 FC_REFLECT( steem::plugins::condenser_api::legacy_author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_reward_operation, (author)(permlink)(payout) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_operation, (control_account)(symbol)(max_supply)(initial_generation_policy)(contribution_begin_time)(contribution_end_time)(launch_time)(steem_units_min)(steem_units_soft_cap)(steem_units_hard_cap)(extensions) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_operation, (control_account)(symbol)(max_supply)(contribution_begin_time)(contribution_end_time)(launch_time)(steem_units_min)(min_unit_ratio)(max_unit_ratio)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_smt_set_setup_parameters_operation, (control_account)(symbol)(setup_parameters)(extensions) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_ico_tier_operation, (control_account)(symbol)(steem_units_cap)(generation_policy)(remove)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_smt_set_runtime_parameters_operation, (control_account)(symbol)(runtime_parameters)(extensions))
 FC_REFLECT( steem::plugins::condenser_api::legacy_fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_liquidity_reward_operation, (owner)(payout) )
