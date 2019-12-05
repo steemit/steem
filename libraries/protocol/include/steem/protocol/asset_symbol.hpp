@@ -244,13 +244,18 @@ inline void from_variant( const fc::variant& var, steem::protocol::asset_symbol_
       FC_ASSERT( nai != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_NAI_KEY) );
       FC_ASSERT( nai->value().is_string(), "Expected a string type for value '${key}'.", ("key", ASSET_SYMBOL_NAI_KEY) );
 
+      uint8_t precision = 0;
       auto decimals = o.find( ASSET_SYMBOL_DECIMALS_KEY );
-      FC_ASSERT( decimals != o.end(), "Expected key '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
-      FC_ASSERT( decimals->value().is_uint64(), "Expected an unsigned integer type for value '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
-      FC_ASSERT( decimals->value().as_uint64() <= STEEM_ASSET_MAX_DECIMALS,
-         "Expected decimals to be less than or equal to ${num}", ("num", STEEM_ASSET_MAX_DECIMALS) );
+      if( decimals != o.end() )
+      {
+         FC_ASSERT( decimals->value().is_uint64(), "Expected an unsigned integer type for value '${key}'.", ("key", ASSET_SYMBOL_DECIMALS_KEY) );
+         FC_ASSERT( decimals->value().as_uint64() <= STEEM_ASSET_MAX_DECIMALS,
+            "Expected decimals to be less than or equal to ${num}", ("num", STEEM_ASSET_MAX_DECIMALS) );
 
-      sym = asset_symbol_type::from_nai_string( nai->value().as_string().c_str(), decimals->value().as< uint8_t >() );
+         precision = decimals->value().as< uint8_t >();
+      }
+
+      sym = asset_symbol_type::from_nai_string( nai->value().as_string().c_str(), precision );
    } FC_CAPTURE_AND_RETHROW()
 }
 

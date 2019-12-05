@@ -1941,10 +1941,10 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
 
          if( args.start.get_object().size() > 0 )
          {
-            start = args.start.as< asset_symbol_type >();
+            start = asset_symbol_type::from_asset_num( args.start.as< asset_symbol_type >().get_stripped_precision_smt_num() );
          }
 
-         iterate_results< chain::smt_token_index, chain::by_symbol >(
+         iterate_results< chain::smt_token_index, chain::by_stripped_symbol >(
             start,
             result.tokens,
             args.limit,
@@ -1994,7 +1994,7 @@ DEFINE_API_IMPL( database_api_impl, find_smt_tokens )
 
    for( auto& symbol : args.symbols )
    {
-      const auto token = chain::util::smt::find_token( _db, symbol, args.ignore_precision );
+      const auto token = chain::util::smt::find_token( _db, symbol, symbol.decimals() == 0 );
       if( token != nullptr )
       {
          result.tokens.push_back( api_smt_token_object( *token, _db ) );
@@ -2063,8 +2063,16 @@ DEFINE_API_IMPL( database_api_impl, find_smt_token_balances )
 
    for( auto& acc_sym : args.account_symbols )
    {
-      auto itr = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( acc_sym.first, acc_sym.second ) );
-      if( itr != nullptr ) result.balances.push_back( api_smt_account_balance_object( *itr, _db ) );
+      if( acc_sym.second.decimals() == 0 )
+      {
+         auto itr = _db.find< account_regular_balance_object, by_name_stripped_symbol >( boost::make_tuple( acc_sym.first, acc_sym.second ) );
+         if( itr != nullptr ) result.balances.push_back( api_smt_account_balance_object( *itr, _db ) );
+      }
+      else
+      {
+         auto itr = _db.find< account_regular_balance_object, by_name_liquid_symbol >( boost::make_tuple( acc_sym.first, acc_sym.second ) );
+         if( itr != nullptr ) result.balances.push_back( api_smt_account_balance_object( *itr, _db ) );
+      }
    }
 
    return result;
@@ -2084,9 +2092,11 @@ DEFINE_API_IMPL( database_api_impl, list_smt_token_balances )
          FC_ASSERT( key.size() == 2, "The parameter 'start' must consist of account_name_type and asset_symbol_type" );
 
          boost::tuple< account_name_type, asset_symbol_type > start;
-         start = boost::make_tuple( key[ 0 ].as< account_name_type >(), key[ 1 ].as< asset_symbol_type >() );
+         start = boost::make_tuple(
+            key[ 0 ].as< account_name_type >(),
+            asset_symbol_type::from_asset_num( key[ 1 ].as< asset_symbol_type >().get_stripped_precision_smt_num() ) );
 
-         iterate_results< chain::account_regular_balance_index, chain::by_name_liquid_symbol >(
+         iterate_results< chain::account_regular_balance_index, chain::by_name_stripped_symbol >(
             start,
             result.balances,
             args.limit,

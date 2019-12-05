@@ -843,12 +843,13 @@ typedef vector< variant > get_version_args;
 struct get_version_return
 {
    get_version_return() {}
-   get_version_return( fc::string bc_v, fc::string s_v, fc::string fc_v )
-      :blockchain_version( bc_v ), steem_revision( s_v ), fc_revision( fc_v ) {}
+   get_version_return( fc::string bc_v, fc::string s_v, fc::string fc_v, chain_id_type c_id )
+      :blockchain_version( bc_v ), steem_revision( s_v ), fc_revision( fc_v ), chain_id( c_id ) {}
 
-   fc::string blockchain_version;
-   fc::string steem_revision;
-   fc::string fc_revision;
+   fc::string     blockchain_version;
+   fc::string     steem_revision;
+   fc::string     fc_revision;
+   chain_id_type  chain_id;
 };
 
 typedef map< uint32_t, api_operation_object > get_account_history_return_type;
@@ -1075,6 +1076,7 @@ DEFINE_API_ARGS( list_proposals,                         vector< variant >,   ve
 DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
 DEFINE_API_ARGS( get_nai_pool,                           vector< variant >,   vector< asset_symbol_type > )
+DEFINE_API_ARGS( get_smt_balances,                       vector< variant >,   vector< database_api::api_smt_account_balance_object > )
 
 #undef DEFINE_API_ARGS
 
@@ -1173,6 +1175,7 @@ public:
       (find_proposals)
       (list_proposal_votes)
       (get_nai_pool)
+      (get_smt_balances)
    )
 
    private:
@@ -1345,7 +1348,7 @@ FC_REFLECT( steem::plugins::condenser_api::tag_index, (trending) )
 FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(outgoing)(all) )
 
 FC_REFLECT( steem::plugins::condenser_api::get_version_return,
-            (blockchain_version)(steem_revision)(fc_revision) )
+            (blockchain_version)(steem_revision)(fc_revision)(chain_id) )
 
 FC_REFLECT( steem::plugins::condenser_api::broadcast_transaction_synchronous_return,
             (id)(block_num)(trx_num)(expired) )

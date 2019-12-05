@@ -136,6 +136,7 @@ namespace detail
             (find_proposals)
             (list_proposal_votes)
             (get_nai_pool)
+            (get_smt_balances)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -172,7 +173,8 @@ namespace detail
       (
          fc::string( STEEM_BLOCKCHAIN_VERSION ),
          fc::string( steem::utilities::git_revision_sha ),
-         fc::string( fc::git_revision_sha )
+         fc::string( fc::git_revision_sha ),
+         _db.get_chain_id()
       );
    }
 
@@ -2122,6 +2124,21 @@ namespace detail
       return _database_api->get_nai_pool( {} ).nai_pool;
    }
 
+   DEFINE_API_IMPL( condenser_api_impl, get_smt_balances )
+   {
+      CHECK_ARG_SIZE( 1 );
+
+      auto acc_syms = args[0].as< vector< std::pair< account_name_type, string > > >();
+      database_api::find_smt_token_balances_args dbapi_args;
+
+      for( const auto& acc_sym : acc_syms )
+      {
+         dbapi_args.account_symbols.push_back( std::make_pair( acc_sym.first, asset_symbol_type::from_nai_string( acc_sym.second.c_str(), 0 ) ) );
+      }
+
+      return _database_api->find_smt_token_balances( dbapi_args ).balances;
+   }
+
 } // detail
 
 uint16_t api_account_object::_compute_voting_power( const database_api::api_account_object& a )
@@ -2322,6 +2339,7 @@ DEFINE_READ_APIS( condenser_api,
    (list_proposal_votes)
    (find_proposals)
    (get_nai_pool)
+   (get_smt_balances)
 )
 
 } } } // steem::plugins::condenser_api

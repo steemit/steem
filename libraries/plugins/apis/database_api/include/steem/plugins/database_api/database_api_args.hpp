@@ -606,7 +606,6 @@ struct list_smt_tokens_return
 struct find_smt_tokens_args
 {
    vector< asset_symbol_type > symbols;
-   bool ignore_precision = false;
 };
 
 typedef list_smt_tokens_return find_smt_tokens_return;
@@ -869,7 +868,7 @@ FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )
 
 FC_REFLECT( steem::plugins::database_api::find_smt_tokens_args,
-   (symbols)(ignore_precision) )
+   (symbols) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_return,
    (token_emissions) )
