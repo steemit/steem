@@ -565,21 +565,12 @@ public:
          for( const auto& a : auth.account_auths )
             req_active_approvals.insert(a.first);
 
-      // std::merge lets us de-duplicate account_id's that occur in both
-      //   sets, and dump them into a vector (as required by remote_db api)
-      //   at the same time
       flat_set< account_name_type > req_approvals;
       req_approvals.insert( req_owner_approvals.begin(), req_owner_approvals.end() );
       req_approvals.insert( req_active_approvals.begin(), req_active_approvals.end() );
       req_approvals.insert( req_posting_approvals.begin(), req_posting_approvals.end() );
 
       vector< account_name_type > v_approving_account_names;
-      //std::merge(req_active_approvals.begin(), req_active_approvals.end(),
-      //           req_owner_approvals.begin() , req_owner_approvals.end(),
-      //           std::back_inserter( v_approving_account_names ) );
-
-      //for( const auto& a : req_posting_approvals )
-      //   v_approving_account_names.push_back(a);
 
       /// TODO: fetch the accounts specified via other_auths as well.
       v_approving_account_names.insert( v_approving_account_names.end(), req_approvals.begin(), req_approvals.end() );
