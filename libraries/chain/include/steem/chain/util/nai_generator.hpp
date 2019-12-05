@@ -9,7 +9,7 @@ class nai_generator {
 
    /** FNV-1a implementation https://en.wikipedia.org/wiki/Fowler-Noll-Vo_hash_function#FNV-1a_hash */
    struct hasher {
-      static int32_t hash( uint8_t byte, uint32_t _hash )
+      static uint32_t hash( uint8_t byte, uint32_t _hash )
       {
          return ( byte ^ _hash ) * prime;
       }
