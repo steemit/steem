@@ -114,8 +114,6 @@ void remove_from_nai_pool( database &db, const asset_symbol_type& a )
    {
       auto index = std::distance( nais.begin(), it );
 
-      wlog( "Using NAI ${n}", ("n",a) );
-
       db.modify( npo, [&] ( nai_pool_object& obj )
       {
          idump( (obj.pool()) );
