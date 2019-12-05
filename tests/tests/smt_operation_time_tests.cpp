@@ -1592,12 +1592,12 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
       setup_op.control_account         = "creator";
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time   = setup_op.contribution_begin_time + STEEM_BLOCK_INTERVAL;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time;
       setup_op.steem_units_min         = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
-      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+      setup_op.launch_time             = setup_op.contribution_end_time;
 
       smt_setup_emissions_operation token_emission_op;
       token_emission_op.symbol = symbol;
@@ -1619,8 +1619,6 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
 
       BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
 
-      generate_blocks( setup_op.contribution_begin_time );
-      generate_blocks( setup_op.contribution_end_time );
       generate_blocks( setup_op.launch_time );
       generate_blocks( token_emission_op.schedule_time );
 
