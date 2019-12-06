@@ -1561,5 +1561,49 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( nai_pool_consistency )
+{
+   try
+   {
+      // This test expects 1.000 TBD smt_creation_fee
+      db->modify( db->get_dynamic_global_properties(), [&] ( dynamic_global_property_object& dgpo )
+      {
+         dgpo.smt_creation_fee = asset( 1000, SBD_SYMBOL );
+      } );
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+
+      ACTORS( (alice) )
+
+      generate_block();
+
+      FUND( "alice", ASSET( "2.000 TESTS" ) );
+
+      idump( (db->get< nai_pool_object >().pool()) );
+
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      op.symbol = get_new_smt_symbol( 3, db );
+      op.precision = op.symbol.decimals();
+      op.validate();
+
+      PUSH_OP( op, alice_private_key );
+
+      idump( (db->get< nai_pool_object >().pool()) );
+
+      op.symbol = get_new_smt_symbol( 3, db );
+
+      PUSH_OP( op, alice_private_key );
+
+      idump( (db->get< nai_pool_object >().pool()) );
+
+      generate_block();
+
+      idump( (db->get< nai_pool_object >().pool()) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
