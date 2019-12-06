@@ -123,11 +123,11 @@ protected:
       return true;
    }
 
-   void populate_column_definitions_( column_definitions& defs )const
+   void populate_column_definitions_( column_definitions& defs, const ::rocksdb::Options& opts )const
    {
       defs.emplace_back(
          ::rocksdb::kDefaultColumnFamilyName,
-         ::rocksdb::ColumnFamilyOptions()
+         opts
       );
    }
 

@@ -736,16 +736,16 @@ BOOST_MULTI_INDEX_PROTECTED_IF_MEMBER_TEMPLATE_FRIENDS:
       return false;
    }
 
-   void populate_column_definitions_( column_definitions& defs )const
+   void populate_column_definitions_( column_definitions& defs, const ::rocksdb::Options& opts )const
    {
-      super::populate_column_definitions_( defs );
+      super::populate_column_definitions_( defs, opts );
       // TODO: Clean this up so it outputs the tag name instead of a tempalte type.
       // But it is unique, so it works.
       std::string tags = boost::core::demangle( typeid( tag_list ).name() );
       //std::cout <<  COLUMN_INDEX << ':' << tags << std::endl;
       defs.emplace_back(
          tags,
-         ::rocksdb::ColumnFamilyOptions()
+         opts
       );
       defs.back().options.comparator = &(*comp_);
    }

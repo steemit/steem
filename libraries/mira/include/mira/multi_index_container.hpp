@@ -231,24 +231,14 @@ public:
    {
       assert( p.is_absolute() );
 
-      std::string str_path = ( p / _name ).string();
-
-      maybe_create_schema( str_path );
-
-      // TODO: Move out of constructor becasuse throwing exceptions in a constuctor is sad...
-      column_definitions column_defs;
-      populate_column_definitions_( column_defs );
-
-      ::rocksdb::Options opts;
-
       try
       {
          detail::cache_manager::get()->set_object_threshold( configuration::get_object_count( cfg ) );
 
-         opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
+         _opts = configuration::get_options( cfg, boost::core::demangle( typeid( Value ).name() ) );
 
          if ( configuration::gather_statistics( cfg ) )
-            opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
+            _opts.statistics = _stats = ::rocksdb::CreateDBStatistics();
       }
       catch ( ... )
       {
@@ -257,10 +247,21 @@ public:
          throw;
       }
 
+      _opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
+      _opts.create_if_missing = true;
+
+      std::string str_path = ( p / _name ).string();
+
+      maybe_create_schema( str_path );
+
+      // TODO: Move out of constructor becasuse throwing exceptions in a constuctor is sad...
+      column_definitions column_defs;
+      populate_column_definitions_( column_defs );
+
       std::vector< ::rocksdb::ColumnFamilyHandle* > handles;
 
       ::rocksdb::DB* db = nullptr;
-      ::rocksdb::Status s = ::rocksdb::DB::Open( opts, str_path, column_defs, &handles, &db );
+      ::rocksdb::Status s = ::rocksdb::DB::Open( _opts, str_path, column_defs, &handles, &db );
 
       for( ::rocksdb::ColumnFamilyHandle* h : handles )
       {
@@ -342,7 +343,7 @@ public:
       column_definitions column_defs;
       populate_column_definitions_( column_defs );
 
-      auto s = rocksdb::DestroyDB( ( p / _name ).string(), rocksdb::Options(), column_defs );
+      auto s = rocksdb::DestroyDB( ( p / _name ).string(), _opts, column_defs );
 
       if( !s.ok() ) std::cout << std::string( s.getState() ) << std::endl;
 
@@ -805,12 +806,13 @@ private:
    uint64_t _entry_count = 0;
    uint64_t _batch_count = 0;
    bool     _bulk_load = false;
+   ::rocksdb::Options _opts;
 
    size_t get_column_size() const { return super::COLUMN_INDEX; }
 
    void populate_column_definitions_( column_definitions& defs ) const
    {
-      super::populate_column_definitions_( defs );
+      super::populate_column_definitions_( defs, _opts );
    }
 
    bool maybe_create_schema( const std::string& str_path )
@@ -822,12 +824,7 @@ private:
 
       std::vector< ::rocksdb::ColumnFamilyHandle* > handles;
 
-      ::rocksdb::Options opts;
-      //opts.IncreaseParallelism();
-      //opts.OptimizeLevelStyleCompaction();
-      opts.max_open_files = MIRA_MAX_OPEN_FILES_PER_DB;
-
-      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( opts, str_path, column_defs, &handles, &db );
+      ::rocksdb::Status s = ::rocksdb::DB::OpenForReadOnly( _opts, str_path, column_defs, &handles, &db );
 
       if( s.ok() )
       {
@@ -836,9 +833,7 @@ private:
          return true;
       }
 
-      opts.create_if_missing = true;
-
-      s = ::rocksdb::DB::Open( opts, str_path, &db );
+      s = ::rocksdb::DB::Open( _opts, str_path, &db );
 
       if( s.ok() )
       {
