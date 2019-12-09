@@ -38,7 +38,6 @@ struct block_based_table_options {
 };
 
 struct base_index {
-   bool optimize_level_style_compaction;
    bool increase_parallelism;
    database::configuration::block_based_table_options block_based_table_options;
 };
@@ -65,7 +64,6 @@ fc::variant default_database_configuration()
    config.global.write_buffer_manager.write_buffer_size = std::to_string( GB(1) ); // Write buffer manager is within the shared cache
 
    // base
-   config.base.optimize_level_style_compaction = true;
    config.base.increase_parallelism = true;
 
    // base::block_based_table_options
@@ -111,7 +109,6 @@ FC_REFLECT( steem::utilities::database::configuration::block_based_table_options
 );
 
 FC_REFLECT( steem::utilities::database::configuration::base_index,
-   (optimize_level_style_compaction)
    (increase_parallelism)
    (block_based_table_options)
 );
