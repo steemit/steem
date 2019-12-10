@@ -3,12 +3,15 @@
 OBJECTS=( "account_authority"                \
           "account_history"                  \
           "account_metadata"                 \
+          "account_regular_balance"          \
+          "account_rewards_balance"          \
           "account"                          \
           "account_recovery_request"         \
           "block_summary"                    \
           "change_recovery_account_request"  \
           "comment_content"                  \
           "comment"                          \
+          "comment_smt_beneficiaries"        \
           "comment_vote"                     \
           "convert_request"                  \
           "decline_voting_rights_request"    \
@@ -18,12 +21,20 @@ OBJECTS=( "account_authority"                \
           "hardfork_property"                \
           "limit_order"                      \
           "liquidity_reward_balance"         \
+          "nai_pool"                         \
           "operation"                        \
           "owner_authority_history"          \
           "pending_optional_action"          \
           "pending_required_action"          \
+          "proposal"                         \
+          "proposal_vote"                    \
           "reward_fund"                      \
           "savings_withdraw"                 \
+          "smt_contribution"                 \
+          "smt_token"                        \
+          "smt_token_emissions"              \
+          "smt_ico"                          \
+          "smt_ico_tier"                     \
           "transaction"                      \
           "vesting_delegation_expiration"    \
           "vesting_delegation"               \

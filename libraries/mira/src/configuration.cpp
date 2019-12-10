@@ -36,6 +36,11 @@ namespace mira {
 #define BITS_PER_KEY                     "bits_per_key"
 #define USE_BLOCK_BASED_BUILDER          "use_block_based_builder"
 #define CACHE_INDEX_AND_FILTER_BLOCKS    "cache_index_and_filter_blocks"
+#define BYTES_PER_SYNC                   "bytes_per_sync"
+#define WAL_BYTES_PER_SYNC               "wal_bytes_per_sync"
+#define RATE_LIMITER                     "rate_limiter"
+#define RATE_BYTES_PER_SEC               "rate_bytes_per_sec"
+
 
 static std::shared_ptr< rocksdb::Cache > global_shared_cache;
 static std::shared_ptr< rocksdb::WriteBufferManager > global_write_buffer_manager;
@@ -49,6 +54,23 @@ static std::map< std::string, std::function< void( ::rocksdb::Options&, fc::vari
    { MAX_BACKGROUND_COMPACTIONS,        []( ::rocksdb::Options& o, fc::variant v ) { o.max_background_compactions = v.as< int >(); }        },
    { MAX_BACKGROUND_FLUSHES,            []( ::rocksdb::Options& o, fc::variant v ) { o.max_background_flushes = v.as< int >(); }            },
    { MIN_WRITE_BUFFER_NUMBER_TO_MERGE,  []( ::rocksdb::Options& o, fc::variant v ) { o.min_write_buffer_number_to_merge = v.as< int >(); }  },
+   { BYTES_PER_SYNC,                    []( ::rocksdb::Options& o, fc::variant v ) { o.bytes_per_sync = v.as< uint64_t >(); }               },
+   { WAL_BYTES_PER_SYNC,                []( ::rocksdb::Options& o, fc::variant v ) { o.wal_bytes_per_sync = v.as< uint64_t >(); }           },
+   { RATE_LIMITER,                      []( ::rocksdb::Options& o, fc::variant v )
+      {
+         FC_ASSERT( v.is_object(), "Expected '${key}' to be an object",
+            ("key", RATE_LIMITER) );
+
+         auto& obj = v.get_object();
+         if ( obj.contains( RATE_BYTES_PER_SEC ) )
+         {
+            FC_ASSERT( obj[ RATE_BYTES_PER_SEC ].is_integer(), "Expected '${key}' to be a signed integer",
+               ("key", RATE_BYTES_PER_SEC) );
+            auto rate_limiter = std::shared_ptr< ::rocksdb::RateLimiter >( ::rocksdb::NewGenericRateLimiter( obj[ RATE_BYTES_PER_SEC ].template as< int64_t >() ) );
+            o.rate_limiter = rate_limiter;
+         }
+      }
+   },
    { OPTIMIZE_LEVEL_STYLE_COMPACTION,   []( ::rocksdb::Options& o, fc::variant v )
       {
          if ( v.as< bool >() )
