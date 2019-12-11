@@ -35,7 +35,6 @@ namespace steem { namespace chain {
 
       bool contains( const asset_symbol_type& a ) const
       {
-         for( auto i = nais.begin(); i != nais.end(); ++i ) idump( (*i) );
          const auto end = nais.end() - (SMT_MAX_NAI_POOL_COUNT - num_available_nais);
          return std::find( nais.begin(), end, asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) ) != end;
       }

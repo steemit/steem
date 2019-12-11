@@ -116,7 +116,6 @@ void remove_from_nai_pool( database &db, const asset_symbol_type& a )
 
       db.modify( npo, [&] ( nai_pool_object& obj )
       {
-         idump( (obj.pool()) );
          obj.nais[ index ] = asset_symbol_type();
          std::swap( obj.nais[ index ], obj.nais[ obj.num_available_nais - 1 ] );
          obj.num_available_nais--;
