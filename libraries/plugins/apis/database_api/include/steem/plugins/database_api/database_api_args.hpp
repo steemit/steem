@@ -60,7 +60,8 @@ enum sort_order_type
    by_comment_voter_symbol,
    by_voter_comment_symbol,
    by_comment_symbol_voter,
-   by_voter_symbol_comment
+   by_voter_symbol_comment,
+   by_account_symbol
 };
 
 enum order_direction_type
@@ -605,7 +606,6 @@ struct list_smt_tokens_return
 struct find_smt_tokens_args
 {
    vector< asset_symbol_type > symbols;
-   bool ignore_precision = false;
 };
 
 typedef list_smt_tokens_return find_smt_tokens_return;
@@ -624,6 +624,20 @@ struct find_smt_token_emissions_args
 };
 
 typedef list_smt_token_emissions_return find_smt_token_emissions_return;
+
+struct find_smt_token_balances_args
+{
+   vector< std::pair< account_name_type, asset_symbol_type > > account_symbols;
+};
+
+struct find_smt_token_balances_return
+{
+   vector< api_smt_account_balance_object > balances;
+};
+
+typedef list_object_args_type list_smt_token_balances_args;
+
+typedef find_smt_token_balances_return list_smt_token_balances_return;
 
 
 } } } // steem::database_api
@@ -675,7 +689,8 @@ FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
    (by_comment_voter_symbol)
    (by_voter_comment_symbol)
    (by_comment_symbol_voter)
-   (by_voter_symbol_comment) )
+   (by_voter_symbol_comment)
+   (by_account_symbol) )
 
 FC_REFLECT_ENUM( steem::plugins::database_api::order_direction_type,
   (ascending)
@@ -853,11 +868,17 @@ FC_REFLECT( steem::plugins::database_api::list_smt_tokens_return,
    (tokens) )
 
 FC_REFLECT( steem::plugins::database_api::find_smt_tokens_args,
-   (symbols)(ignore_precision) )
+   (symbols) )
 
 FC_REFLECT( steem::plugins::database_api::list_smt_token_emissions_return,
    (token_emissions) )
 
 FC_REFLECT( steem::plugins::database_api::find_smt_token_emissions_args,
    (asset_symbol) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_token_balances_args,
+   (account_symbols) )
+
+FC_REFLECT( steem::plugins::database_api::find_smt_token_balances_return,
+   (balances) )
 

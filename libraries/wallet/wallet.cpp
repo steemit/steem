@@ -354,6 +354,13 @@ public:
       return accounts.front();
    }
 
+   database_api::api_smt_account_balance_object get_smt_balance( string account_name, string nai ) const
+   {
+      auto balances = _remote_api->get_smt_balances( { std::make_pair( account_name, nai ) } );
+      FC_ASSERT( !balances.empty(), "Could not find SMT balance (${n}) for account ${a}", ("n", nai)("a", account_name) );
+      return balances.front();
+   }
+
    string get_wallet_filename() const { return _wallet_filename; }
 
    optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const
@@ -930,6 +937,28 @@ public:
 
          return ss.str();
       };
+      m["get_smt_balance"] = []( variant result, const fc::variants& a )
+      {
+         auto balance = result.as< database_api::api_smt_account_balance_object >();
+         std::stringstream ss;
+
+         ss << ' ' << std::left  << std::setw( 17 ) << "Account";
+         ss << ' ' << std::right << std::setw( 30 ) << "Liquid";
+         ss << ' ' << std::right << std::setw( 30 ) << "Vesting";
+         ss << ' ' << std::right << std::setw( 30 ) << "Pending Liquid";
+         ss << ' ' << std::right << std::setw( 30 ) << "Pending Vesting";
+
+
+         ss << "\n==============================================================================================================================================\n";
+
+         ss << ' ' << std::left  << std::setw( 17 ) << std::string(balance.name)
+            << ' ' << std::right << std::setw( 30 ) << legacy_asset::from_asset(balance.liquid).to_string()
+            << ' ' << std::right << std::setw( 30 ) << legacy_asset::from_asset(balance.vesting_shares).to_string()
+            << ' ' << std::right << std::setw( 30 ) << legacy_asset::from_asset(balance.pending_liquid).to_string()
+            << ' ' << std::right << std::setw( 30 ) << legacy_asset::from_asset(balance.pending_vesting_shares).to_string() << "\n";
+
+         return ss.str();
+      };
 
       return m;
    }
@@ -1066,6 +1095,11 @@ string wallet_api::get_wallet_filename() const
 condenser_api::api_account_object wallet_api::get_account( string account_name ) const
 {
    return my->get_account( account_name );
+}
+
+database_api::api_smt_account_balance_object wallet_api::get_smt_balance( string account_name, string nai ) const
+{
+   return my->get_smt_balance( account_name, nai );
 }
 
 bool wallet_api::import_key(string wif_key)

@@ -30,12 +30,12 @@ namespace steem { namespace chain {
 
       std::vector< asset_symbol_type > pool() const
       {
-         return std::vector< asset_symbol_type >{ nais.begin(), nais.begin() + num_available_nais };
+         return std::vector< asset_symbol_type >{ nais.begin(), nais.end() - (SMT_MAX_NAI_POOL_COUNT - num_available_nais) };
       }
 
       bool contains( const asset_symbol_type& a ) const
       {
-         const auto end = nais.begin() + num_available_nais;
+         const auto end = nais.end() - (SMT_MAX_NAI_POOL_COUNT - num_available_nais);
          return std::find( nais.begin(), end, asset_symbol_type::from_asset_num( a.get_stripped_precision_smt_num() ) ) != end;
       }
    };

@@ -110,6 +110,7 @@ struct remote_node_api
    vector< condenser_api::api_proposal_object > find_proposals( vector< int64_t > );
    vector< database_api::api_proposal_vote_object > list_proposal_votes( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status );
    vector< asset_symbol_type > get_nai_pool(void);
+   vector< database_api::api_smt_account_balance_object > get_smt_balances( vector< std::pair < string, string > > );
 };
 
 } }
@@ -204,4 +205,5 @@ FC_API( steem::wallet::remote_node_api,
         (find_proposals)
         (list_proposal_votes)
         (get_nai_pool)
+        (get_smt_balances)
       )

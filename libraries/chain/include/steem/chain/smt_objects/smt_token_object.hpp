@@ -74,6 +74,11 @@ public:
       return price( asset( reward_vesting_shares, liquid_symbol.get_paired_symbol() ), asset( reward_vesting_smt, liquid_symbol ) );
    }
 
+   asset_symbol_type get_stripped_symbol() const
+   {
+      return asset_symbol_type::from_asset_num( liquid_symbol.get_stripped_precision_smt_num() );
+   }
+
    // id_type is actually oid<smt_token_object>
    id_type              id;
 
@@ -255,6 +260,7 @@ typedef multi_index_container <
 
 struct by_symbol;
 struct by_control_account;
+struct by_stripped_symbol;
 
 typedef multi_index_container <
    smt_token_object,
@@ -268,7 +274,9 @@ typedef multi_index_container <
             member< smt_token_object, account_name_type, &smt_token_object::control_account >,
             member< smt_token_object, asset_symbol_type, &smt_token_object::liquid_symbol >
          >
-      >
+      >,
+      ordered_unique< tag< by_stripped_symbol >,
+         const_mem_fun< smt_token_object, asset_symbol_type, &smt_token_object::get_stripped_symbol > >
    >,
    allocator< smt_token_object >
 > smt_token_index;

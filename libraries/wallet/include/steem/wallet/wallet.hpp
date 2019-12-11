@@ -181,6 +181,14 @@ class wallet_api
        */
       condenser_api::api_account_object get_account( string account_name ) const;
 
+      /** Returns account balance for an SMT.
+       *
+       * @param account_name the name of the account to provide balance information
+       * @param nai the Numerical Asset Identifier of the SMT
+       * @return the SMT balance for the account
+       */
+      database_api::api_smt_account_balance_object get_smt_balance( string account_name, string nai ) const;
+
       /** Returns the current wallet filename.
        *
        * This is the filename that will be used when automatically saving the wallet.
@@ -1325,6 +1333,7 @@ FC_API( steem::wallet::wallet_api,
         (list_witnesses)
         (get_witness)
         (get_account)
+        (get_smt_balance)
         (get_block)
         (get_ops_in_block)
         (get_feed_history)

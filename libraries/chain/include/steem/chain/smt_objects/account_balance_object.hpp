@@ -46,6 +46,11 @@ public:
       return liquid.symbol;
    }
 
+   asset_symbol_type get_stripped_symbol() const
+   {
+      return asset_symbol_type::from_asset_num( liquid.symbol.get_stripped_precision_smt_num() );
+   }
+
    void initialize_assets( asset_symbol_type liquid_symbol )
    {
       liquid                   = asset( 0, liquid_symbol );
@@ -98,6 +103,11 @@ public:
       return pending_liquid.symbol;
    }
 
+   asset_symbol_type get_stripped_symbol() const
+   {
+      return asset_symbol_type::from_asset_num( pending_liquid.symbol.get_stripped_precision_smt_num() );
+   }
+
    void initialize_assets( asset_symbol_type liquid_symbol )
    {
       pending_liquid         = asset( 0, liquid_symbol );
@@ -121,6 +131,7 @@ public:
 
 struct by_name_liquid_symbol;
 struct by_next_vesting_withdrawal;
+struct by_name_stripped_symbol;
 
 typedef multi_index_container <
    account_regular_balance_object,
@@ -140,6 +151,12 @@ typedef multi_index_container <
             member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
             const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_liquid_symbol >
          >
+      >,
+      ordered_unique< tag< by_name_stripped_symbol >,
+         composite_key< account_regular_balance_object,
+            member< account_regular_balance_object, account_name_type, &account_regular_balance_object::name >,
+            const_mem_fun< account_regular_balance_object, asset_symbol_type, &account_regular_balance_object::get_stripped_symbol >
+         >
       >
    >,
    allocator< account_regular_balance_object >
@@ -155,6 +172,12 @@ typedef multi_index_container <
          composite_key< account_rewards_balance_object,
             member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::name >,
             const_mem_fun< account_rewards_balance_object, asset_symbol_type, &account_rewards_balance_object::get_liquid_symbol >
+         >
+      >,
+      ordered_unique< tag< by_name_stripped_symbol >,
+         composite_key< account_rewards_balance_object,
+            member< account_rewards_balance_object, account_name_type, &account_rewards_balance_object::name >,
+            const_mem_fun< account_rewards_balance_object, asset_symbol_type, &account_rewards_balance_object::get_stripped_symbol >
          >
       >
    >,
