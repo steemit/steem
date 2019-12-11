@@ -840,16 +840,7 @@ enum withdraw_route_type
 
 typedef vector< variant > get_version_args;
 
-struct get_version_return
-{
-   get_version_return() {}
-   get_version_return( fc::string bc_v, fc::string s_v, fc::string fc_v )
-      :blockchain_version( bc_v ), steem_revision( s_v ), fc_revision( fc_v ) {}
-
-   fc::string blockchain_version;
-   fc::string steem_revision;
-   fc::string fc_revision;
-};
+typedef database_api::get_version_return get_version_return;
 
 typedef map< uint32_t, api_operation_object > get_account_history_return_type;
 
@@ -1343,9 +1334,6 @@ FC_REFLECT( steem::plugins::condenser_api::account_vote,
 FC_REFLECT( steem::plugins::condenser_api::tag_index, (trending) )
 
 FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(outgoing)(all) )
-
-FC_REFLECT( steem::plugins::condenser_api::get_version_return,
-            (blockchain_version)(steem_revision)(fc_revision) )
 
 FC_REFLECT( steem::plugins::condenser_api::broadcast_transaction_synchronous_return,
             (id)(block_num)(trx_num)(expired) )

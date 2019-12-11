@@ -168,12 +168,7 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_version )
    {
       CHECK_ARG_SIZE( 0 )
-      return get_version_return
-      (
-         fc::string( STEEM_BLOCKCHAIN_VERSION ),
-         fc::string( steem::utilities::git_revision_sha ),
-         fc::string( fc::git_revision_sha )
-      );
+      return _database_api->get_version( {} );
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_trending_tags )
