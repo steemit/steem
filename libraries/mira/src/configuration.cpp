@@ -248,73 +248,74 @@ bool configuration::gather_statistics( const boost::any& cfg )
 
    if ( global_shared_cache == nullptr )
    {
-      size_t capacity = 0;
-      int num_shard_bits = 0;
-
       fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      FC_ASSERT( global_config.contains( SHARED_CACHE ), "Expected '${parent}' configuration to contain '${key}'",
-         ("parent", GLOBAL)
-         ("key", SHARED_CACHE) );
-
-      FC_ASSERT( global_config[ SHARED_CACHE ].is_object(), "Expected '${key}' to be an object",
-         ("key", SHARED_CACHE) );
-
-      auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
-
-      FC_ASSERT( shared_cache_obj.contains( CAPACITY ), "Expected '${parent}' configuration to contain '${key}'",
-         ("parent", SHARED_CACHE)
-         ("key", CAPACITY) );
-
-      FC_ASSERT( shared_cache_obj[ CAPACITY ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
-         ("key", CAPACITY) );
-
-      capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
-
-      if ( shared_cache_obj.contains( NUM_SHARD_BITS ) )
+      if ( global_config.contains( SHARED_CACHE ) )
       {
-         FC_ASSERT( shared_cache_obj[ NUM_SHARD_BITS ].is_uint64(), "Expected '${key}' to be an unsigned integer",
-            ("key", NUM_SHARD_BITS) );
+         size_t capacity = 0;
+         int num_shard_bits = 0;
 
-         num_shard_bits = shared_cache_obj[ NUM_SHARD_BITS ].as< int >();
+         FC_ASSERT( global_config[ SHARED_CACHE ].is_object(), "Expected '${key}' to be an object",
+            ("key", SHARED_CACHE) );
 
-         global_shared_cache = rocksdb::NewLRUCache( capacity, num_shard_bits );
-      }
-      else
-      {
-         global_shared_cache = rocksdb::NewLRUCache( capacity );
+         auto& shared_cache_obj = global_config[ SHARED_CACHE ].get_object();
+
+         FC_ASSERT( shared_cache_obj.contains( CAPACITY ), "Expected '${parent}' configuration to contain '${key}'",
+            ("parent", SHARED_CACHE)
+            ("key", CAPACITY) );
+
+         FC_ASSERT( shared_cache_obj[ CAPACITY ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
+            ("key", CAPACITY) );
+
+         capacity = shared_cache_obj[ CAPACITY ].as< uint64_t >();
+
+         if ( shared_cache_obj.contains( NUM_SHARD_BITS ) )
+         {
+            FC_ASSERT( shared_cache_obj[ NUM_SHARD_BITS ].is_uint64(), "Expected '${key}' to be an unsigned integer",
+               ("key", NUM_SHARD_BITS) );
+
+            num_shard_bits = shared_cache_obj[ NUM_SHARD_BITS ].as< int >();
+
+            global_shared_cache = rocksdb::NewLRUCache( capacity, num_shard_bits );
+         }
+         else
+         {
+            global_shared_cache = rocksdb::NewLRUCache( capacity );
+         }
       }
    }
 
    if ( global_write_buffer_manager == nullptr )
    {
-      size_t write_buf_size = 0;
-
       fc::variant_object global_config = retrieve_global_configuration( obj );
 
-      FC_ASSERT( global_config.contains( WRITE_BUFFER_MANAGER ), "Expected '${parent}' configuration to contain '${key}'",
-         ("parent", GLOBAL)
-         ("key", WRITE_BUFFER_MANAGER) );
+      if ( global_config.contains( WRITE_BUFFER_MANAGER ) )
+      {
+         size_t write_buf_size = 0;
 
-      FC_ASSERT( global_config[ WRITE_BUFFER_MANAGER ].is_object(), "Expected '${key}' to be an object",
-         ("key", WRITE_BUFFER_MANAGER) );
+         FC_ASSERT( global_shared_cache != nullptr, "A global write buffer requires a global shared cache" );
 
-      auto& write_buffer_mgr_obj = global_config[ WRITE_BUFFER_MANAGER ].get_object();
+         FC_ASSERT( global_config[ WRITE_BUFFER_MANAGER ].is_object(), "Expected '${key}' to be an object",
+            ("key", WRITE_BUFFER_MANAGER) );
 
-      FC_ASSERT( write_buffer_mgr_obj.contains( WRITE_BUFFER_SIZE ), "Expected '${parent}' configuration to contain '${key}'",
-         ("parent", WRITE_BUFFER_MANAGER)
-         ("key", WRITE_BUFFER_SIZE) );
+         auto& write_buffer_mgr_obj = global_config[ WRITE_BUFFER_MANAGER ].get_object();
 
-      FC_ASSERT( write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
-         ("key", WRITE_BUFFER_SIZE) );
+         FC_ASSERT( write_buffer_mgr_obj.contains( WRITE_BUFFER_SIZE ), "Expected '${parent}' configuration to contain '${key}'",
+            ("parent", WRITE_BUFFER_MANAGER)
+            ("key", WRITE_BUFFER_SIZE) );
 
-      write_buf_size = write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].as< uint64_t >();
+         FC_ASSERT( write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].is_string(), "Expected '${key}' to be a string representation of an unsigned integer",
+            ("key", WRITE_BUFFER_SIZE) );
 
-      global_write_buffer_manager = std::make_shared< ::rocksdb::WriteBufferManager >( write_buf_size, global_shared_cache );
+         write_buf_size = write_buffer_mgr_obj[ WRITE_BUFFER_SIZE ].as< uint64_t >();
+
+         global_write_buffer_manager = std::make_shared< ::rocksdb::WriteBufferManager >( write_buf_size, global_shared_cache );
+      }
    }
 
    // We assign the global write buffer manager to all databases
-   opts.write_buffer_manager = global_write_buffer_manager;
+   if ( global_write_buffer_manager != nullptr )
+      opts.write_buffer_manager = global_write_buffer_manager;
 
    fc::variant_object config = retrieve_active_configuration( obj, type_name );
 
