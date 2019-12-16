@@ -165,13 +165,45 @@ public:
    steem::protocol::smt_capped_generation_policy  capped_generation_policy;
 };
 
+struct shared_smt_emissions_unit
+{
+   STEEM_STD_ALLOCATOR_CONSTRUCTOR( shared_smt_emissions_unit )
+
+   template< typename Allocator >
+   shared_smt_emissions_unit( const Allocator& alloc ) :
+      token_unit( emissions_pair_allocator_type( alloc ) )
+   {}
+
+   typedef chainbase::t_flat_map< steem::protocol::unit_target_type, uint16_t > token_unit_map;
+
+   using emissions_pair_allocator_type = chainbase::t_allocator_pair< public_key_type, weight_type >;
+
+   token_unit_map token_unit;
+
+   uint32_t token_unit_sum()const
+   {
+      uint32_t result = 0;
+      for( const auto& e : token_unit )
+      {
+         result += e.second;
+      }
+      return result;
+   }
+
+   shared_smt_emissions_unit& operator =( steem::protocol::smt_emissions_unit u )
+   {
+      token_unit.insert( u.token_unit.begin(), u.token_unit.end() );
+      return *this;
+   }
+};
+
 class smt_token_emissions_object : public object< smt_token_emissions_object_type, smt_token_emissions_object >
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_token_emissions_object );
 
-public:
    template< typename Constructor, typename Allocator >
-   smt_token_emissions_object( Constructor&& c, allocator< Allocator > a )
+   smt_token_emissions_object( Constructor&& c, allocator< Allocator > a ) :
+      emissions_unit( a )
    {
       c( *this );
    }
@@ -179,7 +211,7 @@ public:
    id_type                               id;
    asset_symbol_type                     symbol;
    time_point_sec                        schedule_time = STEEM_GENESIS_TIME;
-   steem::protocol::smt_emissions_unit   emissions_unit;
+   shared_smt_emissions_unit             emissions_unit;
    uint32_t                              interval_seconds = 0;
    uint32_t                              interval_count = 0;
    time_point_sec                        lep_time = STEEM_GENESIS_TIME;
@@ -208,7 +240,6 @@ class smt_contribution_object : public object< smt_contribution_object_type, smt
 {
    STEEM_STD_ALLOCATOR_CONSTRUCTOR( smt_contribution_object );
 
-public:
    template< typename Constructor, typename Allocator >
    smt_contribution_object( Constructor&& c, allocator< Allocator > a )
    {
@@ -399,6 +430,10 @@ FC_REFLECT( steem::chain::smt_ico_tier_object,
    (symbol)
    (steem_units_cap)
    (capped_generation_policy)
+)
+
+FC_REFLECT( steem::chain::shared_smt_emissions_unit,
+   (token_unit)
 )
 
 FC_REFLECT( steem::chain::smt_token_emissions_object,
