@@ -240,7 +240,7 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
       {
          ito.symbol                   = token.liquid_symbol;
          ito.steem_units_cap          = o.steem_units_cap;
-         ito.capped_generation_policy = generation_policy;
+         ito.generation_unit          = generation_policy.generation_unit;
       });
    }
 }
