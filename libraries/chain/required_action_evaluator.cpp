@@ -26,7 +26,10 @@ void smt_ico_launch_evaluator::do_apply( const smt_ico_launch_action& a )
    smt_ico_evaluation_action eval_action;
    eval_action.control_account = token.control_account;
    eval_action.symbol = token.liquid_symbol;
-   _db.push_required_action( eval_action, ico.contribution_end_time );
+   if ( ico.contribution_end_time < _db.head_block_time() )
+      _db.push_required_action( eval_action );
+   else
+      _db.push_required_action( eval_action, ico.contribution_end_time );
 }
 
 void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a )
@@ -44,7 +47,10 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
       smt_token_launch_action launch_action;
       launch_action.control_account = token.control_account;
       launch_action.symbol = token.liquid_symbol;
-      _db.push_required_action( launch_action, ico.launch_time );
+      if ( ico.launch_time < _db.head_block_time() )
+         _db.push_required_action( launch_action );
+      else
+         _db.push_required_action( launch_action, ico.launch_time );
    }
    else
    {

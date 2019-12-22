@@ -202,7 +202,10 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    smt_ico_launch_action ico_launch_action;
    ico_launch_action.control_account = _token.control_account;
    ico_launch_action.symbol = _token.liquid_symbol;
-   _db.push_required_action( ico_launch_action, o.contribution_begin_time );
+   if ( o.contribution_begin_time < _db.head_block_time() )
+      _db.push_required_action( ico_launch_action );
+   else
+      _db.push_required_action( ico_launch_action, o.contribution_begin_time );
 }
 
 void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation& o )
