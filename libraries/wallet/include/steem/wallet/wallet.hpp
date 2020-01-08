@@ -1198,7 +1198,7 @@ class wallet_api
        *  @param schedule_time The time the token is applicable
        *  @param json_emission_unit A JSON representation of an emission unit
        *  @param interval_seconds The seconds between intervals
-       *  @param interval_count The number of intervals
+       *  @param emission_count The number of emissions
        *  @param lep_time The time of the left endpoint
        *  @param rep_time The time of the right endpoint
        *  @param lep_abs_amount The absolute emission amount of the left endpoint
@@ -1216,7 +1216,7 @@ class wallet_api
          time_point_sec schedule_time,
          string json_emission_unit,
          uint32_t interval_seconds,
-         uint32_t interval_count,
+         uint32_t emission_count,
          time_point_sec lep_time,
          time_point_sec rep_time,
          share_type lep_abs_amount,

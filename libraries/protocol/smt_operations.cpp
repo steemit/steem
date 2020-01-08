@@ -166,7 +166,7 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( interval_seconds >= SMT_EMISSION_MIN_INTERVAL_SECONDS,
       "Interval seconds must be greater than or equal to ${seconds}", ("seconds", SMT_EMISSION_MIN_INTERVAL_SECONDS) );
 
-   FC_ASSERT( interval_count > 0, "Interval count must be greater than 0" );
+   FC_ASSERT( emission_count > 0, "Emission count must be greater than 0" );
 
    FC_ASSERT( lep_time <= rep_time, "Left endpoint time must be less than or equal to right endpoint time" );
 
@@ -176,12 +176,12 @@ void smt_setup_emissions_operation::validate()const
       FC_ASSERT( lep_time >= schedule_time, "Left endpoint time cannot be before the schedule time" );
 
       // If we don't emit indefinitely
-      if ( interval_count != SMT_EMIT_INDEFINITELY )
+      if ( emission_count != SMT_EMIT_INDEFINITELY )
       {
          FC_ASSERT(
-            uint64_t( interval_seconds ) * uint64_t( interval_count ) + uint64_t( schedule_time.sec_since_epoch() ) <= std::numeric_limits< int32_t >::max(),
+            uint64_t( interval_seconds ) * ( emission_count - 1 ) + uint64_t( schedule_time.sec_since_epoch() ) <= std::numeric_limits< int32_t >::max(),
             "Schedule end time overflow" );
-         FC_ASSERT( rep_time <= schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) ),
+         FC_ASSERT( rep_time <= schedule_time + fc::seconds( uint64_t( interval_seconds ) * ( emission_count - 1 ) ),
             "Right endpoint time cannot be after the schedule end time" );
       }
    }

@@ -272,9 +272,11 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
       if ( end_time.valid() )
       {
-         FC_ASSERT( o.schedule_time > *end_time,
-            "SMT emissions cannot overlap with existing ranges and must be in chronological order, last emission time: ${end}",
-            ("end", *end_time) );
+         FC_ASSERT( ( time_point_sec::maximum() - *end_time ) > fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS ),
+            "Cannot add token emission when the prior emission is indefinite." );
+         FC_ASSERT( o.schedule_time >= *end_time + SMT_EMISSION_MIN_INTERVAL_SECONDS,
+            "New token emissions must begin at least ${s} seconds of the last emission. Last emission time: ${end}",
+            ("s", SMT_EMISSION_MIN_INTERVAL_SECONDS)("end", *end_time) );
       }
 
       _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )
@@ -283,7 +285,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
          eo.schedule_time = o.schedule_time;
          eo.emissions_unit = o.emissions_unit;
          eo.interval_seconds = o.interval_seconds;
-         eo.interval_count = o.interval_count;
+         eo.emission_count = o.emission_count;
          eo.lep_time = o.lep_time;
          eo.rep_time = o.rep_time;
          eo.lep_abs_amount = o.lep_abs_amount;

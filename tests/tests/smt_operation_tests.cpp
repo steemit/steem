@@ -1883,7 +1883,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op1.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op1.schedule_time = db->head_block_time() + fc::days(30);
       op1.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op1.interval_count = 1;
+      op1.emission_count = 1;
       op1.lep_abs_amount = 0;
       op1.rep_abs_amount = 0;
       op1.lep_rel_amount_numerator = 1;
@@ -1895,7 +1895,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op2.schedule_time = op1.schedule_time + fc::days( 365 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op2.interval_count = 10;
+      op2.emission_count = 10;
       op2.lep_abs_amount = 0;
       op2.rep_abs_amount = 0;
       op2.lep_rel_amount_numerator = 1;
@@ -2096,10 +2096,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       op.symbol = alice_symbol;
       op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op.interval_count = 1;
+      op.emission_count = 1;
 
       fc::time_point_sec schedule_time = fc::time_point::now();
-      fc::time_point_sec schedule_end_time = schedule_time + fc::seconds( op.interval_seconds * op.interval_count );
+      fc::time_point_sec schedule_end_time = schedule_time + fc::seconds( op.interval_seconds * ( op.emission_count - 1 ) );
 
       op.schedule_time = schedule_time;
       op.lep_abs_amount = 0;
@@ -2146,10 +2146,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.schedule_time = fc::time_point::now();
 
-      BOOST_TEST_MESSAGE( " -- 0 interval count" );
-      op.interval_count = 0;
+      BOOST_TEST_MESSAGE( " -- 0 emission count" );
+      op.emission_count = 0;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      op.interval_count = 1;
+      op.emission_count = 1;
 
       BOOST_TEST_MESSAGE( " -- Interval seconds too low" );
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS - 1;
@@ -2233,7 +2233,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op.interval_count = 1;
+      op.emission_count = 2;
       op.lep_abs_amount = 0;
       op.rep_abs_amount = 0;
       op.lep_rel_amount_numerator = 1;
@@ -2263,9 +2263,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
       op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
-      op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS );
+      op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS * 2 - 1 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op2.interval_count = 5;
+      op2.emission_count = 6;
       op2.lep_abs_amount = 1200;
       op2.rep_abs_amount = 1000;
       op2.lep_rel_amount_numerator = 1;
@@ -2282,9 +2282,9 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op3.control_account = "alice";
       op3.symbol = alice_symbol;
       op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
-      op3.schedule_time = emissions1_schedule_time - fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS + 1 );
+      op3.schedule_time = emissions1_schedule_time - fc::seconds( ( SMT_EMISSION_MIN_INTERVAL_SECONDS * 2 ) + 1 );
       op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op3.interval_count = SMT_EMIT_INDEFINITELY;
+      op3.emission_count = SMT_EMIT_INDEFINITELY;
       op3.lep_abs_amount = 0;
       op3.rep_abs_amount = 1000;
       op3.lep_rel_amount_numerator = 0;
@@ -2292,10 +2292,10 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op3.validate();
       FAIL_WITH_OP( op3, alice_private_key, fc::assert_exception );
 
-      op3.schedule_time = op2.schedule_time + fc::seconds( uint64_t( op2.interval_seconds ) * uint64_t( op2.interval_count ) );
+      op3.schedule_time = op2.schedule_time + fc::seconds( uint64_t( op2.interval_seconds ) * uint64_t( op2.emission_count - 1 ) );
       FAIL_WITH_OP( op3, alice_private_key, fc::assert_exception );
 
-      op3.schedule_time += fc::seconds( 1 );
+      op3.schedule_time += SMT_EMISSION_MIN_INTERVAL_SECONDS;
       PUSH_OP( op3, alice_private_key );
 
       BOOST_TEST_MESSAGE( " -- No more emissions permitted" );
@@ -2305,7 +2305,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op4.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       op4.schedule_time = op3.schedule_time + fc::days( 365 );
       op4.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      op4.interval_count = 10;
+      op4.emission_count = 10;
       op4.lep_abs_amount = 0;
       op4.rep_abs_amount = 0;
       op4.lep_rel_amount_numerator = 1;
