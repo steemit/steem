@@ -275,7 +275,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
          FC_ASSERT( ( time_point_sec::maximum() - *end_time ) > fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS ),
             "Cannot add token emission when the prior emission is indefinite." );
          FC_ASSERT( o.schedule_time >= *end_time + SMT_EMISSION_MIN_INTERVAL_SECONDS,
-            "New token emissions must begin at least ${s} seconds of the last emission. Last emission time: ${end}",
+            "New token emissions must begin no earlier than ${s} seconds after the last emission. Last emission time: ${end}",
             ("s", SMT_EMISSION_MIN_INTERVAL_SECONDS)("end", *end_time) );
       }
 
