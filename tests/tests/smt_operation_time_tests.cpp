@@ -529,6 +529,215 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_ico_delayed_payouts )
+{
+   try
+   {
+      resize_shared_mem( 1024 * 1024 * 1024 );
+
+      BOOST_TEST_MESSAGE( "Testing SMT ICO delayed payouts" );
+      ACTORS(
+         (creator)
+         (alice)
+         (bob)
+         (charlie)
+         (dan)
+         (elaine)
+         (fred)
+         (george)
+         (henry)
+         (ian)
+         (jake)
+         (ken)
+         (louie)
+         (mary)
+         (nancy)
+         (oscar)
+         (peter)
+         (ray)
+         (steve)
+         (tom)
+         (victor)
+         (wayne)
+         (xavier)
+         (zach)
+      )
+
+      generate_block();
+
+      auto alices_balance    = asset( 5000000, STEEM_SYMBOL );
+      auto bobs_balance      = asset( 25000000, STEEM_SYMBOL );
+      auto charlies_balance  = asset( 10000000, STEEM_SYMBOL );
+      auto dans_balance      = asset( 25000000, STEEM_SYMBOL );
+      auto elaines_balance   = asset( 60000000, STEEM_SYMBOL );
+      auto freds_balance     = asset( 0, STEEM_SYMBOL );
+      auto georges_balance   = asset( 0, STEEM_SYMBOL );
+      auto henrys_balance    = asset( 0, STEEM_SYMBOL );
+
+      std::map< std ::string, std::tuple< share_type, fc::ecc::private_key > > contributor_contributions {
+         { "alice",   { alices_balance.amount,   alice_private_key   } },
+         { "bob",     { bobs_balance.amount,     bob_private_key     } },
+         { "charlie", { charlies_balance.amount, charlie_private_key } },
+         { "dan",     { dans_balance.amount,     dan_private_key     } },
+         { "elaine",  { elaines_balance.amount,  elaine_private_key  } },
+         { "fred",    { freds_balance.amount,    fred_private_key    } },
+         { "george",  { georges_balance.amount,  george_private_key  } },
+         { "henry",   { henrys_balance.amount,   henry_private_key   } },
+         { "ian",     { 0, ian_private_key    } },
+         { "jake",    { 0, jake_private_key   } },
+         { "ken",     { 0 , ken_private_key   } },
+         { "louie",   { 0, louie_private_key  } },
+         { "mary",    { 0, mary_private_key   } },
+         { "nancy",   { 0, nancy_private_key  } },
+         { "oscar",   { 0, oscar_private_key  } },
+         { "peter",   { 0, peter_private_key  } },
+         { "ray",     { 0, ray_private_key    } },
+         { "steve",   { 0, steve_private_key  } },
+         { "tom",     { 0, tom_private_key    } },
+         { "victor",  { 0, victor_private_key } },
+         { "wayne",   { 0, wayne_private_key  } },
+         { "xavier",  { 0, xavier_private_key } },
+         { "zach",    { 0, zach_private_key   } }
+      };
+
+      for ( auto& e : contributor_contributions )
+      {
+         FUND( e.first, asset( std::get< 0 >( e.second ), STEEM_SYMBOL ) );
+      }
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( " --- SMT creation" );
+      auto symbol = create_smt( "creator", creator_private_key, 3 );
+      const auto& token = db->get< smt_token_object, by_symbol >( symbol );
+
+      BOOST_TEST_MESSAGE( " --- SMT setup" );
+      signed_transaction tx;
+      smt_setup_operation setup_op;
+
+      uint64_t contribution_window_blocks = 5;
+      setup_op.control_account         = "creator";
+      setup_op.symbol                  = symbol;
+      setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_units_min         = 0;
+      setup_op.min_unit_ratio          = 50;
+      setup_op.max_unit_ratio          = 100;
+      setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
+      setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+
+      smt_capped_generation_policy capped_generation_policy;
+      capped_generation_policy.generation_unit.steem_unit[ "fred" ] = 3;
+      capped_generation_policy.generation_unit.steem_unit[ "george" ] = 2;
+
+      capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 7;
+      capped_generation_policy.generation_unit.token_unit[ "george" ] = 1;
+      capped_generation_policy.generation_unit.token_unit[ "henry" ] = 2;
+
+      smt_setup_ico_tier_operation ico_tier_op1;
+      ico_tier_op1.control_account = "creator";
+      ico_tier_op1.symbol = symbol;
+      ico_tier_op1.generation_policy = capped_generation_policy;
+      ico_tier_op1.steem_units_cap = 100000000;
+
+      smt_setup_ico_tier_operation ico_tier_op2;
+      ico_tier_op2.control_account = "creator";
+      ico_tier_op2.symbol = symbol;
+      ico_tier_op2.generation_policy = capped_generation_policy;
+      ico_tier_op2.steem_units_cap = 150000000;
+
+      tx.operations.push_back( ico_tier_op1 );
+      tx.operations.push_back( ico_tier_op2 );
+      tx.operations.push_back( setup_op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, creator_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_REQUIRE( token.phase == smt_phase::setup_completed );
+
+      for ( auto& e : contributor_contributions )
+      {
+         example_large_required_action req_action;
+         req_action.account = e.first;
+         for ( int i = 0; i < 20; i ++ )
+            db->push_required_action( req_action, db->head_block_time() );
+      }
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::ico );
+
+      BOOST_TEST_MESSAGE( " --- SMT contributions" );
+
+      uint32_t num_contributions = 0;
+      for ( auto& e : contributor_contributions )
+      {
+         if ( std::get< 0 >( e.second ) == 0 )
+            continue;
+
+         smt_contribute_operation contrib_op;
+
+         contrib_op.symbol = symbol;
+         contrib_op.contribution_id = 0;
+         contrib_op.contributor = e.first;
+         contrib_op.contribution = asset( std::get< 0 >( e.second ), STEEM_SYMBOL );
+
+         tx.operations.push_back( contrib_op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         sign( tx, std::get< 1 >( e.second ) );
+         db->push_transaction( tx, 0 );
+         tx.operations.clear();
+         tx.signatures.clear();
+
+         generate_block();
+         num_contributions++;
+      }
+
+      validate_database();
+
+      generate_block();
+
+      BOOST_REQUIRE( token.phase == smt_phase::launch_success );
+
+      BOOST_TEST_MESSAGE( " --- Starting the cascading payouts" );
+
+      generate_blocks( num_contributions / 2 );
+
+      validate_database();
+
+      generate_blocks( num_contributions / 2 + 1 );
+
+      BOOST_TEST_MESSAGE( " --- Checking contributor balances" );
+
+      BOOST_REQUIRE( db->get_balance( "alice", STEEM_SYMBOL ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "bob", STEEM_SYMBOL ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "charlie", STEEM_SYMBOL ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "dan", STEEM_SYMBOL ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "elaine", STEEM_SYMBOL ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "fred", STEEM_SYMBOL ).amount == 75000000 );
+      BOOST_REQUIRE( db->get_balance( "george", STEEM_SYMBOL ).amount == 50000000 );
+      BOOST_REQUIRE( db->get_balance( "henry", STEEM_SYMBOL ).amount == 0 );
+
+      BOOST_REQUIRE( db->get_balance( "alice", symbol ).amount == 420000000 );
+      BOOST_REQUIRE( db->get_balance( "bob", symbol ).amount == 2100000000 );
+      BOOST_REQUIRE( db->get_balance( "charlie", symbol ).amount == 840000000 );
+      BOOST_REQUIRE( db->get_balance( "dan", symbol ).amount == 2100000000 );
+      BOOST_REQUIRE( db->get_balance( "elaine", symbol ).amount == 5040000000 );
+      BOOST_REQUIRE( db->get_balance( "fred", symbol ).amount == 0 );
+      BOOST_REQUIRE( db->get_balance( "george", symbol ).amount == 1500000000 );
+      BOOST_REQUIRE( db->get_balance( "henry", symbol ).amount == 3000000000 );
+
+      validate_database();
+
+      auto& ico_idx = db->get_index< smt_ico_index, by_symbol >();
+      BOOST_REQUIRE( ico_idx.find( symbol ) == ico_idx.end() );
+      auto& contribution_idx = db->get_index< smt_contribution_index, by_symbol_id >();
+      BOOST_REQUIRE( contribution_idx.find( boost::make_tuple( symbol, 0 ) ) == contribution_idx.end() );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_vesting_withdrawals )
 {
    BOOST_TEST_MESSAGE( "Testing: SMT vesting withdrawals" );

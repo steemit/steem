@@ -13,6 +13,16 @@ bool operator==( const example_required_action& lhs, const example_required_acti
 {
    return lhs.account == rhs.account;
 }
+
+void example_large_required_action::validate()const
+{
+   validate_account_name( account );
+}
+
+bool operator==( const example_large_required_action& lhs, const example_large_required_action& rhs )
+{
+   return lhs.account == rhs.account && lhs.data == rhs.data;
+}
 #endif
 
 void smt_ico_launch_action::validate() const

@@ -17,6 +17,7 @@ namespace steem { namespace protocol {
             smt_founder_payout_action
 #ifdef IS_TEST_NET
             ,example_required_action
+            ,example_large_required_action
 #endif
          > required_automated_action;
 

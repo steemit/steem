@@ -16,6 +16,17 @@ namespace steem { namespace protocol {
 
       friend bool operator==( const example_required_action& lhs, const example_required_action& rhs );
    };
+
+   struct example_large_required_action : public base_operation
+   {
+      account_name_type account;
+      fc::array< char, 1000000 > data;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(account); }
+
+      friend bool operator==( const example_large_required_action& lhs, const example_large_required_action& rhs );
+   };
 #endif
 
    struct smt_refund_action : public base_operation
@@ -107,6 +118,7 @@ namespace steem { namespace protocol {
 
 #ifdef IS_TEST_NET
 FC_REFLECT( steem::protocol::example_required_action, (account) )
+FC_REFLECT( steem::protocol::example_large_required_action, (account)(data) )
 #endif
 
 FC_REFLECT( steem::protocol::smt_refund_action, (contributor)(symbol)(contribution_id)(refund) )
