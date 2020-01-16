@@ -4528,7 +4528,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   if ( has_hardfork( STEEM_HARDFORK_0_14__327 ) && a.name == STEEM_NULL_ACCOUNT )
    {
       FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
       adjust_supply( -delta );
@@ -4558,7 +4558,7 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( name == STEEM_NULL_ACCOUNT )
+   if ( has_hardfork( STEEM_HARDFORK_0_14__327 ) && name == STEEM_NULL_ACCOUNT )
    {
       FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
       adjust_supply( -delta );
@@ -4580,7 +4580,7 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   if ( has_hardfork( STEEM_HARDFORK_0_14__327 ) && a.name == STEEM_NULL_ACCOUNT )
    {
       FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
       adjust_supply( -delta );
@@ -4644,7 +4644,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   if ( has_hardfork( STEEM_HARDFORK_0_14__327 )&& a.name == STEEM_NULL_ACCOUNT )
    {
       FC_ASSERT( value_delta.amount >= 0, "The null account cannot be withdrawn from." );
       adjust_supply( -value_delta );
@@ -4670,7 +4670,7 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-   if ( name == STEEM_NULL_ACCOUNT )
+   if ( has_hardfork( STEEM_HARDFORK_0_14__327 ) && name == STEEM_NULL_ACCOUNT )
    {
       FC_ASSERT( value_delta.amount >= 0, "The null account cannot be withdrawn from." );
       adjust_supply( -value_delta );
