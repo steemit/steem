@@ -266,8 +266,8 @@ class smt_token_emissions_object : public object< smt_token_emissions_object_typ
    asset_symbol_type                     symbol;
    time_point_sec                        schedule_time = STEEM_GENESIS_TIME;
    shared_smt_emissions_unit             emissions_unit;
+   uint32_t                              emission_count = 0;
    uint32_t                              interval_seconds = 0;
-   uint32_t                              interval_count = 0;
    time_point_sec                        lep_time = STEEM_GENESIS_TIME;
    time_point_sec                        rep_time = STEEM_GENESIS_TIME;
    share_type                            lep_abs_amount;
@@ -282,9 +282,9 @@ class smt_token_emissions_object : public object< smt_token_emissions_object_typ
    {
       time_point_sec end_time = time_point_sec::maximum();
 
-      if ( interval_count != SMT_EMIT_INDEFINITELY )
+      if ( emission_count != SMT_EMIT_INDEFINITELY )
          // This potential time_point overflow is protected by smt_setup_emissions_operation::validate
-         end_time = schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( interval_count ) );
+         end_time = schedule_time + fc::seconds( uint64_t( interval_seconds ) * uint64_t( emission_count - 1 ) );
 
       return end_time;
    }
@@ -500,7 +500,7 @@ FC_REFLECT( steem::chain::smt_token_emissions_object,
    (schedule_time)
    (emissions_unit)
    (interval_seconds)
-   (interval_count)
+   (emission_count)
    (lep_time)
    (rep_time)
    (lep_abs_amount)

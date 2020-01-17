@@ -1044,7 +1044,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 2;
       emissions_op.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op.interval_count   = 24;
+      emissions_op.emission_count   = 25;
       emissions_op.symbol = symbol;
       emissions_op.schedule_time  = db->head_block_time() + ( STEEM_BLOCK_INTERVAL * 10 );
       emissions_op.lep_time       = emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
@@ -1070,9 +1070,9 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
       emissions_op2.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op2.interval_count   = 24;
+      emissions_op2.emission_count   = 25;
       emissions_op2.symbol = symbol;
-      emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * emissions_op.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * ( emissions_op.emission_count - 1 ) ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op2.lep_time       = emissions_op2.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op2.rep_time       = emissions_op2.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op2.lep_abs_amount = 50000000;
@@ -1096,9 +1096,9 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
       emissions_op3.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op3.interval_count   = SMT_EMIT_INDEFINITELY;
+      emissions_op3.emission_count   = SMT_EMIT_INDEFINITELY;
       emissions_op3.symbol = symbol;
-      emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * emissions_op2.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * ( emissions_op2.emission_count - 1 ) ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op3.lep_time       = emissions_op3.schedule_time;
       emissions_op3.rep_time       = emissions_op3.schedule_time;
       emissions_op3.lep_abs_amount = 100000000;
@@ -1235,7 +1235,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
 
-      for ( uint32_t i = 0; i <= emissions_op.interval_count; i++ )
+      for ( uint32_t i = 0; i <= ( emissions_op.emission_count - 1 ); i++ )
       {
          validate_database();
 
@@ -1307,7 +1307,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          generate_block();
       }
 
-      for ( uint32_t i = 0; i <= emissions_op2.interval_count; i++ )
+      for ( uint32_t i = 0; i <= ( emissions_op2.emission_count - 1 ); i++ )
       {
          validate_database();
 
@@ -1604,7 +1604,7 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
       token_emission_op.control_account = "creator";
       token_emission_op.emissions_unit.token_unit[ "alice" ] = 1;
       token_emission_op.schedule_time = setup_op.launch_time + STEEM_BLOCK_INTERVAL;
-      token_emission_op.interval_count = 1;
+      token_emission_op.emission_count = 1;
       token_emission_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       token_emission_op.lep_abs_amount = 1000000;
       token_emission_op.rep_abs_amount = 1000000;

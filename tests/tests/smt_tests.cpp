@@ -455,6 +455,133 @@ BOOST_AUTO_TEST_CASE( price_as_decimal_and_real )
    BOOST_REQUIRE( p.as_decimal() == "0.0122987701229877?" );
    BOOST_REQUIRE( float_cmp( p.as_real(), 0.0122987701229877f ) );
 }
+
+BOOST_AUTO_TEST_CASE( token_emission_timing )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: smt_standard_token_emissions" );
+      ACTORS( (alice)(bob)(sam)(dave) )
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( " -- SMT creation" );
+      auto symbol = create_smt( "alice", alice_private_key, 3 );
+      signed_transaction tx;
+
+      generate_block();
+
+      smt_setup_emissions_operation op;
+      op.control_account = "alice";
+      op.symbol          = symbol;
+      op.schedule_time   = db->head_block_time() + fc::days( 1 );
+      op.emissions_unit.token_unit[ "alice" ] = 1;
+      op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      op.emission_count   = 1;
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.lep_abs_amount = 100;
+      op.rep_abs_amount = 200;
+      op.lep_rel_amount_numerator = 1;
+      op.rep_rel_amount_numerator = 2;
+      op.rel_amount_denom_bits    = 7;
+      tx.operations.push_back( op );
+
+      op.schedule_time = op.schedule_time + fc::hours( 6 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 4;
+      tx.operations.push_back( op );
+
+      op.schedule_time = op.schedule_time + fc::days( 1 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 4;
+      tx.operations.push_back( op );
+
+      op.schedule_time = op.schedule_time + fc::days( 1 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 8;
+      tx.operations.push_back( op );
+
+      op.schedule_time = op.schedule_time + fc::days( 2 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 1;
+      tx.operations.push_back( op );
+
+      op.schedule_time = op.schedule_time + fc::hours( 6 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 1;
+      tx.operations.push_back( op );
+
+      BOOST_TEST_MESSAGE( " -- Success on valid token emission setup" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      smt_setup_emissions_operation fail_op;
+      fail_op = op;
+      fail_op.schedule_time = op.schedule_time + fc::hours( 5 ) + fc::minutes( 59 ) + fc::seconds( 59 );
+      fail_op.lep_time = fail_op.schedule_time;
+      fail_op.rep_time = fail_op.schedule_time;
+      fail_op.emission_count = 1;
+      tx.operations.push_back( fail_op );
+
+      BOOST_TEST_MESSAGE( " -- Failure on token emission emitting too soon" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.schedule_time = op.schedule_time + fc::hours( 6 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 4;
+      tx.operations.push_back( op );
+
+      BOOST_TEST_MESSAGE( " -- Success on valid additional token emission" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      fail_op = op;
+      fail_op.schedule_time = op.schedule_time + fc::days( 1 ) - fc::seconds( 1 );
+      fail_op.lep_time = fail_op.schedule_time;
+      fail_op.rep_time = fail_op.schedule_time;
+      fail_op.emission_count = 1;
+      tx.operations.push_back( fail_op );
+
+      BOOST_TEST_MESSAGE( " -- Failure on token emission emitting too soon" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.schedule_time = op.schedule_time + fc::days( 1 );
+      op.lep_time = op.schedule_time;
+      op.rep_time = op.schedule_time;
+      op.emission_count = 1;
+      tx.operations.push_back( op );
+
+      BOOST_TEST_MESSAGE( " -- Success on valid additional token emission" );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 /*
  * SMT legacy tests
  *
