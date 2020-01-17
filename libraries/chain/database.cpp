@@ -1028,8 +1028,7 @@ struct action_validate_visitor
 
 void database::push_required_action( const required_automated_action& a, time_point_sec execution_time )
 {
-   FC_ASSERT( execution_time >= head_block_time(), "Cannot push required action to execute in the past. head_block_time: ${h} execution_time: ${e}",
-      ("h", head_block_time())("e", execution_time) );
+   time_point_sec exec_time = std::max( execution_time, head_block_time() + STEEM_BLOCK_INTERVAL );
 
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
@@ -1039,7 +1038,7 @@ void database::push_required_action( const required_automated_action& a, time_po
       create< pending_required_action_object >( [&]( pending_required_action_object& pending_action )
       {
          pending_action.action = a;
-         pending_action.execution_time = execution_time;
+         pending_action.execution_time = exec_time;
       } );
    }
 }
@@ -1051,8 +1050,7 @@ void database::push_required_action( const required_automated_action& a )
 
 void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
 {
-   FC_ASSERT( execution_time >= head_block_time(), "Cannot push optional action to execute in the past. head_block_time: ${h} execution_time: ${e}",
-      ("h", head_block_time())("e", execution_time) );
+   time_point_sec exec_time = std::max( execution_time, head_block_time() + STEEM_BLOCK_INTERVAL );
 
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
@@ -1063,7 +1061,7 @@ void database::push_optional_action( const optional_automated_action& a, time_po
       {
          pending_action.action_hash = fc::sha256::hash( a );
          pending_action.action = a;
-         pending_action.execution_time = execution_time;
+         pending_action.execution_time = exec_time;
       } );
    }
 }
