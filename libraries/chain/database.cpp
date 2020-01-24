@@ -1447,6 +1447,14 @@ void database::clear_null_account_balance()
          g.total_vesting_shares -= null_account.vesting_shares;
          g.total_vesting_fund_steem -= vesting_shares_steem_value;
       });
+
+      if( !has_hardfork( STEEM_SMT_HARDFORK ) )
+      {
+         modify( null_account, [&]( account_object& a )
+         {
+            a.vesting_shares.amount = 0;
+         });
+      }
    }
 
    if( null_account.reward_vesting_balance.amount > 0 )
