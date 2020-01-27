@@ -7775,8 +7775,7 @@ BOOST_AUTO_TEST_CASE( claim_account_apply )
 
       BOOST_REQUIRE( db->get_account( "alice" ).pending_claimed_accounts == 1 );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "15.000 TESTS" ) );
-      // We now immediately clear the STEEM_NULL_ACCOUNT
-      BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).balance == ASSET( "5.000 TESTS" ) );
       BOOST_CHECK_EQUAL( c_subs, prev_c_subs );
       BOOST_CHECK_EQUAL( nc_subs, prev_nc_subs );
       validate_database();

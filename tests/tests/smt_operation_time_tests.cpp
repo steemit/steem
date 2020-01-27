@@ -1510,64 +1510,6 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       BOOST_REQUIRE( token.max_supply >= token.current_supply );
 
       validate_database();
-
-      share_type georges_burn = 500000;
-      transfer_operation transfer;
-      transfer.from = "george";
-      transfer.to = STEEM_NULL_ACCOUNT;
-      transfer.amount = asset( georges_burn, symbol );
-
-      BOOST_TEST_MESSAGE( " --- SMT token burn" );
-
-      tx.clear();
-      tx.operations.push_back( transfer );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, george_private_key );
-      db->push_transaction( tx, 0 );
-
-      george_share -= georges_burn;
-      supply       -= georges_burn;
-
-      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
-      BOOST_REQUIRE( db->get_balance( STEEM_NULL_ACCOUNT, symbol ).amount == 0 );
-      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
-
-      validate_database();
-
-      new_token_supply = token.max_supply - token.current_supply;
-
-      emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 6;
-      generate_blocks( emission_time );
-      generate_blocks( 11 );
-
-      BOOST_TEST_MESSAGE( " --- SMT token emissions re-emit after token burn" );
-
-      new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_george = new_token_supply * emissions_op3.emissions_unit.token_unit[ "george" ] / emissions_op3.emissions_unit.token_unit_sum();
-
-      BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
-
-      supply += new_token_supply;
-      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
-
-      market_maker += new_market_maker;
-      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
-
-      vesting += new_vesting;
-      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
-
-      rewards += new_rewards;
-      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
-
-      george_share += new_george;
-      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
-
-      BOOST_REQUIRE( token.current_supply == 22399999999 );
-      BOOST_REQUIRE( token.max_supply >= token.current_supply );
-
-      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
