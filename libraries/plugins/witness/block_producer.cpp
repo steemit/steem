@@ -112,8 +112,10 @@ void block_producer::apply_pending_transactions(
         fc::time_point_sec when,
         chain::signed_block& pending_block)
 {
-   // The 4 is for the max size of the transaction vector length
-   size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
+   size_t total_block_size = fc::raw::pack_size( pending_block );
+   total_block_size += sizeof( uint32_t ); // Transaction vector length
+   total_block_size += sizeof( uint32_t ); // Required automated actions vector length
+   total_block_size += sizeof( uint32_t ); // Optional automated actions vector length
    const auto& gpo = _db.get_dynamic_global_properties();
    uint64_t maximum_block_size = gpo.maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
    uint64_t maximum_transaction_partition_size = maximum_block_size -  ( maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
@@ -225,13 +227,10 @@ void block_producer::apply_pending_transactions(
       }
    }
 
-FC_TODO( "Remove ifdef when required actions are added" )
-#ifdef IS_TEST_NET
    if( required_actions.size() )
    {
       pending_block.extensions.insert( required_actions );
    }
-#endif
 
    const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
@@ -265,13 +264,10 @@ FC_TODO( "Remove ifdef when required actions are added" )
       _db.remove( *o );
    }
 
-FC_TODO( "Remove ifdef when optional actions are added" )
-#ifdef IS_TEST_NET
    if( optional_actions.size() )
    {
       pending_block.extensions.insert( optional_actions );
    }
-#endif
 
    _db.pending_transaction_session().reset();
 

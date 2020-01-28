@@ -9,7 +9,7 @@
 #include <steem/chain/pending_optional_action_object.hpp>
 
 #include <steem/plugins/witness/block_producer.hpp>
-
+#include <steem/chain/witness_objects.hpp>
 #include "../db_fixture/database_fixture.hpp"
 
 using namespace steem;
@@ -106,9 +106,18 @@ BOOST_AUTO_TEST_CASE( full_block )
 { try {
    resize_shared_mem( 1024 * 1024 * 32 ); // Due to number of objects in the test, it requires a large file. (32 MB)
 
-   // Verify correct delay semantics when a 25% of the block is full of required actions
-   BOOST_TEST_MESSAGE( "Testing full block action delay" );
+   BOOST_TEST_MESSAGE( " --- Testing full block action delay" );
 
+   const auto& witness_idx = db->get_index< witness_index, by_id >();
+   for ( auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr )
+   {
+      db->modify( *itr, []( witness_object& wo )
+      {
+         wo.props.maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT;
+      });
+   }
+
+   generate_blocks( 20 );
    generate_block();
 
    example_required_action req_action;
@@ -117,10 +126,10 @@ BOOST_AUTO_TEST_CASE( full_block )
 
    db_plugin->debug_update( [&num_actions, &req_action, &opt_action](database& db)
    {
-      uint64_t block_size = 0;
-      uint64_t action_partition_size = ( db.get_dynamic_global_properties().maximum_block_size * db.get_dynamic_global_properties().required_actions_partition_percent ) / STEEM_100_PERCENT;
+      uint64_t block_size = 143; // This padding is an approximation of the block header size
+      uint64_t maximum_block_size = db.get_dynamic_global_properties().maximum_block_size;
 
-      while( block_size < action_partition_size )
+      while( block_size < maximum_block_size )
       {
          req_action.account = STEEM_INIT_MINER_NAME + fc::to_string( num_actions );
          db.push_required_action( req_action, db.head_block_time() );
@@ -128,54 +137,69 @@ BOOST_AUTO_TEST_CASE( full_block )
          num_actions++;
       }
 
-      opt_action.account = STEEM_TEMP_ACCOUNT;
+      opt_action.account = STEEM_INIT_MINER_NAME;
+      db.push_optional_action( opt_action, db.head_block_time() );
+
+      opt_action.account = STEEM_INIT_MINER_NAME + fc::to_string( 1 );
       db.push_optional_action( opt_action, db.head_block_time() );
    });
 
    generate_block();
    signed_block block = *(db->fetch_block_by_number( db->head_block_num() ));
 
+   const auto& req_action_idx = db->get_index< pending_required_action_index, by_execution >();
+   const auto& opt_action_idx = db->get_index< pending_optional_action_index, by_execution >();
+
+   BOOST_REQUIRE( req_action_idx.size() == 1 );
+   BOOST_REQUIRE( req_action_idx.rbegin()->action.get< example_required_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( num_actions - 1 ) );
+   BOOST_REQUIRE( opt_action_idx.size() == 1 );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->action.get< example_optional_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( 1 ) );
+
    db->pop_block();
 
-   // In a full block scenario, there would be no optional actions included nor the last required action
-   // Clear optional actions and the last required action and resign.
+   BOOST_REQUIRE( req_action_idx.size() == num_actions );
+   BOOST_REQUIRE( req_action_idx.rbegin()->action.get< example_required_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( num_actions - 1 ) );
+   BOOST_REQUIRE( opt_action_idx.size() == 2 );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->action.get< example_optional_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( 1 ) );
+
+   // We are stripping off all optional actions from the block and one required action off the end of the vector
    block.extensions.erase( *block.extensions.rbegin() );
-   block.extensions.begin()->get< required_automated_actions >().pop_back();
+   block.extensions.rbegin()->get< required_automated_actions >().pop_back();
    block.sign( STEEM_INIT_PRIVATE_KEY );
 
    db->push_block( block );
 
-   {
-      const auto& pending_req_index = db->get_index< pending_required_action_index, by_execution >();
-      const auto& pending_opt_index = db->get_index< pending_optional_action_index, by_execution >();
+   BOOST_REQUIRE( req_action_idx.size() == 2 );
+   BOOST_REQUIRE( req_action_idx.rbegin()->action.get< example_required_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( num_actions - 1 ) );
+   BOOST_REQUIRE( opt_action_idx.size() == 2 );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->action.get< example_optional_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( 1 ) );
 
-      auto pending_req_action = pending_req_index.begin();
-      auto pending_opt_action = pending_opt_index.begin();
+   BOOST_REQUIRE( req_action_idx.begin() != req_action_idx.end() );
+   BOOST_REQUIRE( req_action_idx.rbegin()->action.get< example_required_action >() == req_action );
+   BOOST_REQUIRE( req_action_idx.rbegin()->execution_time == db->head_block_time() );
 
-      BOOST_REQUIRE( pending_req_action != pending_req_index.end() );
-      BOOST_REQUIRE( pending_req_action->action.get< example_required_action >() == req_action );
-      BOOST_REQUIRE( pending_req_action->execution_time == db->head_block_time() );
-      BOOST_REQUIRE( pending_opt_action != pending_opt_index.end() );
-      BOOST_REQUIRE( pending_opt_action->action.get< example_optional_action >().account == opt_action.account );
-      BOOST_REQUIRE( pending_opt_action->execution_time == db->head_block_time() );
-   }
+   BOOST_REQUIRE( opt_action_idx.begin() != opt_action_idx.end() );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->action.get< example_optional_action >().account == opt_action.account );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->execution_time == db->head_block_time() );
 
-   BOOST_TEST_MESSAGE( "--- Testing inclusion of delayed action" );
+   BOOST_TEST_MESSAGE( " --- Testing inclusion of delayed action" );
+
    generate_block();
 
-   {
-      const auto& pending_req_index = db->get_index< pending_required_action_index, by_execution >();
+   BOOST_REQUIRE( req_action_idx.begin() == req_action_idx.end() );
+   BOOST_REQUIRE( opt_action_idx.begin() == opt_action_idx.end() );
 
-      auto pending_req_action = pending_req_index.begin();
+   auto head_block = db->fetch_block_by_number( db->head_block_num() );
+   auto extensions_itr = head_block->extensions.rbegin();
+   auto opt_actions = extensions_itr->get< optional_automated_actions >();
 
-      BOOST_REQUIRE( pending_req_action == pending_req_index.end() );
+   BOOST_REQUIRE( opt_actions.rbegin()->get< example_optional_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( 1 ) );
+   BOOST_REQUIRE( opt_actions.begin()->get< example_optional_action >().account == STEEM_INIT_MINER_NAME );
 
-      auto block = db->fetch_block_by_number( db->head_block_num() );
-      auto extensions_itr = block->extensions.begin();
-      BOOST_REQUIRE( req_action == extensions_itr->get< required_automated_actions >().begin()->get< example_required_action >() );
-      ++extensions_itr;
-      BOOST_REQUIRE( opt_action.account == extensions_itr->get< optional_automated_actions >().begin()->get< example_optional_action >().account );
-   }
+   extensions_itr++;
+   auto req_actions = extensions_itr->get< required_automated_actions >();
+   BOOST_REQUIRE( req_actions.rbegin()->get< example_required_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( num_actions - 1 ) );
+   BOOST_REQUIRE( req_actions.begin()->get< example_required_action >().account == STEEM_INIT_MINER_NAME + fc::to_string( num_actions - 2 ) );
 
 } FC_LOG_AND_RETHROW() }
 
