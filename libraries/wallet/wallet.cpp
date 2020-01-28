@@ -552,8 +552,19 @@ public:
 
    void set_transaction_expiration( uint32_t tx_expiration_seconds )
    {
-      FC_ASSERT( tx_expiration_seconds < STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      FC_ASSERT( tx_expiration_seconds <= STEEM_MAX_TIME_UNTIL_EXPIRATION,
+         "Transaction expiration cannot exceed ${m}",
+         ("m", STEEM_MAX_TIME_UNTIL_EXPIRATION) );
       _tx_expiration_seconds = tx_expiration_seconds;
+   }
+
+   annotated_signed_transaction broadcast_transaction( signed_transaction tx )
+   {
+      auto result = _remote_api->broadcast_transaction_synchronous( tx );
+      annotated_signed_transaction rtrx(tx);
+      rtrx.block_num = result.block_num;
+      rtrx.transaction_num = result.trx_num;
+      return rtrx;
    }
 
    annotated_signed_transaction sign_transaction(
@@ -768,11 +779,7 @@ public:
       {
          try
          {
-            auto result = _remote_api->broadcast_transaction_synchronous( condenser_api::legacy_signed_transaction( tx ) );
-            annotated_signed_transaction rtrx(tx);
-            rtrx.block_num = result.block_num;
-            rtrx.transaction_num = result.trx_num;
-            return rtrx;
+            return broadcast_transaction( tx );
          }
          catch (const fc::exception& e)
          {
@@ -780,6 +787,34 @@ public:
             throw;
          }
       }
+      return tx;
+   }
+
+   annotated_signed_transaction sign_transaction_with_key(
+      signed_transaction tx,
+      public_key_type key,
+      bool broadcast )
+   {
+      auto it = _keys.find( key );
+      FC_ASSERT( it != _keys.end(), "Cannot find private key for ${k}", ("k",key) );
+      fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(it->second);
+      FC_ASSERT( optional_private_key.valid(), "Could not convert wif to private key" );
+
+      tx.sign( *optional_private_key, steem_chain_id, fc::ecc::fc_canonical );
+
+      if( broadcast )
+      {
+         try
+         {
+            return broadcast_transaction( tx );
+         }
+         catch (const fc::exception& e)
+         {
+            elog("Caught exception while broadcasting tx ${id}:  ${e}", ("id", tx.id().str())("e", e.to_detail_string()) );
+            throw;
+         }
+      }
+
       return tx;
    }
 
@@ -996,8 +1031,8 @@ public:
 
 namespace steem { namespace wallet {
 
-wallet_api::wallet_api(const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi)
-   : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, rapi))
+wallet_api::wallet_api(const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi, std::shared_ptr<fc::rpc::cli> _cli )
+   : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, rapi)), cli(_cli)
 {}
 
 wallet_api::~wallet_api(){}
@@ -1166,6 +1201,19 @@ condenser_api::legacy_signed_transaction wallet_api::sign_transaction(
    return condenser_api::legacy_signed_transaction( result );
 } FC_CAPTURE_AND_RETHROW( (tx) ) }
 
+condenser_api::legacy_signed_transaction wallet_api::sign_transaction_with_key(
+   condenser_api::legacy_signed_transaction tx, public_key_type key, bool broadcast /* = false */)
+{ try {
+   signed_transaction appbase_tx( tx );
+   condenser_api::annotated_signed_transaction result = my->sign_transaction_with_key( appbase_tx, key, broadcast );
+   return condenser_api::legacy_signed_transaction( result );
+} FC_CAPTURE_AND_RETHROW( (tx) ) }
+
+annotated_signed_transaction wallet_api::broadcast_transaction( condenser_api::legacy_signed_transaction tx )
+{ try {
+   return my->broadcast_transaction( tx );
+} FC_CAPTURE_AND_RETHROW( (tx) ) }
+
 operation wallet_api::get_prototype_operation(string operation_name) {
    return my->get_prototype_operation( operation_name );
 }
@@ -1262,6 +1310,12 @@ void wallet_api::set_password( string password )
       FC_ASSERT( !is_locked(), "The wallet must be unlocked before the password can be set" );
    my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
    lock();
+}
+
+void wallet_api::exit()
+{
+   if( !is_locked() ) lock();
+   cli->stop();
 }
 
 map<public_key_type, string> wallet_api::list_keys()

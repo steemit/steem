@@ -161,32 +161,49 @@ int main( int argc, char** argv )
          std::cout << "Starting a new wallet\n";
       }
 
-      // but allow CLI to override
-      if( options.count("server-rpc-endpoint") )
-         wdata.ws_server = options.at("server-rpc-endpoint").as<std::string>();
+      auto wallet_cli = std::make_shared<fc::rpc::cli>();
+
+      std::shared_ptr< wallet_api > wapiptr;
+      fc::http::websocket_connection_ptr con;
+      std::shared_ptr< fc::rpc::websocket_api_connection > apic;
+      boost::signals2::scoped_connection closed_connection;
 
       fc::http::websocket_client client( options["cert-authority"].as<std::string>() );
-      idump((wdata.ws_server));
-      auto con  = client.connect( wdata.ws_server );
-      auto apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
 
-      auto remote_api = apic->get_remote_api< steem::wallet::remote_node_api >( 0, "condenser_api" );
+      // but allow CLI to override
+      if( options.count("server-rpc-endpoint") )
+      {
+         wdata.ws_server = options.at("server-rpc-endpoint").as<std::string>();
 
-      auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api );
+         idump((wdata.ws_server));
+         con  = client.connect( wdata.ws_server );
+         apic = std::make_shared<fc::rpc::websocket_api_connection>(*con);
+
+         auto remote_api = apic->get_remote_api< steem::wallet::remote_node_api >( 0, "condenser_api" );
+
+         wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api, wallet_cli );
+      }
+      else
+      {
+         wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, fc::api< steem::wallet::remote_node_api >(), wallet_cli );
+      }
+
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
 
       fc::api<wallet_api> wapi(wapiptr);
 
-      auto wallet_cli = std::make_shared<fc::rpc::cli>();
       for( auto& name_formatter : wapiptr->get_result_formatters() )
          wallet_cli->format_result( name_formatter.first, name_formatter.second );
 
-      boost::signals2::scoped_connection closed_connection(con->closed.connect([=]{
-         cerr << "Server has disconnected us.\n";
-         wallet_cli->stop();
-      }));
-      (void)(closed_connection);
+      if( options.count("server-rpc-endpoint") )
+      {
+         closed_connection = boost::signals2::scoped_connection(con->closed.connect([=]{
+            cerr << "Server has disconnected us.\n";
+            wallet_cli->stop();
+         }));
+         (void)(closed_connection);
+      }
 
       if( wapiptr->is_new() )
       {

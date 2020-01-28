@@ -127,6 +127,10 @@ void cli::run()
       {
          std::cout << e.to_detail_string() << "\n";
       }
+      catch ( const std::exception& e )
+      {
+         std::cout << "exception: " << e.what() << "\n";
+      }
    }
 }
 
