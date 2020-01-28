@@ -115,7 +115,7 @@ struct smt_setup_emissions_operation : public base_operation
    smt_emissions_unit  emissions_unit;
 
    uint32_t            interval_seconds = 0;
-   uint32_t            interval_count = 0;
+   uint32_t            emission_count = 0;
 
    time_point_sec      lep_time;
    time_point_sec      rep_time;
@@ -277,7 +277,7 @@ FC_REFLECT(
    (schedule_time)
    (emissions_unit)
    (interval_seconds)
-   (interval_count)
+   (emission_count)
    (lep_time)
    (rep_time)
    (lep_abs_amount)

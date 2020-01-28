@@ -2620,7 +2620,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       time_point_sec schedule_time,
       string json_emission_unit,
       uint32_t interval_seconds,
-      uint32_t interval_count,
+      uint32_t emission_count,
       time_point_sec lep_time,
       time_point_sec rep_time,
       share_type lep_abs_amount,
@@ -2640,7 +2640,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       op.schedule_time = schedule_time;
       op.emissions_unit = fc::json::from_string( json_emission_unit ).as < smt_emissions_unit >();
       op.interval_seconds = interval_seconds;
-      op.interval_count = interval_count;
+      op.emission_count = emission_count;
       op.lep_time = lep_time;
       op.rep_time = rep_time;
       op.lep_abs_amount = lep_abs_amount;

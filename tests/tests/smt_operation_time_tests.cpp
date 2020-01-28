@@ -1044,7 +1044,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 2;
       emissions_op.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op.interval_count   = 24;
+      emissions_op.emission_count   = 25;
       emissions_op.symbol = symbol;
       emissions_op.schedule_time  = db->head_block_time() + ( STEEM_BLOCK_INTERVAL * 10 );
       emissions_op.lep_time       = emissions_op.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
@@ -1070,9 +1070,9 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op2.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
       emissions_op2.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op2.interval_count   = 24;
+      emissions_op2.emission_count   = 25;
       emissions_op2.symbol = symbol;
-      emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * emissions_op.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op2.schedule_time  = emissions_op.schedule_time + ( emissions_op.interval_seconds * ( emissions_op.emission_count - 1 ) ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op2.lep_time       = emissions_op2.schedule_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op2.rep_time       = emissions_op2.lep_time + ( STEEM_BLOCK_INTERVAL * STEEM_BLOCKS_PER_DAY * 2 );
       emissions_op2.lep_abs_amount = 50000000;
@@ -1096,9 +1096,9 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ]      = 1;
       emissions_op3.emissions_unit.token_unit[ "george" ]                     = 1;
       emissions_op3.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
-      emissions_op3.interval_count   = SMT_EMIT_INDEFINITELY;
+      emissions_op3.emission_count   = SMT_EMIT_INDEFINITELY;
       emissions_op3.symbol = symbol;
-      emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * emissions_op2.interval_count ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
+      emissions_op3.schedule_time  = emissions_op2.schedule_time + ( emissions_op2.interval_seconds * ( emissions_op2.emission_count - 1 ) ) + SMT_EMISSION_MIN_INTERVAL_SECONDS;
       emissions_op3.lep_time       = emissions_op3.schedule_time;
       emissions_op3.rep_time       = emissions_op3.schedule_time;
       emissions_op3.lep_abs_amount = 100000000;
@@ -1235,7 +1235,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       auto approximately_equal = []( share_type a, share_type b, uint32_t epsilon = 10 ) { return std::abs( a.value - b.value ) < epsilon; };
 
-      for ( uint32_t i = 0; i <= emissions_op.interval_count; i++ )
+      for ( uint32_t i = 0; i <= ( emissions_op.emission_count - 1 ); i++ )
       {
          validate_database();
 
@@ -1307,7 +1307,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
          generate_block();
       }
 
-      for ( uint32_t i = 0; i <= emissions_op2.interval_count; i++ )
+      for ( uint32_t i = 0; i <= ( emissions_op2.emission_count - 1 ); i++ )
       {
          validate_database();
 
@@ -1510,64 +1510,6 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       BOOST_REQUIRE( token.max_supply >= token.current_supply );
 
       validate_database();
-
-      share_type georges_burn = 500000;
-      transfer_operation transfer;
-      transfer.from = "george";
-      transfer.to = STEEM_NULL_ACCOUNT;
-      transfer.amount = asset( georges_burn, symbol );
-
-      BOOST_TEST_MESSAGE( " --- SMT token burn" );
-
-      tx.clear();
-      tx.operations.push_back( transfer );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      sign( tx, george_private_key );
-      db->push_transaction( tx, 0 );
-
-      george_share -= georges_burn;
-      supply       -= georges_burn;
-
-      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
-      BOOST_REQUIRE( db->get_balance( STEEM_NULL_ACCOUNT, symbol ).amount == 0 );
-      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
-
-      validate_database();
-
-      new_token_supply = token.max_supply - token.current_supply;
-
-      emission_time += SMT_EMISSION_MIN_INTERVAL_SECONDS * 6;
-      generate_blocks( emission_time );
-      generate_blocks( 11 );
-
-      BOOST_TEST_MESSAGE( " --- SMT token emissions re-emit after token burn" );
-
-      new_rewards = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_market_maker = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_vesting = new_token_supply * emissions_op3.emissions_unit.token_unit[ SMT_DESTINATION_VESTING ] / emissions_op3.emissions_unit.token_unit_sum();
-      new_george = new_token_supply * emissions_op3.emissions_unit.token_unit[ "george" ] / emissions_op3.emissions_unit.token_unit_sum();
-
-      BOOST_REQUIRE( approximately_equal( new_rewards + new_market_maker + new_vesting + new_george, new_token_supply ) );
-
-      supply += new_token_supply;
-      BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
-
-      market_maker += new_market_maker;
-      BOOST_REQUIRE( approximately_equal( token.market_maker.token_balance.amount, market_maker ) );
-
-      vesting += new_vesting;
-      BOOST_REQUIRE( approximately_equal( token.total_vesting_fund_smt, vesting ) );
-
-      rewards += new_rewards;
-      BOOST_REQUIRE( approximately_equal( token.reward_balance.amount, rewards ) );
-
-      george_share += new_george;
-      BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
-
-      BOOST_REQUIRE( token.current_supply == 22399999999 );
-      BOOST_REQUIRE( token.max_supply >= token.current_supply );
-
-      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1604,7 +1546,7 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
       token_emission_op.control_account = "creator";
       token_emission_op.emissions_unit.token_unit[ "alice" ] = 1;
       token_emission_op.schedule_time = setup_op.launch_time + STEEM_BLOCK_INTERVAL;
-      token_emission_op.interval_count = 1;
+      token_emission_op.emission_count = 1;
       token_emission_op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       token_emission_op.lep_abs_amount = 1000000;
       token_emission_op.rep_abs_amount = 1000000;

@@ -15,15 +15,6 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
 {
    try
    {
-      if ( db.has_hardfork( STEEM_SMT_HARDFORK ) && to_account.name == STEEM_NULL_ACCOUNT )
-      {
-         FC_ASSERT( liquid.amount >= 0, "The null account cannot be powered up into." );
-         asset new_vesting = asset( 0, liquid.symbol.get_paired_symbol() );
-         before_vesting_callback( new_vesting );
-         db.adjust_supply( -liquid );
-         return new_vesting;
-      }
-
       auto calculate_new_vesting = [ liquid ] ( price vesting_share_price ) -> asset
          {
          /**
