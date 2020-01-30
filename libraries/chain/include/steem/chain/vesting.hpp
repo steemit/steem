@@ -38,6 +38,14 @@ asset create_vesting2( database& db, const account_object& to_account, asset liq
       {
          FC_ASSERT( liquid.symbol.is_vesting() == false );
 
+         if( to_account.name == STEEM_NULL_ACCOUNT )
+         {
+            asset new_vesting = asset( 0, liquid.symbol.get_paired_symbol() );
+            before_vesting_callback( new_vesting );
+            db.adjust_supply( -liquid );
+            return new_vesting;
+         }
+
          const auto& token = db.get< smt_token_object, by_symbol >( liquid.symbol );
 
          if ( to_reward_balance )

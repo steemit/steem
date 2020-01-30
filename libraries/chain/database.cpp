@@ -1434,26 +1434,6 @@ void database::clear_null_account_balance()
 
    /////////////////////////////////////////////////////////////////////////////////////
 
-   if( null_account.balance.amount > 0 )
-   {
-      adjust_balance( null_account, -null_account.balance );
-   }
-
-   if( null_account.savings_balance.amount > 0 )
-   {
-      adjust_savings_balance( null_account, -null_account.savings_balance );
-   }
-
-   if( null_account.sbd_balance.amount > 0 )
-   {
-      adjust_balance( null_account, -null_account.sbd_balance );
-   }
-
-   if( null_account.savings_sbd_balance.amount > 0 )
-   {
-      adjust_savings_balance( null_account, -null_account.savings_sbd_balance );
-   }
-
    if( null_account.vesting_shares.amount > 0 )
    {
       const auto& gpo = get_dynamic_global_properties();
@@ -1463,21 +1443,6 @@ void database::clear_null_account_balance()
          g.total_vesting_shares -= null_account.vesting_shares;
          g.total_vesting_fund_steem -= vesting_shares_steem_value;
       });
-
-      modify( null_account, [&]( account_object& a )
-      {
-         a.vesting_shares.amount = 0;
-      });
-   }
-
-   if( null_account.reward_steem_balance.amount > 0 )
-   {
-      adjust_reward_balance( null_account, -null_account.reward_steem_balance );
-   }
-
-   if( null_account.reward_sbd_balance.amount > 0 )
-   {
-      adjust_reward_balance( null_account, -null_account.reward_sbd_balance );
    }
 
    if( null_account.reward_vesting_balance.amount > 0 )
@@ -1489,9 +1454,19 @@ void database::clear_null_account_balance()
          g.pending_rewarded_vesting_shares -= null_account.reward_vesting_balance;
          g.pending_rewarded_vesting_steem -= null_account.reward_vesting_steem;
       });
+   }
 
+   if( total_steem.amount > 0 || total_sbd.amount > 0 )
+   {
       modify( null_account, [&]( account_object& a )
       {
+         a.balance.amount = 0;
+         a.savings_balance.amount = 0;
+         a.sbd_balance.amount = 0;
+         a.savings_sbd_balance.amount = 0;
+         a.vesting_shares.amount = 0;
+         a.reward_steem_balance.amount = 0;
+         a.reward_sbd_balance.amount = 0;
          a.reward_vesting_steem.amount = 0;
          a.reward_vesting_balance.amount = 0;
       });
@@ -4538,10 +4513,17 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
+      if( a.name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -delta );
+      }
+      else
+      {
+         // No account object modification for SMT balance, hence separate handling here.
+         // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+         smt_regular_balance_operator balance_operator( delta );
+         adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
+      }
    }
    else
    {
@@ -4563,10 +4545,17 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
 
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
+      if( name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -delta );
+      }
+      else
+      {
+         // No account object modification for SMT balance, hence separate handling here.
+         // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+         smt_regular_balance_operator balance_operator( delta );
+         adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
+      }
    }
    else
    {
@@ -4638,8 +4627,16 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
+      if( a.name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -value_delta );
+      }
+      else
+      {
+         smt_reward_balance_operator balance_operator( value_delta, share_delta );
+         adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
+      }
+
       return;
    }
 
@@ -4656,8 +4653,16 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      smt_reward_balance_operator balance_operator( value_delta, share_delta );
-      adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
+      if( name ==  STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -value_delta );
+      }
+      else
+      {
+         smt_reward_balance_operator balance_operator( value_delta, share_delta );
+         adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
+      }
+
       return;
    }
 
