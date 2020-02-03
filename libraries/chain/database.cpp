@@ -3035,12 +3035,6 @@ void database::_apply_block( const signed_block& next_block )
 
    const uint32_t next_block_num = note.block_num;
 
-   BOOST_SCOPE_EXIT( this_ )
-   {
-      this_->_currently_processing_block_id.reset();
-   } BOOST_SCOPE_EXIT_END
-   _currently_processing_block_id = note.block_id;
-
    uint32_t skip = get_node_properties().skip_flags;
 
    _current_block_num    = next_block_num;
@@ -3858,9 +3852,7 @@ void database::update_global_dynamic_data( const signed_block& b )
       }
 
       dgp.head_block_number = b.block_num();
-      // Following FC_ASSERT should never fail, as _currently_processing_block_id is always set by caller
-      FC_ASSERT( _currently_processing_block_id.valid() );
-      dgp.head_block_id = *_currently_processing_block_id;
+      dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
       dgp.current_aslot += missed_blocks+1;
    } );

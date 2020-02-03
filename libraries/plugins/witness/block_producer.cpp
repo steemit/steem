@@ -12,6 +12,8 @@
 
 #include <fc/macros.hpp>
 
+#include <boost/scope_exit.hpp>
+
 namespace steem { namespace plugins { namespace witness {
 
 chain::signed_block block_producer::generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip)
@@ -41,7 +43,7 @@ chain::signed_block block_producer::generate_block(fc::time_point_sec when, cons
 }
 
 chain::signed_block block_producer::_generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key)
-{
+{ try {
    uint32_t skip = _db.get_node_properties().skip_flags;
    uint32_t slot_num = _db.get_slot_at_time( when );
    FC_ASSERT( slot_num > 0 );
@@ -81,7 +83,7 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
    _db.push_block( pending_block, skip );
 
    return pending_block;
-}
+} FC_LOG_AND_RETHROW() }
 
 void block_producer::adjust_hardfork_version_vote(const chain::witness_object& witness, chain::signed_block& pending_block)
 {
@@ -133,6 +135,8 @@ void block_producer::apply_pending_transactions(
    //
    _db.pending_transaction_session().reset();
    _db.pending_transaction_session() = _db.start_undo_session();
+
+   _db.update_global_dynamic_data( pending_block );
 
    FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
@@ -210,6 +214,9 @@ void block_producer::apply_pending_transactions(
          total_block_size = new_total_size;
          required_actions.push_back( pending_required_itr->action );
 
+         _db.remove( *pending_required_itr );
+         pending_required_itr = pending_required_action_idx.begin();
+/*
 #ifdef ENABLE_MIRA
          auto old = pending_required_itr++;
          if( !( pending_required_itr != pending_required_action_idx.end() && pending_required_itr->execution_time <= when ) )
@@ -220,6 +227,7 @@ void block_producer::apply_pending_transactions(
 #else
          ++pending_required_itr;
 #endif
+*/
       }
       catch( fc::exception& e )
       {
