@@ -136,8 +136,6 @@ void block_producer::apply_pending_transactions(
    _db.pending_transaction_session().reset();
    _db.pending_transaction_session() = _db.start_undo_session();
 
-   _db.update_global_dynamic_data( pending_block );
-
    FC_TODO( "Safe to remove after HF20 occurs because no more pre HF20 blocks will be generated" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_20 ) )
    {
@@ -193,6 +191,8 @@ void block_producer::apply_pending_transactions(
       wlog( "Postponed ${n} transactions due to block size limit", ("n", _db._pending_tx.size() - pending_block.transactions.size()) );
    }
 
+   _db.update_global_dynamic_data( pending_block );
+
    const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_execution >();
    auto pending_required_itr = pending_required_action_idx.begin();
    chain::required_automated_actions required_actions;
@@ -214,9 +214,6 @@ void block_producer::apply_pending_transactions(
          total_block_size = new_total_size;
          required_actions.push_back( pending_required_itr->action );
 
-         _db.remove( *pending_required_itr );
-         pending_required_itr = pending_required_action_idx.begin();
-/*
 #ifdef ENABLE_MIRA
          auto old = pending_required_itr++;
          if( !( pending_required_itr != pending_required_action_idx.end() && pending_required_itr->execution_time <= when ) )
@@ -227,7 +224,6 @@ void block_producer::apply_pending_transactions(
 #else
          ++pending_required_itr;
 #endif
-*/
       }
       catch( fc::exception& e )
       {

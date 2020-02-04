@@ -91,6 +91,7 @@ void smt_refund_evaluator::do_apply( const smt_refund_action& a )
 
 void smt_contributor_payout_evaluator::do_apply( const smt_contributor_payout_action& a )
 {
+   idump( (_db.head_block_time()) );
    using namespace steem::chain::util;
 
    share_type additional_token_supply = smt::ico::payout( _db, a.symbol, _db.get_account( a.contributor ), a.payouts );

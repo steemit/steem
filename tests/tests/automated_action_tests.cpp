@@ -21,7 +21,7 @@ BOOST_FIXTURE_TEST_SUITE( automated_action_tests, clean_database_fixture )
 
 
 BOOST_AUTO_TEST_CASE( push_pending_required_actions )
-{
+{ try {
    BOOST_TEST_MESSAGE( "Testing: push_pending_required_actions" );
 
    BOOST_TEST_MESSAGE( "--- Failure pushing invalid required action" );
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE( push_pending_required_actions )
    pending_req_action = itr->action.get< example_required_action >();
    pending_execution = itr->execution_time;
    BOOST_REQUIRE( pending_req_action == req_action );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   BOOST_REQUIRE( pending_execution == db->head_block_time() );
 
    BOOST_TEST_MESSAGE( "--- Success pushing action now" );
    req_action.account = STEEM_TEMP_ACCOUNT;
@@ -57,12 +57,12 @@ BOOST_AUTO_TEST_CASE( push_pending_required_actions )
    pending_req_action = itr->action.get< example_required_action >();
    pending_execution = itr->execution_time;
    BOOST_REQUIRE( pending_req_action == req_action );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
-}
+   BOOST_REQUIRE( pending_execution == db->head_block_time() );
+} FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_CASE( push_pending_optional_actions )
-{
+{ try {
    BOOST_TEST_MESSAGE( "Testing: push_pending_optional_actions" );
 
    BOOST_TEST_MESSAGE( "--- Failure pushing invalid required action" );
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( push_pending_optional_actions )
    pending_opt_action = itr->action.get< example_optional_action >();
    pending_execution = itr->execution_time;
    BOOST_REQUIRE( pending_opt_action.account == opt_action.account );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
+   BOOST_REQUIRE( pending_execution == db->head_block_time() );
 
    BOOST_TEST_MESSAGE( "--- Success pushing action now" );
    opt_action.account = STEEM_TEMP_ACCOUNT;
@@ -98,8 +98,8 @@ BOOST_AUTO_TEST_CASE( push_pending_optional_actions )
    pending_opt_action = itr->action.get< example_optional_action >();
    pending_execution = itr->execution_time;
    BOOST_REQUIRE( pending_opt_action.account == opt_action.account );
-   BOOST_REQUIRE( pending_execution == db->head_block_time() + STEEM_BLOCK_INTERVAL );
-}
+   BOOST_REQUIRE( pending_execution == db->head_block_time() );
+} FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_CASE( full_block )
@@ -176,11 +176,11 @@ BOOST_AUTO_TEST_CASE( full_block )
 
    BOOST_REQUIRE( req_action_idx.begin() != req_action_idx.end() );
    BOOST_REQUIRE( req_action_idx.rbegin()->action.get< example_required_action >() == req_action );
-   BOOST_REQUIRE( req_action_idx.rbegin()->execution_time == db->head_block_time() );
+   BOOST_REQUIRE( req_action_idx.rbegin()->execution_time == db->head_block_time() - STEEM_BLOCK_INTERVAL );
 
    BOOST_REQUIRE( opt_action_idx.begin() != opt_action_idx.end() );
    BOOST_REQUIRE( opt_action_idx.rbegin()->action.get< example_optional_action >().account == opt_action.account );
-   BOOST_REQUIRE( opt_action_idx.rbegin()->execution_time == db->head_block_time() );
+   BOOST_REQUIRE( opt_action_idx.rbegin()->execution_time == db->head_block_time() - STEEM_BLOCK_INTERVAL );
 
    BOOST_TEST_MESSAGE( " --- Testing inclusion of delayed action" );
 

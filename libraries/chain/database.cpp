@@ -1028,7 +1028,7 @@ struct action_validate_visitor
 
 void database::push_required_action( const required_automated_action& a, time_point_sec execution_time )
 {
-   time_point_sec exec_time = std::max( execution_time, head_block_time() + STEEM_BLOCK_INTERVAL );
+   time_point_sec exec_time = std::max( execution_time, head_block_time() );
 
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
@@ -1045,12 +1045,12 @@ void database::push_required_action( const required_automated_action& a, time_po
 
 void database::push_required_action( const required_automated_action& a )
 {
-   push_required_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
+   push_required_action( a, head_block_time() );
 }
 
 void database::push_optional_action( const optional_automated_action& a, time_point_sec execution_time )
 {
-   time_point_sec exec_time = std::max( execution_time, head_block_time() + STEEM_BLOCK_INTERVAL );
+   time_point_sec exec_time = std::max( execution_time, head_block_time() );
 
    static const action_validate_visitor validate_visitor;
    a.visit( validate_visitor );
@@ -1068,7 +1068,7 @@ void database::push_optional_action( const optional_automated_action& a, time_po
 
 void database::push_optional_action( const optional_automated_action& a )
 {
-   push_optional_action( a, head_block_time() + STEEM_BLOCK_INTERVAL );
+   push_optional_action( a, head_block_time() );
 }
 
 void database::notify_pre_apply_required_action( const required_action_notification& note )
