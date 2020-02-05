@@ -1745,7 +1745,12 @@ namespace detail
             std::current_exception() );
       }
 
-      return p.get_future().get();
+      auto future = p.get_future();
+      auto status = future.wait_for( boost::chrono::minutes( 1 ) );
+
+      FC_ASSERT( status == boost::future_status::ready, "A timeout has occurred during broadcast_transaction_synchronous" );
+
+      return future.get();
    }
 
    DEFINE_API_IMPL( condenser_api_impl, broadcast_block )
