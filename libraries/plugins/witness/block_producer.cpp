@@ -35,10 +35,12 @@ chain::signed_block block_producer::generate_block(fc::time_point_sec when, cons
          });
       _db.set_producing( false );
    }
-   catch ( ... )
+   catch( fc::exception& e )
    {
       _db.set_producing( false );
+      throw e;
    }
+
    return result;
 }
 
