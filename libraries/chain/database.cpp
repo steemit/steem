@@ -5529,7 +5529,8 @@ void database::validate_smt_invariants()const
          }
       }
 
-      // - Reward funds & market maker
+      // - Null account balance, reward funds & market maker
+      const auto& null_acct = get_account( STEEM_NULL_ACCOUNT );
       const auto& token_idx = get_index< smt_token_index, by_id >();
       for ( auto itr = token_idx.begin(); itr != token_idx.end(); ++itr )
       {
@@ -5538,6 +5539,10 @@ void database::validate_smt_invariants()const
 
          if ( itr->reward_balance.amount > 0 )
             theMap[ itr->liquid_symbol ].liquid += itr->reward_balance;
+
+         // The @null account should have no balance for any particular Smart Media Token.
+         FC_ASSERT( get_balance( null_acct, itr->liquid_symbol ).amount == 0 );
+         FC_ASSERT( get_balance( null_acct, itr->liquid_symbol.get_paired_symbol() ).amount == 0 );
       }
 
       // - Escrow & savings - no support of SMT is expected.

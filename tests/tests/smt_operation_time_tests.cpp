@@ -1530,7 +1530,6 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
 
       BOOST_REQUIRE( approximately_equal( db->get_balance( db->get_account( "george" ), symbol ).amount, george_share ) );
       BOOST_REQUIRE( db->get_balance( STEEM_NULL_ACCOUNT, symbol ).amount == 0 );
-      idump( (token.current_supply)(supply) );
       BOOST_REQUIRE( approximately_equal( token.current_supply, supply ) );
 
       validate_database();
