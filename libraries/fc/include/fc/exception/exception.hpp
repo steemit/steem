@@ -375,6 +375,23 @@ namespace fc
     throw; \
   FC_MULTILINE_MACRO_END
 
+#define FC_CATCH_AND_LOG( )  \
+   catch( fc::exception& er ) { \
+      wlog( "${details}", ("details",er.to_detail_string()) ); \
+   } catch( const std::exception& e ) {  \
+      fc::exception fce( \
+                FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())), \
+                fc::std_exception_code,\
+                typeid(e).name(), \
+                e.what() ) ; \
+      wlog( "${details}", ("details",fce.to_detail_string()) ); \
+   } catch( ... ) {  \
+      fc::unhandled_exception e( \
+                FC_LOG_MESSAGE( warn, "rethrow"), \
+                std::current_exception() ); \
+      wlog( "${details}", ("details",e.to_detail_string()) ); \
+   }
+
 #define FC_LOG_AND_RETHROW( )  \
    catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \

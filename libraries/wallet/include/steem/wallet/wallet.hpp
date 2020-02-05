@@ -9,6 +9,7 @@
 #include <fc/macros.hpp>
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
+#include <fc/rpc/cli.hpp>
 #include <fc/api.hpp>
 
 namespace steem { namespace wallet {
@@ -83,7 +84,7 @@ class wallet_api_impl;
 class wallet_api
 {
    public:
-      wallet_api( const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi );
+      wallet_api( const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi, std::shared_ptr<fc::rpc::cli> _cli );
       virtual ~wallet_api();
 
       bool copy_wallet_file( string destination_filename );
@@ -255,6 +256,11 @@ class wallet_api
        * @ingroup Wallet Management
        */
       void    set_password(string password);
+
+      /** Locks the wallet (if unlocked) and exits.
+       * @ingroup Wallet Management
+       */
+      void    exit();
 
       /** Dumps all private keys owned by the wallet.
        *
@@ -873,6 +879,27 @@ class wallet_api
          condenser_api::legacy_signed_transaction tx,
          bool broadcast = false);
 
+      /** Signs a transaction with a specific key.
+       *
+       * Given a fully-formed transaction, this adds a signature to the transaction for
+       * the given key. The specified key must be imported in to the wallet.
+       *
+       * @param tx the formed transaction
+       * @param key the public key to sign with
+       * @param broadcast true if you wish to broadcast the transaction
+       * @return the transaction with the additional signature
+       */
+      condenser_api::legacy_signed_transaction sign_transaction_with_key(
+         condenser_api::legacy_signed_transaction tx,
+         public_key_type key,
+         bool broadcast = false);
+
+      /** Broadcasts a transaction
+       * @param tx the signed transaction
+       * @return the transaction annotated with included block and tx num
+       */
+      annotated_signed_transaction broadcast_transaction( condenser_api::legacy_signed_transaction tx );
+
       /** Returns an uninitialized object representing a given blockchain operation.
        *
        * This returns a default-initialized object of the given type; it can be used
@@ -1043,13 +1070,6 @@ class wallet_api
        *  @param broadcast true if you wish to broadcast the transaction
        */
       condenser_api::legacy_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
-
-
-      std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
-
-      fc::signal<void(bool)> lock_changed;
-      std::shared_ptr<detail::wallet_api_impl> my;
-      void encrypt_keys();
 
       /**
        * Checks memos against private keys on account and imported in wallet
@@ -1290,6 +1310,15 @@ class wallet_api
        * Retrieve the current NAI pool.
        */
       vector< asset_symbol_type > get_nai_pool();
+
+      std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
+      fc::signal<void(bool)> lock_changed;
+
+private:
+      std::shared_ptr<detail::wallet_api_impl> my;
+      std::shared_ptr<fc::rpc::cli> cli;
+
+      void encrypt_keys();
 };
 
 struct plain_keys {
@@ -1315,7 +1344,7 @@ FC_REFLECT_ENUM( steem::wallet::authority_type, (owner)(active)(posting) )
 FC_API( steem::wallet::wallet_api,
         /// wallet api
         (help)(gethelp)
-        (about)(is_new)(is_locked)(lock)(unlock)(set_password)
+        (about)(is_new)(is_locked)(lock)(unlock)(set_password)(exit)
         (load_wallet_file)(save_wallet_file)
 
         /// key api
@@ -1391,6 +1420,8 @@ FC_API( steem::wallet::wallet_api,
         (get_prototype_operation)
         (serialize_transaction)
         (sign_transaction)
+        (sign_transaction_with_key)
+        (broadcast_transaction)
 
         (get_active_witnesses)
         (get_transaction)
