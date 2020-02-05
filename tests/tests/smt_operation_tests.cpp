@@ -2260,9 +2260,14 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent account" );
       op.emissions_unit.token_unit[ "charlie" ] = 10;
       FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent vesting account" );
+      op.emissions_unit.token_unit[ "$!charlie.vesting" ] = 10;
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
 
       BOOST_TEST_MESSAGE( " -- Successfully submitting a token emission" );
-      op.emissions_unit.token_unit.clear();
       op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
       PUSH_OP( op, alice_private_key );
 
