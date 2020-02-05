@@ -7,6 +7,7 @@
 namespace steem { namespace chain {
 
 using protocol::curve_id;
+using protocol::smt_ticker_type;
 
 enum class smt_phase : uint8_t
 {
@@ -87,6 +88,7 @@ public:
     */
    asset_symbol_type    liquid_symbol;
    account_name_type    control_account;
+   smt_ticker_type      desired_ticker;
    smt_phase            phase                           = smt_phase::setup;
    share_type           current_supply                  = 0;
    share_type           total_vesting_fund_smt          = 0;
@@ -440,6 +442,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (id)
    (liquid_symbol)
    (control_account)
+   (desired_ticker)
    (phase)
    (current_supply)
    (total_vesting_fund_smt)

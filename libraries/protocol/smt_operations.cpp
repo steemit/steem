@@ -15,6 +15,22 @@ void smt_admin_operation_validate( const Operation& o )
 void smt_create_operation::validate()const
 {
    smt_admin_operation_validate( *this );
+
+   if( desired_ticker != smt_ticker_type() )
+   {
+      FC_ASSERT( desired_ticker != STEEM_SYMBOL_STR, "SMT Ticker Symbol cannot be ${s}", ("s", STEEM_SYMBOL_STR) );
+      FC_ASSERT( desired_ticker != SBD_SYMBOL_STR, "SMT Ticker Symbol cannot be ${s}", ("s", SBD_SYMBOL_STR) );
+      FC_ASSERT( desired_ticker != VESTS_SYMBOL_STR, "SMT Ticker Symbol cannot be ${s}", ("s", VESTS_SYMBOL_STR) );
+
+      fc::string ticker_str = desired_ticker;
+
+      FC_ASSERT( ticker_str.length() >= 3, "SMT Ticker Symbol must be at least 3 characters long." );
+      for( size_t i = 0; i < ticker_str.length(); i++ )
+      {
+         FC_ASSERT( ticker_str[i] >= 'A' && ticker_str[i] <= 'Z', "SMT Ticker Symbol can only contain capital letters." );
+      }
+   }
+
    FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
    FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
    FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );

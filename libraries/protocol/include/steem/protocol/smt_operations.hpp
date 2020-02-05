@@ -20,6 +20,8 @@ struct smt_create_operation : public base_operation
    account_name_type control_account;
    asset_symbol_type symbol;
 
+   smt_ticker_type   desired_ticker;
+
    /// The amount to be transfered from @account to null account as elevation fee.
    asset             smt_creation_fee;
    /// Separately provided precision for clarity and redundancy.
@@ -223,6 +225,7 @@ FC_REFLECT(
    steem::protocol::smt_create_operation,
    (control_account)
    (symbol)
+   (desired_ticker)
    (smt_creation_fee)
    (precision)
    (extensions)
