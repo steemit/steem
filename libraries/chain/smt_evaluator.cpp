@@ -281,12 +281,11 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
       
      for ( const auto& e : o.emissions_unit.token_unit )
      {
-        if (smt::unit_target::is_account_name_type( e.first ))
+        if ( smt::unit_target::is_account_name_type( e.first ) )
            {
-              std::string name = e.first;
-              ilog(name);
-              auto acc = _db.find<account_object, by_name>(name);
-              FC_ASSERT(acc != nullptr, "Invalid emission destination, account ${a} must exist", ("a", name));
+              std::string name = smt::unit_target::get_unit_target_account( e.first );
+              auto acc = _db.find<account_object, by_name>( name );
+              FC_ASSERT( acc != nullptr, "Invalid emission destination, account ${a} must exist", ("a", name) );
            }
      }
 
