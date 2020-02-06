@@ -155,19 +155,19 @@ BOOST_AUTO_TEST_CASE( smt_founder_vesting )
    BOOST_TEST_MESSAGE( "Testing: is_founder_vesting and get_unit_target_account" );
 
    BOOST_TEST_MESSAGE( " -- Valid founder vesting" );
-   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$!alice.vesting" ) );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ) );
 
    BOOST_TEST_MESSAGE( " -- Account name parsing" );
-   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "$!alice.vesting" ) == account_name_type( "alice" ) );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ) == account_name_type( "alice" ) );
 
    BOOST_TEST_MESSAGE( " -- No possible room for an account name" );
-   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$!.vesting" ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_ACCOUNT_VESTING( "" ) ) == false );
 
    BOOST_TEST_MESSAGE( " -- Meant to be founder vesting" );
-   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$!@.vesting" ) );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_ACCOUNT_VESTING( "@" ) ) );
 
    BOOST_TEST_MESSAGE( " -- Invalid account name upon retrieval" );
-   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$!@.vesting" ), fc::assert_exception );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( SMT_DESTINATION_ACCOUNT_VESTING( "@" ) ), fc::assert_exception );
 
    BOOST_TEST_MESSAGE( " -- SMT special destinations" );
    BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_FROM_VESTING ) == false );
@@ -178,13 +178,13 @@ BOOST_AUTO_TEST_CASE( smt_founder_vesting )
    BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_VESTING ) == false );
 
    BOOST_TEST_MESSAGE( " -- Partial founder vesting special name" );
-   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "$!bob" ) == false );
-   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( "$!bob" ), fc::assert_exception );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( SMT_DESTINATION_ACCOUNT_PREFIX "bob" ) == false );
+   BOOST_REQUIRE_THROW( smt::unit_target::get_unit_target_account( SMT_DESTINATION_ACCOUNT_PREFIX "bob" ), fc::assert_exception );
 
-   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "bob.vesting" ) == false );
+   BOOST_REQUIRE( smt::unit_target::is_founder_vesting( "bob" SMT_DESTINATION_VESTING_SUFFIX ) == false );
 
    BOOST_TEST_MESSAGE( " -- Valid account name that appears to be founder vesting" );
-   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "bob.vesting" ) == account_name_type( "bob.vesting" ) );
+   BOOST_REQUIRE( smt::unit_target::get_unit_target_account( "bob" SMT_DESTINATION_VESTING_SUFFIX ) == account_name_type( "bob" SMT_DESTINATION_VESTING_SUFFIX ) );
 }
 
 BOOST_AUTO_TEST_CASE( tick_pricing_rules_validation )
