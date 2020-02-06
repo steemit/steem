@@ -65,12 +65,13 @@ class fixed_string_impl
    public:
       typedef _Storage Storage;
 
-      fixed_string_impl() = default;
+      fixed_string_impl() { memset( (char*)&data, 0, sizeof(data) ); }
       fixed_string_impl( const fixed_string_impl& c ) : data( c.data ){}
       fixed_string_impl( const char* str ) : fixed_string_impl( std::string( str ) ) {}
       fixed_string_impl( const std::string& str )
       {
          Storage d;
+         memset( (char*)&d, 0, sizeof(d) );
          if( str.size() <= sizeof(d) )
             memcpy( (char*)&d, str.c_str(), str.size() );
          else
@@ -173,6 +174,7 @@ struct fixed_string_size_for_impl< STORAGE_TYPE >                  \
    static const size_t size = SIZE;                                \
 };
 
+STEEM_DEFINE_FIXED_STRING_IMPL( 8, uint64_t)
 STEEM_DEFINE_FIXED_STRING_IMPL( 16, BOOST_IDENTITY_TYPE((fc::uint128_t)) )
 //STEEM_DEFINE_FIXED_STRING_IMPL( 24, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, uint64_t >)) )
 STEEM_DEFINE_FIXED_STRING_IMPL( 32, BOOST_IDENTITY_TYPE((fc::erpair< fc::uint128_t, fc::uint128_t >)) )

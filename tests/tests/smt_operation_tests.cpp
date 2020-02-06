@@ -1562,9 +1562,29 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: VESTS cannot be an SMT" );
       op.symbol = VESTS_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.symbol = get_new_smt_symbol( 3, db );
+
+      BOOST_TEST_MESSAGE( " -- Invalid SMT Ticker Symbols" );
+      op.desired_ticker = "TeST";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.desired_ticker = "TEST1";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.desired_ticker = "TEST!";
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.desired_ticker = STEEM_SYMBOL_STR;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.desired_ticker = VESTS_SYMBOL_STR;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      op.desired_ticker = SBD_SYMBOL_STR;
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      op.desired_ticker = "TEST";
 
       // If this fails, it could indicate a test above has failed for the wrong reasons
-      op.symbol = get_new_smt_symbol( 3, db );
       op.validate();
    }
    FC_LOG_AND_RETHROW()

@@ -33,11 +33,19 @@
 
 #ifdef IS_TEST_NET
 
+#define VESTS_SYMBOL_STR "VESTS"
+#define STEEM_SYMBOL_STR "TESTS"
+#define SBD_SYMBOL_STR   "TBD"
+
 #define VESTS_SYMBOL_U64  (uint64_t('V') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
 #define STEEM_SYMBOL_U64  (uint64_t('T') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
 #define SBD_SYMBOL_U64    (uint64_t('T') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
 
 #else
+
+#define VESTS_SYMBOL_STR "VESTS"
+#define STEEM_SYMBOL_STR "STEEM"
+#define SBD_SYMBOL_STR   "SBD"
 
 #define VESTS_SYMBOL_U64  (uint64_t('V') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
 #define STEEM_SYMBOL_U64  (uint64_t('S') | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('E') << 24) | (uint64_t('M') << 32))
