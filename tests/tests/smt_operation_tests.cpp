@@ -2230,7 +2230,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.emission_count = 2;
@@ -2268,14 +2268,14 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       op.emissions_unit.token_unit.clear();
 
       BOOST_TEST_MESSAGE( " -- Successfully submitting a token emission" );
-      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       PUSH_OP( op, alice_private_key );
 
       BOOST_TEST_MESSAGE( " -- Emissions range is overlapping" );
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_ACCOUNT_PREFIX "bob" SMT_DESTINATION_VESTING_SUFFIX ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS * 2 - 1 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.emission_count = 6;
