@@ -98,6 +98,7 @@ DEFINE_API_IMPL( rc_api_impl, find_rc_accounts )
       api_rc_account.rc_manabar = rc_account->rc_manabar;
       api_rc_account.max_rc_creation_adjustment = rc_account->max_rc_creation_adjustment;
       api_rc_account.max_rc = get_maximum_rc( account, *rc_account );
+      api_rc_account.rc_manabar.current_mana = std::min( api_rc_account.rc_manabar.current_mana, api_rc_account.max_rc );
 
       result.rc_accounts.emplace_back( api_rc_account );
    }
