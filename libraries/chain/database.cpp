@@ -1364,8 +1364,6 @@ void database::clear_witness_votes( const account_object& a )
       });
 }
 
-FC_TODO( "After the SMT hardfork is applied and we verify that no NOTIFYALERT!s have been logged through this function, "
-         "We can remove the clearing of null acccount balances from per-block-processing altogether." );
 void database::clear_null_account_balance()
 {
    if( !has_hardfork( STEEM_HARDFORK_0_14__327 ) ) return;
@@ -1458,42 +1456,29 @@ void database::clear_null_account_balance()
       });
    }
 
-   if ( total_steem.amount > 0 || total_sbd.amount > 0 )
+   if( total_steem.amount > 0 || total_sbd.amount > 0 )
    {
-      // We simply set all account balances to zero here because of the newly added
-      // assertions in the `adjust_*` family of functions that prevent negative deltas
-      // to the null account.
       modify( null_account, [&]( account_object& a )
       {
-         a.balance.amount                = 0;
-         a.savings_balance.amount        = 0;
-         a.sbd_balance.amount            = 0;
-         a.savings_sbd_balance.amount    = 0;
-         a.vesting_shares.amount         = 0;
-         a.reward_steem_balance.amount   = 0;
-         a.reward_sbd_balance.amount     = 0;
+         a.balance.amount = 0;
+         a.savings_balance.amount = 0;
+         a.sbd_balance.amount = 0;
+         a.savings_sbd_balance.amount = 0;
+         a.vesting_shares.amount = 0;
+         a.reward_steem_balance.amount = 0;
+         a.reward_sbd_balance.amount = 0;
+         a.reward_vesting_steem.amount = 0;
          a.reward_vesting_balance.amount = 0;
-         a.reward_vesting_steem.amount   = 0;
       });
    }
 
    //////////////////////////////////////////////////////////////
 
    if( total_steem.amount > 0 )
-   {
-      if ( has_hardfork( STEEM_SMT_HARDFORK ) )
-         wlog( "NOTIFYALERT! Adjusting total STEEM supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_steem) );
-
       adjust_supply( -total_steem );
-   }
 
    if( total_sbd.amount > 0 )
-   {
-      if ( has_hardfork( STEEM_SMT_HARDFORK ) )
-         wlog( "NOTIFYALERT! Adjusting total SBD supply in database::clear_null_account_balance(). Asset: ${a}", ("a", total_sbd) );
-
       adjust_supply( -total_sbd );
-   }
 
    post_push_virtual_operation( vop_op );
 }
@@ -4526,17 +4511,19 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
-      adjust_supply( -delta );
-   }
-   else if ( delta.symbol.space() == asset_symbol_type::smt_nai_space )
-   {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
+      if( a.name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -delta );
+      }
+      else
+      {
+         // No account object modification for SMT balance, hence separate handling here.
+         // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+         smt_regular_balance_operator balance_operator( delta );
+         adjust_smt_balance< account_regular_balance_object >( a.name, delta, false/*check_account*/, balance_operator );
+      }
    }
    else
    {
@@ -4556,17 +4543,19 @@ void database::adjust_balance( const account_name_type& name, const asset& delta
 
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( name == STEEM_NULL_ACCOUNT )
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
-      adjust_supply( -delta );
-   }
-   else if ( delta.symbol.space() == asset_symbol_type::smt_nai_space )
-   {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      smt_regular_balance_operator balance_operator( delta );
-      adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
+      if( name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -delta );
+      }
+      else
+      {
+         // No account object modification for SMT balance, hence separate handling here.
+         // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+         smt_regular_balance_operator balance_operator( delta );
+         adjust_smt_balance< account_regular_balance_object >( name, delta, false/*check_account*/, balance_operator );
+      }
    }
    else
    {
@@ -4578,62 +4567,54 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 {
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   modify( a, [&]( account_object& acnt )
    {
-      FC_ASSERT( delta.amount >= 0, "The null account cannot be withdrawn from." );
-      adjust_supply( -delta );
-   }
-   else
-   {
-      modify( a, [&]( account_object& acnt )
+      switch( delta.symbol.asset_num )
       {
-         switch( delta.symbol.asset_num )
-         {
-            case STEEM_ASSET_NUM_STEEM:
-               acnt.savings_balance += delta;
-               if( check_balance )
-               {
-                  FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
-               }
-               break;
-            case STEEM_ASSET_NUM_SBD:
-               if( a.savings_sbd_seconds_last_update != head_block_time() )
-               {
-                  acnt.savings_sbd_seconds += fc::uint128_t(a.savings_sbd_balance.amount.value) * (head_block_time() - a.savings_sbd_seconds_last_update).to_seconds();
-                  acnt.savings_sbd_seconds_last_update = head_block_time();
+         case STEEM_ASSET_NUM_STEEM:
+            acnt.savings_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
+            }
+            break;
+         case STEEM_ASSET_NUM_SBD:
+            if( a.savings_sbd_seconds_last_update != head_block_time() )
+            {
+               acnt.savings_sbd_seconds += fc::uint128_t(a.savings_sbd_balance.amount.value) * (head_block_time() - a.savings_sbd_seconds_last_update).to_seconds();
+               acnt.savings_sbd_seconds_last_update = head_block_time();
 
-                  if( acnt.savings_sbd_seconds > 0 &&
-                      (acnt.savings_sbd_seconds_last_update - acnt.savings_sbd_last_interest_payment).to_seconds() > STEEM_SBD_INTEREST_COMPOUND_INTERVAL_SEC )
+               if( acnt.savings_sbd_seconds > 0 &&
+                   (acnt.savings_sbd_seconds_last_update - acnt.savings_sbd_last_interest_payment).to_seconds() > STEEM_SBD_INTEREST_COMPOUND_INTERVAL_SEC )
+               {
+                  auto interest = acnt.savings_sbd_seconds / STEEM_SECONDS_PER_YEAR;
+                  interest *= get_dynamic_global_properties().sbd_interest_rate;
+                  interest /= STEEM_100_PERCENT;
+                  asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
+                  acnt.savings_sbd_balance += interest_paid;
+                  acnt.savings_sbd_seconds = 0;
+                  acnt.savings_sbd_last_interest_payment = head_block_time();
+
+                  if(interest > 0)
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
+
+                  modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
-                     auto interest = acnt.savings_sbd_seconds / STEEM_SECONDS_PER_YEAR;
-                     interest *= get_dynamic_global_properties().sbd_interest_rate;
-                     interest /= STEEM_100_PERCENT;
-                     asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
-                     acnt.savings_sbd_balance += interest_paid;
-                     acnt.savings_sbd_seconds = 0;
-                     acnt.savings_sbd_last_interest_payment = head_block_time();
-
-                     if(interest > 0)
-                        push_virtual_operation( interest_operation( a.name, interest_paid ) );
-
-                     modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
-                     {
-                        props.current_sbd_supply += interest_paid;
-                        props.virtual_supply += interest_paid * get_feed_history().current_median_history;
-                     } );
-                  }
+                     props.current_sbd_supply += interest_paid;
+                     props.virtual_supply += interest_paid * get_feed_history().current_median_history;
+                  } );
                }
-               acnt.savings_sbd_balance += delta;
-               if( check_balance )
-               {
-                  FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
-               }
-               break;
-            default:
-               FC_ASSERT( !"invalid symbol" );
-         }
-      } );
-   }
+            }
+            acnt.savings_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
+            }
+            break;
+         default:
+            FC_ASSERT( !"invalid symbol" );
+      }
+   } );
 }
 
 void database::adjust_reward_balance( const account_object& a, const asset& value_delta,
@@ -4642,24 +4623,24 @@ void database::adjust_reward_balance( const account_object& a, const asset& valu
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-   if ( a.name == STEEM_NULL_ACCOUNT )
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      FC_ASSERT( value_delta.amount >= 0, "The null account cannot be withdrawn from." );
-      adjust_supply( -value_delta );
-   }
-   else
-   {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
+      if( a.name == STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -value_delta );
+      }
+      else
       {
          smt_reward_balance_operator balance_operator( value_delta, share_delta );
          adjust_smt_balance< account_rewards_balance_object >( a.name, value_delta, false/*check_account*/, balance_operator );
-         return;
       }
 
-      modify_reward_balance(a, value_delta, share_delta, check_balance);
+      return;
    }
+
+   modify_reward_balance(a, value_delta, share_delta, check_balance);
 }
 
 void database::adjust_reward_balance( const account_name_type& name, const asset& value_delta,
@@ -4668,25 +4649,25 @@ void database::adjust_reward_balance( const account_name_type& name, const asset
    bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
    FC_ASSERT( value_delta.symbol.is_vesting() == false && share_delta.symbol.is_vesting() );
 
-   if ( name == STEEM_NULL_ACCOUNT )
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      FC_ASSERT( value_delta.amount >= 0, "The null account cannot be withdrawn from." );
-      adjust_supply( -value_delta );
-   }
-   else
-   {
-      // No account object modification for SMT balance, hence separate handling here.
-      // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
-      if( value_delta.symbol.space() == asset_symbol_type::smt_nai_space )
+      if( name ==  STEEM_NULL_ACCOUNT )
+      {
+         adjust_supply( -value_delta );
+      }
+      else
       {
          smt_reward_balance_operator balance_operator( value_delta, share_delta );
          adjust_smt_balance< account_rewards_balance_object >( name, value_delta, true/*check_account*/, balance_operator );
-         return;
       }
 
-      const auto& a = get_account( name );
-      modify_reward_balance(a, value_delta, share_delta, check_balance);
+      return;
    }
+
+   const auto& a = get_account( name );
+   modify_reward_balance(a, value_delta, share_delta, check_balance);
 }
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
@@ -5463,16 +5444,6 @@ void database::validate_invariants()const
 
       int64_t max_vote_denom = gpo.target_votes_per_period * STEEM_VOTING_MANA_REGENERATION_SECONDS;
       FC_ASSERT( max_vote_denom > 0, "target_votes_per_period overflowed" );
-
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).balance.amount                == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).sbd_balance.amount            == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).vesting_shares.amount         == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).savings_balance.amount        == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).savings_sbd_balance.amount    == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).reward_sbd_balance.amount     == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).reward_steem_balance.amount   == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).reward_vesting_balance.amount == 0 );
-      FC_ASSERT( get_account( STEEM_NULL_ACCOUNT ).reward_vesting_steem.amount   == 0 );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
@@ -5558,9 +5529,8 @@ void database::validate_smt_invariants()const
          }
       }
 
+      // - Null account balance, reward funds & market maker
       const auto& null_acct = get_account( STEEM_NULL_ACCOUNT );
-
-      // - Reward funds & market maker
       const auto& token_idx = get_index< smt_token_index, by_id >();
       for ( auto itr = token_idx.begin(); itr != token_idx.end(); ++itr )
       {
