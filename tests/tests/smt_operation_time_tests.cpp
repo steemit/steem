@@ -1634,5 +1634,113 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( smt_action_delay )
+{ try {
+   /* This test case is a little complicated.
+    *
+    * If block generation is delayed, there are pending required actions that
+    * cascade and are delayed, block generation can fail to include the
+    * required automated actions in correct order. This was due to a bug where
+    * generate_block was not updating the head block time. When including
+    * required actions, it was using the new block time, but when those actions
+    * cascade, they would use head_block_time + STEEM_BLOCK_INTERVAL.
+    *
+    * In this case the head block is at time 1 and the only pending required
+    * action is an ico_launch_action for SMT1 at time 4.
+    *
+    * We then push the setup for SMT2 and create a block at time 8. In this
+    * time, SMT 1 should complete its ICO, evaulate the ICO, and
+    * launch, happening at times 4 and 5.
+    *
+    * When we push the SMT2 setup ops, we want to push an ico_launch_action for
+    * SMT2 at time3, an smt_ico_evaulation_action at time 8 and finally
+    *
+    * In the buggy code, block generation does not update the head block time
+    * during generation.
+    *
+    * We evaluate the SMT2 op and push ico_launch_action at time 3.
+    *
+    * The required actions queue is:
+    *
+    * smt_ico_launch_action, SMT2: time 3
+    * smt_ico_evaluation_action, SMT1: time 4
+    *
+    * When evaluating actions, we will add the following actions in this order:
+    *
+    * smt_token_launch_action, SMT1: time 5
+    * smt_ico_evaluation_action, SMT2: time 8
+    * smt_token_launch_action, SMT2: time 9
+    *
+    * When pushing the block, head_block_time is updated, which floors action
+    * execution times to time 9. Because all of the actions are now added 'in
+    * the past' they share the same time and so their queue order is different.
+    *
+    * The added actions to the queue are:
+    *
+    * smt_ico_evaluation_action, SMT2: time 9
+    * smt_token_launch_action, SMT2: time 9
+    * smt_token_launch_action, SMT1: time 9
+    *
+    * These actions do not match the generated block and so the test fails.
+    *
+    * The fix that causes this test to pass is setting head_block_time in
+    * generate_block after transactions have been evaluted. This way actions
+    * are queued identically in generate_block and push_block.
+    *
+    * TL;DR This passes if generate_block and push_block have the same block
+    * time mechanics.
+    */
+   ACTORS( (alice) );
+   generate_block();
+
+   FUND( "alice", asset( 1000000, SBD_SYMBOL ) );
+   FUND( "alice", asset( 1000000, STEEM_SYMBOL ) );
+
+   example_required_action req_action;
+
+   signed_transaction tx;
+
+   smt_create_operation create_op;
+   create_op.control_account  = "alice";
+   create_op.smt_creation_fee = db->get_dynamic_global_properties().smt_creation_fee;
+   create_op.symbol           = get_new_smt_symbol( 3, db );
+   create_op.precision        = create_op.symbol.decimals();
+
+   smt_setup_operation setup_op;
+   setup_op.control_account         = "alice";
+   setup_op.symbol                  = create_op.symbol;
+   setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL; // time 1
+   setup_op.contribution_end_time   = setup_op.contribution_begin_time + 3 * STEEM_BLOCK_INTERVAL; // time 4
+   setup_op.steem_units_min         = 0;
+   setup_op.min_unit_ratio          = 50;
+   setup_op.max_unit_ratio          = 100;
+   setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
+   setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL; // time 5
+
+   tx.operations.push_back( create_op );
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   generate_block();
+
+   create_op.symbol                 = get_new_smt_symbol( 6, db );
+   create_op.precision              = create_op.symbol.decimals();
+   setup_op.symbol                  = create_op.symbol;
+   setup_op.contribution_begin_time = db->head_block_time() + 2 * STEEM_BLOCK_INTERVAL; // time 3
+   setup_op.contribution_end_time   = setup_op.contribution_begin_time + 5 * STEEM_BLOCK_INTERVAL; // time 8
+   setup_op.launch_time             = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL; // time 9
+
+   tx.clear();
+   tx.operations.push_back( create_op );
+   tx.operations.push_back( setup_op );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   generate_blocks( setup_op.launch_time, true );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

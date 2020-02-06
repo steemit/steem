@@ -86,8 +86,6 @@ namespace steem { namespace chain {
          bool is_pending_tx()const { return _is_pending_tx; }
          void set_pending_tx( bool p ) { _is_pending_tx = p; }
 
-         bool is_processing_block()const { return _currently_processing_block_id.valid(); }
-
          bool _is_producing = false;
          bool _is_pending_tx = false;
 
@@ -483,6 +481,8 @@ namespace steem { namespace chain {
          void retally_liquidity_weight();
          void update_virtual_supply();
 
+         void update_global_dynamic_data( const signed_block& b );
+
          bool has_hardfork( uint32_t hardfork )const;
 
          uint32_t get_hardfork()const;
@@ -550,7 +550,6 @@ namespace steem { namespace chain {
 
          void process_proposals( const block_notification& note );
 
-         void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void migrate_irreversible_state();
@@ -632,8 +631,6 @@ namespace steem { namespace chain {
          int32_t                       _current_trx_in_block = 0;
          uint16_t                      _current_op_in_trx    = 0;
          uint16_t                      _current_virtual_op   = 0;
-
-         optional< block_id_type >     _currently_processing_block_id;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 

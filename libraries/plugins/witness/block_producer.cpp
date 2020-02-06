@@ -12,6 +12,8 @@
 
 #include <fc/macros.hpp>
 
+#include <boost/scope_exit.hpp>
+
 namespace steem { namespace plugins { namespace witness {
 
 chain::signed_block block_producer::generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key, uint32_t skip)
@@ -33,15 +35,17 @@ chain::signed_block block_producer::generate_block(fc::time_point_sec when, cons
          });
       _db.set_producing( false );
    }
-   catch ( ... )
+   catch( fc::exception& e )
    {
       _db.set_producing( false );
+      throw e;
    }
+
    return result;
 }
 
 chain::signed_block block_producer::_generate_block(fc::time_point_sec when, const chain::account_name_type& witness_owner, const fc::ecc::private_key& block_signing_private_key)
-{
+{ try {
    uint32_t skip = _db.get_node_properties().skip_flags;
    uint32_t slot_num = _db.get_slot_at_time( when );
    FC_ASSERT( slot_num > 0 );
@@ -81,7 +85,7 @@ chain::signed_block block_producer::_generate_block(fc::time_point_sec when, con
    _db.push_block( pending_block, skip );
 
    return pending_block;
-}
+} FC_LOG_AND_RETHROW() }
 
 void block_producer::adjust_hardfork_version_vote(const chain::witness_object& witness, chain::signed_block& pending_block)
 {
@@ -112,8 +116,10 @@ void block_producer::apply_pending_transactions(
         fc::time_point_sec when,
         chain::signed_block& pending_block)
 {
-   // The 4 is for the max size of the transaction vector length
-   size_t total_block_size = fc::raw::pack_size( pending_block ) + 4;
+   size_t total_block_size = fc::raw::pack_size( pending_block );
+   total_block_size += sizeof( uint32_t ); // Transaction vector length
+   total_block_size += sizeof( uint32_t ); // Required automated actions vector length
+   total_block_size += sizeof( uint32_t ); // Optional automated actions vector length
    const auto& gpo = _db.get_dynamic_global_properties();
    uint64_t maximum_block_size = gpo.maximum_block_size; //STEEM_MAX_BLOCK_SIZE;
    uint64_t maximum_transaction_partition_size = maximum_block_size -  ( maximum_block_size * gpo.required_actions_partition_percent ) / STEEM_100_PERCENT;
@@ -187,6 +193,8 @@ void block_producer::apply_pending_transactions(
       wlog( "Postponed ${n} transactions due to block size limit", ("n", _db._pending_tx.size() - pending_block.transactions.size()) );
    }
 
+   _db.update_global_dynamic_data( pending_block );
+
    const auto& pending_required_action_idx = _db.get_index< chain::pending_required_action_index, chain::by_execution >();
    auto pending_required_itr = pending_required_action_idx.begin();
    chain::required_automated_actions required_actions;
@@ -225,13 +233,10 @@ void block_producer::apply_pending_transactions(
       }
    }
 
-FC_TODO( "Remove ifdef when required actions are added" )
-#ifdef IS_TEST_NET
    if( required_actions.size() )
    {
       pending_block.extensions.insert( required_actions );
    }
-#endif
 
    const auto& pending_optional_action_idx = _db.get_index< chain::pending_optional_action_index, chain::by_execution >();
    auto pending_optional_itr = pending_optional_action_idx.begin();
@@ -265,13 +270,10 @@ FC_TODO( "Remove ifdef when required actions are added" )
       _db.remove( *o );
    }
 
-FC_TODO( "Remove ifdef when optional actions are added" )
-#ifdef IS_TEST_NET
    if( optional_actions.size() )
    {
       pending_block.extensions.insert( optional_actions );
    }
-#endif
 
    _db.pending_transaction_session().reset();
 
