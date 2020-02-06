@@ -43,7 +43,7 @@ Originally, Steem was announced on the [Bitcointalk forum](https://bitcointalk.o
 
 # Installation
 
-Getting started with Steem is fairly simple. You can either choose to use docker-images, build with docker manually or build from source directly. All steps have been documented and while many different OS are supported, the easiest one is Ubuntu 16.04.
+Getting started with Steem is fairly simple. You can either choose to use docker-images, build with docker manually or build from source directly. All steps have been documented and while many different OS are supported, the easiest one is Ubuntu 18.04.
 
 ## Quickstart
 
@@ -90,11 +90,11 @@ on how to use lcov to check code test coverage.
 
 ## Config File
 
-Run `steemd` once to generate a data directory and config file. The default location is `witness_node_data_dir`. Kill `steemd`. It won't do anything without seed nodes. If you want to modify the config to your liking, we have two example configs used in the docker images. ( [consensus node](contrib/config-for-docker.ini), [full node](contrib/fullnode.config.ini) ) All options will be present in the default config file and there may be more options needing to be changed from the docker configs (some of the options actually used in images are configured via command line).
+Run `steemd` once to generate a data directory and config file. The default location is `~/.steemd`. Kill `steemd`. It won't do anything without seed nodes. If you want to modify the config to your liking, we have two example configs used in the docker images. ( [consensus node](contrib/config-for-docker.ini), [full node](contrib/fullnode.config.ini) ) All options will be present in the default config file and there may be more options needing to be changed from the docker configs (some of the options actually used in images are configured via command line).
 
 ## Seed Nodes
 
-A list of some seed nodes to get you started can be found in
+A list of most reliable seed nodes is compiled in steemd, and can also be found in 
 [doc/seednodes.txt](doc/seednodes.txt).
 
 This same file is baked into the docker images and can be overridden by
@@ -123,7 +123,8 @@ Steemd now supports a PaaS mode (platform as a service) that currently works wit
 
 ## System Requirements
 
-For a full web node, you need at least 110GB of disk space available. Steemd uses a memory mapped file which currently holds 56GB of data and by default is set to use up to 80GB. The block log of the blockchain itself is a little over 27GB. It's highly recommended to run steemd on a fast disk such as an SSD or by placing the shared memory files in a ramdisk and using the `--shared-file-dir=/path` command line option to specify where. At least 16GB of memory is required for a full web node. Seed nodes (p2p mode) can run with as little as 4GB of memory with a 24 GB state file. Any CPU with decent single core performance should be sufficient. Steemd is constantly growing. As of August 2017, these numbers were accurate, but you may find you need more disk space to run a full node. We are also constantly working on optimizing Steem's use of disk space.
+A dedicated server or virtual machine with a minimum of 64GB of RAM, and at least 350GB of fast local SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
+Any modern 64-bit CPU with decent single core performance should be sufficient. Steemd is constantly growing. As of August 2019, these numbers were accurate, but you may find you need more disk space to run a full node. We are also constantly working on optimizing Steem's use of disk space.
 
 On Linux use the following Virtual Memory configuration for the initial sync and subsequent replays. It is not needed for normal operation.
 

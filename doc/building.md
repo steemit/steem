@@ -30,6 +30,11 @@ By default this is off. Enabling will prevent the account history plugin queryin
 by id, but saving around 65% of CPU time when reindexing. Enabling this option is a
 huge gain if you do not need this functionality.
 
+### ENABLE_MIRA=[OFF/ON]
+
+By default this is off, builds steemd with BMIC MMAP. Enabling will build with MIRA.
+For MIRA ensure that user running steemd will have open files limit set high enough (`ulimit -n`)
+
 ## Building under Docker
 
 We ship a Dockerfile.  This builds both common node type binaries.
@@ -38,9 +43,9 @@ We ship a Dockerfile.  This builds both common node type binaries.
     cd steem
     docker build -t steemit/steem .
 
-## Building on Ubuntu 16.04
+## Building on Ubuntu 18.04 / 16.04
 
-For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
+After installing the right packages with `apt` Steem
 will build out of the box without further effort:
 
     sudo apt-get update
@@ -87,7 +92,6 @@ will build out of the box without further effort:
     git clone https://github.com/steemit/steem
     cd steem
     git checkout stable
-    git submodule update --init --recursive
     mkdir build
     cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -95,70 +99,6 @@ will build out of the box without further effort:
     make -j$(nproc) cli_wallet
     # optional
     make install  # defaults to /usr/local
-
-## Building on Ubuntu 14.04
-
-(It is strongly advised to use Ubuntu 16.04 LTS instead)
-
-Here are the required packages:
-
-    # Required packages
-    sudo apt-get install -y \
-        autoconf \
-        cmake3 \
-        g++ \
-        git \
-        libbz2-dev \
-        libsnappy-dev \
-        libssl-dev \
-        libtool \
-        make \
-        pkg-config \
-        doxygen \
-        libncurses5-dev \
-        libreadline-dev \
-        libbz2-dev \
-        python-dev \
-        perl \
-        python3 \
-        python3-jinja2 \
-        doxygen
-
-The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old.
-Steem requires Boost 1.58 (as in Ubuntu 16.04) and works with versions up to 1.60 (including).
-So building Steem on Ubuntu 14.04 requires downloading and installing a more recent
-version of Boost.
-
-According to [this mailing list
-post](http://boost.2283326.n4.nabble.com/1-58-1-bugfix-release-necessary-td4674686.html),
-Boost 1.58 is not compatible with gcc 4.8 (the default C++ compiler for
-Ubuntu 14.04) when compiling in C++11 mode (which Steem does).
-So we will use Boost 1.60.
-
-Here is how to build and install Boost 1.60 into your user's home directory
-(make sure you install all the packages above first):
-
-    export BOOST_ROOT=$HOME/opt/boost_1_60_0
-    URL='http://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.bz2/download'
-    wget -c "$URL" -O boost_1_60_0.tar.bz2
-    [ $( sha256sum boost_1_60_0.tar.bz2 | cut -d ' ' -f 1 ) == \
-        "686affff989ac2488f79a97b9479efb9f2abae035b5ed4d8226de6857933fd3b" ] \
-        || ( echo 'Corrupt download' ; exit 1 )
-    tar xjf boost_1_60_0.tar.bz2
-    cd boost_1_60_0
-    ./bootstrap.sh "--prefix=$BOOST_ROOT"
-    ./b2 install
-
-Then the instructions are the same as for steem:
-
-    git clone https://github.com/steemit/steem
-    cd steem
-    git checkout stable
-    git submodule update --init --recursive
-    mkdir build && cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make -j$(nproc) steemd
-    make -j$(nproc) cli_wallet
 
 ## Building on macOS X
 

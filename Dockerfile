@@ -41,7 +41,6 @@ RUN \
         jq \
         wget \
         virtualenv \
-        gdb \
         libgflags-dev \
         libsnappy-dev \
         zlib1g-dev \
@@ -64,7 +63,6 @@ RUN \
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
@@ -95,7 +93,6 @@ RUN \
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
@@ -134,7 +131,6 @@ RUN \
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
@@ -164,7 +160,6 @@ RUN \
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
