@@ -3293,7 +3293,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    op.max_supply  = STEEM_MAX_SHARE_SUPPLY;
    op.min_unit_ratio  = 50;
    op.max_unit_ratio  = 100;
-   op.steem_units_min = 0;
+   op.steem_satoshi_min = 0;
 
    op.validate();
 
@@ -3359,7 +3359,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    setup_op.symbol = symbol;
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
    setup_op.contribution_end_time   = setup_op.contribution_begin_time + fc::days( 30 );
-   setup_op.steem_units_min         = 0;
+   setup_op.steem_satoshi_min       = 0;
    setup_op.min_unit_ratio = 50;
    setup_op.max_unit_ratio = 100;
    setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
@@ -5179,7 +5179,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + fc::days( 30 );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio = 50;
       setup_op.max_unit_ratio = 100;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;

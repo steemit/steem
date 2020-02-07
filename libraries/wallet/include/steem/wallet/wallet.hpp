@@ -1257,7 +1257,7 @@ class wallet_api
        *  @param contribution_begin_time The start time of the ICO contribution process
        *  @param contribution_end_time The end time of the ICO contribution process
        *  @param launch_time The time in which a token should launch
-       *  @param steem_units_min The minimum steem units required for a successful ICO
+       *  @param steem_satoshi_min The minimum steem satoshis required for a successful ICO
        *  @param min_unit_ratio The minimum token unit ratio
        *  @param max_unit_ratio The maximum token unit ratio
        *  @param broadcast To broadcast this transaction or not
@@ -1269,7 +1269,7 @@ class wallet_api
          time_point_sec contribution_begin_time,
          time_point_sec contribution_end_time,
          time_point_sec launch_time,
-         share_type steem_units_min,
+         share_type steem_satoshi_min,
          uint32_t min_unit_ratio,
          uint32_t max_unit_ratio,
          bool broadcast );

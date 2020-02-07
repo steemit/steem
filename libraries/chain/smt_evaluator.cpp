@@ -169,18 +169,18 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
    const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
 
-   if ( o.steem_units_min > 0 )
+   if ( o.steem_satoshi_min > 0 )
    {
       auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
 
       FC_ASSERT( possible_hard_cap.valid(),
-         "An SMT with a Steem Units Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_units_min) );
+         "An SMT with a Steem Satoshi Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_satoshi_min) );
 
       share_type hard_cap = *possible_hard_cap;
 
-      FC_ASSERT( o.steem_units_min <= hard_cap,
-         "The Steem Units Minimum must be less than the hard cap. Steem Units Minimum: ${s}, Hard Cap: ${c}",
-         ("s", o.steem_units_min)("c", hard_cap) );
+      FC_ASSERT( o.steem_satoshi_min <= hard_cap,
+         "The Steem Satoshi Minimum must be less than the hard cap. Steem Satoshi Minimum: ${s}, Hard Cap: ${c}",
+         ("s", o.steem_satoshi_min)("c", hard_cap) );
    }
 
    _db.modify( _token, [&]( smt_token_object& token )
@@ -195,7 +195,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
-      token_ico_obj.steem_units_min = o.steem_units_min;
+      token_ico_obj.steem_satoshi_min = o.steem_satoshi_min;
       token_ico_obj.min_unit_ratio = o.min_unit_ratio;
       token_ico_obj.max_unit_ratio = o.max_unit_ratio;
    } );

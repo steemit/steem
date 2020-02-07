@@ -65,8 +65,8 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       setup_op.control_account = "alice";
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min      = 2400001;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_satoshi_min       = 2400001;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
       setup_op.min_unit_ratio = 1;
       setup_op.max_unit_ratio = 2;
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -1124,7 +1124,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.max_supply              = 22400000000;
       setup_op.max_unit_ratio          = 100;
       setup_op.min_unit_ratio          = 50;
@@ -1593,7 +1593,7 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time;
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -1712,7 +1712,7 @@ BOOST_AUTO_TEST_CASE( smt_action_delay )
    setup_op.symbol                  = create_op.symbol;
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL; // time 1
    setup_op.contribution_end_time   = setup_op.contribution_begin_time + 3 * STEEM_BLOCK_INTERVAL; // time 4
-   setup_op.steem_units_min         = 0;
+   setup_op.steem_satoshi_min       = 0;
    setup_op.min_unit_ratio          = 50;
    setup_op.max_unit_ratio          = 100;
    setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;

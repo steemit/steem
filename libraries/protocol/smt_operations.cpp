@@ -221,7 +221,7 @@ void smt_setup_operation::validate()const
    FC_ASSERT( contribution_begin_time > STEEM_GENESIS_TIME, "Contribution begin time must be greater than ${t}", ("t", STEEM_GENESIS_TIME) );
    FC_ASSERT( contribution_end_time >= contribution_begin_time, "Contribution end time must be equal to or later than contribution begin time" );
    FC_ASSERT( launch_time >= contribution_end_time, "Launch time must be equal to or later than the contribution end time" );
-   FC_ASSERT( steem_units_min >= 0, "Steem units min must be greater than or equal to 0" );
+   FC_ASSERT( steem_satoshi_min >= 0, "Steem satoshi minimum must be greater than or equal to 0" );
 }
 
 struct smt_set_runtime_parameters_operation_visitor

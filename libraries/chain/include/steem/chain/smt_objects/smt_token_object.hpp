@@ -143,7 +143,7 @@ public:
    time_point_sec                contribution_begin_time;
    time_point_sec                contribution_end_time;
    time_point_sec                launch_time;
-   share_type                    steem_units_min         = -1;
+   share_type                    steem_satoshi_min       = -1;
    uint32_t                      min_unit_ratio          = 0;
    uint32_t                      max_unit_ratio          = 0;
    asset                         contributed             = asset( 0, STEEM_SYMBOL );
@@ -475,7 +475,7 @@ FC_REFLECT( steem::chain::smt_ico_object,
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
-   (steem_units_min)
+   (steem_satoshi_min)
    (min_unit_ratio)
    (max_unit_ratio)
    (contributed)
