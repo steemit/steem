@@ -168,20 +168,53 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
    const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
+   share_type hard_cap;
 
    if ( o.steem_units_min > 0 )
    {
-      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+      auto possible_hard_cap = util::smt::ico::get_ico_steem_hard_cap( _db, o.symbol );
 
       FC_ASSERT( possible_hard_cap.valid(),
          "An SMT with a Steem Units Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_units_min) );
 
-      share_type hard_cap = *possible_hard_cap;
+      hard_cap = *possible_hard_cap;
 
       FC_ASSERT( o.steem_units_min <= hard_cap,
          "The Steem Units Minimum must be less than the hard cap. Steem Units Minimum: ${s}, Hard Cap: ${c}",
          ("s", o.steem_units_min)("c", hard_cap) );
    }
+
+   auto ico_tiers = _db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >().equal_range( _token.liquid_symbol );
+   share_type prev_tier_cap = 0;
+   share_type total_tokens = 0;
+
+   for( ; ico_tiers.first != ico_tiers.second; ++ico_tiers.first )
+   {
+      fc::uint128_t max_token_units = ( hard_cap / ico_tiers.first->generation_unit.steem_unit_sum() ).value * o.min_unit_ratio;
+      FC_ASSERT( max_token_units.hi == 0 && max_token_units.lo <= uint64_t( std::numeric_limits<int64_t>::max() ),
+         "Overflow detected in ICO tier '${t}'", ("tier", *ico_tiers.first) );
+
+      // This is done with share_types, which are safe< int64_t >. Overflow is detected but does not provide
+      // a useful error message. Do the checks manually to provide actionable information.
+      fc::uint128_t new_tokens = ( ( ico_tiers.first->steem_units_cap - prev_tier_cap ).value / ico_tiers.first->generation_unit.steem_unit_sum() );
+
+      new_tokens *= o.min_unit_ratio;
+      FC_ASSERT( new_tokens.hi == 0 && new_tokens.lo <= uint64_t( std::numeric_limits<int64_t>::max() ),
+         "Overflow detected in ICO tier '${t}'", ("tier", *ico_tiers.first) );
+
+      new_tokens *= ico_tiers.first->generation_unit.token_unit_sum();
+      FC_ASSERT( new_tokens.hi == 0 && new_tokens.lo <= uint64_t( std::numeric_limits<int64_t>::max() ),
+         "Overflow detected in ICO tier '${t}'", ("tier", *ico_tiers.first) );
+
+      total_tokens += new_tokens.to_int64();
+      prev_tier_cap = ico_tiers.first->steem_units_cap;
+   }
+
+   FC_ASSERT( total_tokens < STEEM_MAX_SHARE_SUPPLY,
+      "Max token supply for ${n} can exceed ${m}. Calculated: ${c}",
+      ("n", _token.liquid_symbol)
+      ("m", STEEM_MAX_SHARE_SUPPLY)
+      ("c", total_tokens) );
 
    _db.modify( _token, [&]( smt_token_object& token )
    {
@@ -374,7 +407,7 @@ void smt_contribute_evaluator::do_apply( const smt_contribute_operation& o )
       FC_ASSERT( token->phase >= smt_phase::ico, "SMT has not begun accepting contributions" );
       FC_ASSERT( token->phase < smt_phase::ico_completed, "SMT is no longer accepting contributions" );
 
-      auto possible_hard_cap = util::smt::ico::steem_units_hard_cap( _db, o.symbol );
+      auto possible_hard_cap = util::smt::ico::get_ico_steem_hard_cap( _db, o.symbol );
       FC_ASSERT( possible_hard_cap.valid(), "The specified token does not feature an ICO" );
       share_type hard_cap = *possible_hard_cap;
 

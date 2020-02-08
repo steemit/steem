@@ -206,20 +206,20 @@ static payout_vars calculate_payout_vars( database& db, const smt_ico_object& ic
 {
    payout_vars vars;
 
-   auto hard_cap = util::smt::ico::steem_units_hard_cap( db, ico.symbol );
+   auto hard_cap = util::smt::ico::get_ico_steem_hard_cap( db, ico.symbol );
    FC_ASSERT( hard_cap.valid(), "Unable to find ICO hard cap." );
    share_type steem_hard_cap = *hard_cap;
 
    vars.steem_units_sent = contribution_amount / generation_unit.steem_unit_sum();
-   auto contributed_steem_units = ico.contributed.amount / generation_unit.steem_unit_sum();
+   auto total_contributed_steem_units = ico.contributed.amount / generation_unit.steem_unit_sum();
    auto steem_units_hard_cap = steem_hard_cap / generation_unit.steem_unit_sum();
 
-   auto generated_token_units = std::min(
-      contributed_steem_units * ico.max_unit_ratio,
+   auto total_generated_token_units = std::min(
+      total_contributed_steem_units * ico.max_unit_ratio,
       steem_units_hard_cap * ico.min_unit_ratio
    );
 
-   vars.unit_ratio = generated_token_units / contributed_steem_units;
+   vars.unit_ratio = total_generated_token_units / total_contributed_steem_units;
 
    return vars;
 }
@@ -443,7 +443,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
    return action_scheduled;
 }
 
-fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbol_type& a )
+fc::optional< share_type > get_ico_steem_hard_cap( database& db, const asset_symbol_type& a )
 {
    const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
 
