@@ -206,7 +206,7 @@ static payout_vars calculate_payout_vars( database& db, const smt_ico_object& ic
 {
    payout_vars vars;
 
-   auto hard_cap = util::smt::ico::steem_units_hard_cap( db, ico.symbol );
+   auto hard_cap = util::smt::ico::steem_hard_cap( db, ico.symbol );
    FC_ASSERT( hard_cap.valid(), "Unable to find ICO hard cap." );
    share_type steem_hard_cap = *hard_cap;
 
@@ -239,7 +239,7 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       payout_action.symbol = itr->symbol;
 
       const auto& ico = db.get< smt_ico_object, by_symbol >( itr->symbol );
-      const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+      const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >();
 
       using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
@@ -251,8 +251,8 @@ bool schedule_next_contributor_payout( database& db, const asset_symbol_type& a 
       {
          auto tier_contributions = unprocessed_contributions;
 
-         if ( ico.processed_contributions + unprocessed_contributions > ico_tier->steem_units_cap )
-            tier_contributions = ico_tier->steem_units_cap - ico.processed_contributions;
+         if ( ico.processed_contributions + unprocessed_contributions > ico_tier->steem_satoshi_cap )
+            tier_contributions = ico_tier->steem_satoshi_cap - ico.processed_contributions;
 
          generation_unit_shares.push_back( std::make_tuple( ico_tier->generation_unit, tier_contributions ) );
 
@@ -322,7 +322,7 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
 {
    bool action_scheduled = false;
    const auto& ico = db.get< smt_ico_object, by_symbol >( a );
-   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >();
 
    using generation_unit_share = std::tuple< smt_generation_unit, share_type >;
 
@@ -334,12 +334,12 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
    {
       auto tier_contributions = unprocessed_contributions;
 
-      if ( ico.contributed.amount > ico_tier->steem_units_cap )
+      if ( ico.contributed.amount > ico_tier->steem_satoshi_cap )
       {
          if ( last_ico_tier != ico_tier_idx.end() )
-            tier_contributions = last_ico_tier->steem_units_cap - ico_tier->steem_units_cap;
+            tier_contributions = last_ico_tier->steem_satoshi_cap - ico_tier->steem_satoshi_cap;
          else
-            tier_contributions = ico_tier->steem_units_cap;
+            tier_contributions = ico_tier->steem_satoshi_cap;
       }
 
       generation_unit_shares.push_back( std::make_tuple( ico_tier->generation_unit, tier_contributions ) );
@@ -443,9 +443,9 @@ bool schedule_founder_payout( database& db, const asset_symbol_type& a )
    return action_scheduled;
 }
 
-fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbol_type& a )
+fc::optional< share_type > steem_hard_cap( database& db, const asset_symbol_type& a )
 {
-   const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   const auto& idx = db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >();
 
    const auto range = idx.equal_range( a );
 
@@ -453,7 +453,7 @@ fc::optional< share_type > steem_units_hard_cap( database& db, const asset_symbo
    while ( itr != range.first )
    {
       --itr;
-      return itr->steem_units_cap;
+      return itr->steem_satoshi_cap;
    }
 
    return {};
@@ -463,7 +463,7 @@ void remove_ico_objects( database& db, const asset_symbol_type& symbol )
 {
    db.remove( db.get< smt_ico_object, by_symbol >( symbol ) );
 
-   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >();
    auto itr = ico_tier_idx.lower_bound( symbol );
    while( itr != ico_tier_idx.end() && itr->symbol == symbol )
    {
@@ -478,7 +478,7 @@ std::size_t ico_tier_size( database& db, const asset_symbol_type& symbol )
 {
    std::size_t num_ico_tiers = 0;
 
-   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >();
+   const auto& ico_tier_idx = db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >();
    auto ico_tier_itr = ico_tier_idx.lower_bound( symbol );
    while ( ico_tier_itr != ico_tier_idx.end() && ico_tier_itr->symbol == symbol )
    {

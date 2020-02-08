@@ -80,13 +80,13 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       ico_tier_op1.control_account = "alice";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 2400001;
+      ico_tier_op1.steem_satoshi_cap = 2400001;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "alice";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 4000000;
+      ico_tier_op2.steem_satoshi_cap = 4000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -257,13 +257,13 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy1;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_capped_generation_policy capped_generation_policy2;
       capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 3;
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy2;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -1142,13 +1142,13 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );

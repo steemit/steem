@@ -217,7 +217,7 @@ public:
 
    id_type                                id;
    asset_symbol_type                      symbol;
-   share_type                             steem_units_cap = -1;
+   share_type                             steem_satoshi_cap = -1;
    shared_smt_generation_unit             generation_unit;
 };
 
@@ -379,17 +379,17 @@ typedef multi_index_container <
    allocator< smt_ico_object >
 > smt_ico_index;
 
-struct by_symbol_steem_units_cap;
+struct by_symbol_steem_satoshi_cap;
 
 typedef multi_index_container <
    smt_ico_tier_object,
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_ico_tier_object, smt_ico_tier_object_id_type, &smt_ico_tier_object::id > >,
-      ordered_unique< tag< by_symbol_steem_units_cap >,
+      ordered_unique< tag< by_symbol_steem_satoshi_cap >,
          composite_key< smt_ico_tier_object,
             member< smt_ico_tier_object, asset_symbol_type, &smt_ico_tier_object::symbol >,
-            member< smt_ico_tier_object, share_type, &smt_ico_tier_object::steem_units_cap >
+            member< smt_ico_tier_object, share_type, &smt_ico_tier_object::steem_satoshi_cap >
          >,
          composite_key_compare< std::less< asset_symbol_type >, std::less< share_type > >
       >
@@ -489,7 +489,7 @@ FC_REFLECT( steem::chain::shared_smt_generation_unit,
 FC_REFLECT( steem::chain::smt_ico_tier_object,
    (id)
    (symbol)
-   (steem_units_cap)
+   (steem_satoshi_cap)
    (generation_unit)
 )
 

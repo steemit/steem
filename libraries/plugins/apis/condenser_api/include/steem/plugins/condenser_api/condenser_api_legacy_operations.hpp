@@ -777,7 +777,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       legacy_smt_setup_ico_tier_operation( const smt_setup_ico_tier_operation& op ) :
          control_account( op.control_account ),
          symbol( op.symbol ),
-         steem_units_cap( op.steem_units_cap ),
+         steem_satoshi_cap( op.steem_satoshi_cap ),
          remove( op.remove )
       {
          op.generation_policy.visit( convert_to_legacy_static_variant< legacy_smt_generation_policy >( generation_policy ) );
@@ -788,7 +788,7 @@ namespace steem { namespace plugins { namespace condenser_api {
          smt_setup_ico_tier_operation op;
          op.control_account = control_account;
          op.symbol = symbol;
-         op.steem_units_cap = steem_units_cap;
+         op.steem_satoshi_cap = steem_satoshi_cap;
          op.generation_policy = generation_policy;
          op.remove = remove;
 
@@ -798,7 +798,7 @@ namespace steem { namespace plugins { namespace condenser_api {
       account_name_type            control_account;
       asset_symbol_type            symbol;
 
-      share_type                   steem_units_cap;
+      share_type                   steem_satoshi_cap;
       legacy_smt_generation_policy generation_policy;
       bool                         remove = false;
       extensions_type              extensions;
@@ -1910,7 +1910,7 @@ FC_REFLECT( steem::plugins::condenser_api::legacy_curation_reward_operation, (cu
 FC_REFLECT( steem::plugins::condenser_api::legacy_comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_operation, (control_account)(symbol)(max_supply)(contribution_begin_time)(contribution_end_time)(launch_time)(steem_satoshi_min)(min_unit_ratio)(max_unit_ratio)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_smt_set_setup_parameters_operation, (control_account)(symbol)(setup_parameters)(extensions) )
-FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_ico_tier_operation, (control_account)(symbol)(steem_units_cap)(generation_policy)(remove)(extensions) )
+FC_REFLECT( steem::plugins::condenser_api::legacy_smt_setup_ico_tier_operation, (control_account)(symbol)(steem_satoshi_cap)(generation_policy)(remove)(extensions) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_smt_set_runtime_parameters_operation, (control_account)(symbol)(runtime_parameters)(extensions))
 FC_REFLECT( steem::plugins::condenser_api::legacy_fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steem::plugins::condenser_api::legacy_liquidity_reward_operation, (owner)(payout) )

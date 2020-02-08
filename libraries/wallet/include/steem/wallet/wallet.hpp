@@ -1279,14 +1279,14 @@ class wallet_api
        *
        *  @param control_account The name of the controlling account
        *  @param symbol The asset symbol of the created token
-       *  @param steem_units_cap The maximum amount of STEEM this ICO tier applies to
+       *  @param steem_satoshi_cap The maximum amount of STEEM this ICO tier applies to
        *  @param json_generation_policy The steem and token destination routes of the ICO process
        *  @param broadcast To broadcast this transaction or not
        */
       condenser_api::legacy_signed_transaction smt_setup_ico_tier(
          account_name_type control_account,
          asset_symbol_type symbol,
-         share_type steem_units_cap,
+         share_type steem_satoshi_cap,
          string json_generation_policy,
          bool broadcast );
 

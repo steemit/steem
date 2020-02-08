@@ -96,7 +96,7 @@ struct smt_setup_ico_tier_operation : public base_operation
    account_name_type     control_account;
    asset_symbol_type     symbol;
 
-   share_type            steem_units_cap;
+   share_type            steem_satoshi_cap;
    smt_generation_policy generation_policy;
    bool                  remove = false;
 
@@ -267,7 +267,7 @@ FC_REFLECT(
    steem::protocol::smt_setup_ico_tier_operation,
    (control_account)
    (symbol)
-   (steem_units_cap)
+   (steem_satoshi_cap)
    (generation_policy)
    (remove)
    (extensions)

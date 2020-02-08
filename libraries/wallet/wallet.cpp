@@ -2714,7 +2714,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    condenser_api::legacy_signed_transaction wallet_api::smt_setup_ico_tier(
       account_name_type control_account,
       asset_symbol_type symbol,
-      share_type steem_units_cap,
+      share_type steem_satoshi_cap,
       string json_generation_policy,
       bool broadcast )
    {
@@ -2724,7 +2724,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       op.control_account = control_account;
       op.symbol = symbol;
       op.generation_policy = fc::json::from_string( json_generation_policy ).as< smt_generation_policy >();
-      op.steem_units_cap = steem_units_cap;
+      op.steem_satoshi_cap = steem_satoshi_cap;
 
       signed_transaction trx;
       trx.operations.push_back( op );
