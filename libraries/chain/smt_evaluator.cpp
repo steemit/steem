@@ -100,6 +100,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       FC_ASSERT( token_ptr->control_account == o.control_account, "You do not control this SMT. Control Account: ${a}", ("a", token_ptr->control_account) );
       FC_ASSERT( token_ptr->phase == smt_phase::setup, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
       FC_ASSERT( !util::smt::last_emission_time( _db, token_ptr->liquid_symbol ), "Cannot reset an SMT that has existing token emissions." );
+      FC_ASSERT( util::smt::ico::ico_tier_size(_db, token_ptr->liquid_symbol ) == 0, "Cannot reset an SMT that has existing ICO tiers." );
 
       _db.remove( *token_ptr );
    }

@@ -1949,10 +1949,21 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op4.control_account = "alice";
       op4.symbol = alice_symbol;
 
+      smt_capped_generation_policy valid_capped_generation_policy;
+      valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
+
+      smt_setup_ico_tier_operation op5;
+      op5.control_account = "alice";
+      op5.steem_units_cap = 100000;
+      op5.generation_policy = valid_capped_generation_policy;
+      op5.symbol = alice_symbol;
+
       tx.operations.push_back( op1 );
       tx.operations.push_back( op2 );
       tx.operations.push_back( op3 );
       tx.operations.push_back( op4 );
+      tx.operations.push_back( op5 );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
@@ -1989,6 +2000,20 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       tx.clear();
       tx.operations.push_back( op2 );
       tx.operations.push_back( op1 );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Failure resetting SMT" );
+      op.smt_creation_fee = ASSET( "0.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success deleting ICO tier" );
+      op5.remove = true;
+      tx.clear();
+      tx.operations.push_back( op5 );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
