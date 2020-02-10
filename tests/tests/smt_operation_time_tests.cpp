@@ -421,12 +421,12 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
 
       smt_capped_generation_policy capped_generation_policy2;
       capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 3;
-      capped_generation_policy2.generation_unit.steem_unit[ "$!george.vesting" ] = 2;
+      capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "george" ) ] = 2;
 
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 5;
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
-      capped_generation_policy2.generation_unit.token_unit[ "$!george.vesting" ] = 2;
+      capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "george" ) ] = 2;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";

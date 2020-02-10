@@ -2250,7 +2250,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.emission_count = 2;
@@ -2276,13 +2276,26 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       {
          obj.phase = smt_phase::setup;
       } );
+
+      BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent account" );
+      op.emissions_unit.token_unit[ "charlie" ] = 10;
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent vesting account" );
+      op.emissions_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "charlie" ) ] = 10;
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Successfully submitting a token emission" );
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       PUSH_OP( op, alice_private_key );
 
       BOOST_TEST_MESSAGE( " -- Emissions range is overlapping" );
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "bob" ) ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS * 2 - 1 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.emission_count = 6;
@@ -4895,11 +4908,11 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_validate )
 
       smt_capped_generation_policy valid_capped_generation_policy;
       valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.steem_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
 
       valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.token_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 2;
@@ -5061,11 +5074,11 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
 
       smt_capped_generation_policy valid_capped_generation_policy;
       valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.steem_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
 
       valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.token_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 2;
@@ -5099,7 +5112,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       tx.signatures.clear();
 
       invalid_capped_generation_policy = valid_capped_generation_policy;
-      invalid_capped_generation_policy.generation_unit.steem_unit[ "$!elaine.vesting" ] = 2;
+      invalid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "elaine" ) ] = 2;
 
       op.generation_policy = invalid_capped_generation_policy;
 
@@ -5113,7 +5126,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       tx.signatures.clear();
 
       invalid_capped_generation_policy = valid_capped_generation_policy;
-      invalid_capped_generation_policy.generation_unit.token_unit[ "$!elaine.vesting" ] = 2;
+      invalid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "elaine" ) ] = 2;
 
       op.generation_policy = invalid_capped_generation_policy;
 

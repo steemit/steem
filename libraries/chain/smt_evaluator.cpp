@@ -280,6 +280,16 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
             ("s", SMT_EMISSION_MIN_INTERVAL_SECONDS)("end", *end_time) );
       }
 
+      for ( const auto& e : o.emissions_unit.token_unit )
+      {
+         if ( smt::unit_target::is_account_name_type( e.first ) )
+         {
+            std::string name = smt::unit_target::get_unit_target_account( e.first );
+            auto acc = _db.find< account_object, by_name >( name );
+            FC_ASSERT( acc != nullptr, "Invalid emission destination, account ${a} must exist", ("a", name) );
+         }
+      }
+
       _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )
       {
          eo.symbol = smt.liquid_symbol;
