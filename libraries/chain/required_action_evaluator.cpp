@@ -34,7 +34,7 @@ void smt_ico_evaluation_evaluator::do_apply( const smt_ico_evaluation_action& a 
    const smt_token_object& token = _db.get< smt_token_object, by_symbol >( a.symbol );
    const smt_ico_object& ico = _db.get< smt_ico_object, by_symbol >( token.liquid_symbol );
 
-   if ( ico.contributed.amount >= ico.steem_units_min )
+   if ( ico.contributed.amount >= ico.steem_satoshi_min )
    {
       _db.modify( token, []( smt_token_object& o )
       {
