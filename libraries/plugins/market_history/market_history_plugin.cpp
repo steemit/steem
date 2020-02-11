@@ -9,7 +9,6 @@
 #include <fc/io/json.hpp>
 
 #define MH_BUCKET_SIZE "market-history-bucket-size"
-#define MH_BUCKETS_PER_SIZE "market-history-buckets-per-size"
 #define MH_TRACK_TIME "market-history-track-time"
 
 namespace steem { namespace plugins { namespace market_history {
@@ -159,8 +158,6 @@ void market_history_plugin::set_program_options(
    cfg.add_options()
          (MH_BUCKET_SIZE, boost::program_options::value<string>()->default_value("[15,60,300,3600,21600]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         (MH_BUCKETS_PER_SIZE, boost::program_options::value<uint32_t>()->default_value(5760),
-           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 5760)")
          (MH_TRACK_TIME, boost::program_options::value<uint32_t>()->default_value(604800),
            "How far back in time to track market history, measure in seconds (default: 604800)")
          ;
