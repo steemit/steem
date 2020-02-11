@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       BOOST_REQUIRE( bucket->non_steem.volume == ASSET( "0.750 TBD" ).amount );
       bucket++;
 
-      BOOST_REQUIRE( bucket->seconds == 86400 );
+      BOOST_REQUIRE( bucket->seconds == 21600 );
       BOOST_REQUIRE( bucket->open == STEEM_GENESIS_TIME );
       BOOST_REQUIRE( bucket->steem.high == ASSET( "0.449 TESTS " ).amount );
       BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
