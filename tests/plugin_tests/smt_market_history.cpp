@@ -75,8 +75,8 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       tx.operations.clear();
       tx.signatures.clear();
 
-      const auto& bucket_idx = db->get_index< bucket_index >().indices().get< by_bucket >();
-      const auto& order_hist_idx = db->get_index< order_history_index >().indices().get< by_id >();
+      const auto& bucket_idx = db->get_index< bucket_index, by_bucket >();
+      const auto& order_hist_idx = db->get_index< order_history_index, by_id >();
 
       BOOST_REQUIRE( bucket_idx.begin() == bucket_idx.end() );
       BOOST_REQUIRE( order_hist_idx.begin() == order_hist_idx.end() );
@@ -289,7 +289,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       BOOST_REQUIRE( bucket->non_steem.volume == asset( 750, any_smt_symbol ).amount );
       bucket++;
 
-      BOOST_REQUIRE( bucket->seconds == 86400 );
+      BOOST_REQUIRE( bucket->seconds == 21600 );
       BOOST_REQUIRE( bucket->open == STEEM_GENESIS_TIME );
       BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
       BOOST_REQUIRE( bucket->non_steem.high == asset( 250, any_smt_symbol ).amount );

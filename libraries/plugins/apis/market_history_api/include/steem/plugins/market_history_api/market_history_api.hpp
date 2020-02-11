@@ -18,7 +18,10 @@ using fc::time_point_sec;
 using json_rpc::void_type;
 
 
-typedef void_type get_ticker_args;
+struct get_ticker_args
+{
+   asset_symbol_type market = SBD_SYMBOL;
+};
 
 struct get_ticker_return
 {
@@ -30,7 +33,7 @@ struct get_ticker_return
    asset       sbd_volume = asset( 0, SBD_SYMBOL );
 };
 
-typedef void_type get_volume_args;
+typedef get_ticker_args get_volume_args;
 
 struct get_volume_return
 {
@@ -49,7 +52,8 @@ struct order
 
 struct get_order_book_args
 {
-   uint32_t limit = 500;
+   asset_symbol_type market = SBD_SYMBOL;
+   uint32_t          limit = 500;
 };
 
 struct get_order_book_return
@@ -67,9 +71,10 @@ struct market_trade
 
 struct get_trade_history_args
 {
-   time_point_sec start;
-   time_point_sec end;
-   uint32_t       limit = 1000;
+   asset_symbol_type market = SBD_SYMBOL;
+   time_point_sec    start;
+   time_point_sec    end;
+   uint32_t          limit = 1000;
 };
 
 struct get_trade_history_return
@@ -79,16 +84,18 @@ struct get_trade_history_return
 
 struct get_recent_trades_args
 {
-   uint32_t limit = 1000;
+   asset_symbol_type market = SBD_SYMBOL;
+   uint32_t          limit = 1000;
 };
 
 typedef get_trade_history_return get_recent_trades_return;
 
 struct get_market_history_args
 {
-   uint32_t       bucket_seconds;
-   time_point_sec start;
-   time_point_sec end;
+   asset_symbol_type market = SBD_SYMBOL;
+   uint32_t          bucket_seconds;
+   time_point_sec    start;
+   time_point_sec    end;
 };
 
 struct get_market_history_return
@@ -96,11 +103,11 @@ struct get_market_history_return
    std::vector< market_history::bucket_object > buckets;
 };
 
-typedef void_type get_market_history_buckets_args;
+typedef get_ticker_args get_market_history_buckets_args;
 
 struct get_market_history_buckets_return
 {
-   flat_set< uint32_t > bucket_sizes;
+   vector< uint32_t > bucket_sizes;
 };
 
 
@@ -129,6 +136,9 @@ class market_history_api
 
 } } } // steem::plugins::market_history
 
+FC_REFLECT( steem::plugins::market_history::get_ticker_args,
+            (market) )
+
 FC_REFLECT( steem::plugins::market_history::get_ticker_return,
             (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )
 
@@ -139,7 +149,7 @@ FC_REFLECT( steem::plugins::market_history::order,
             (order_price)(real_price)(steem)(sbd)(created) )
 
 FC_REFLECT( steem::plugins::market_history::get_order_book_args,
-            (limit) )
+            (market)(limit) )
 
 FC_REFLECT( steem::plugins::market_history::get_order_book_return,
             (bids)(asks) )
@@ -148,16 +158,16 @@ FC_REFLECT( steem::plugins::market_history::market_trade,
             (date)(current_pays)(open_pays) )
 
 FC_REFLECT( steem::plugins::market_history::get_trade_history_args,
-            (start)(end)(limit) )
+            (market)(start)(end)(limit) )
 
 FC_REFLECT( steem::plugins::market_history::get_trade_history_return,
             (trades) )
 
 FC_REFLECT( steem::plugins::market_history::get_recent_trades_args,
-            (limit) )
+            (market)(limit) )
 
 FC_REFLECT( steem::plugins::market_history::get_market_history_args,
-            (bucket_seconds)(start)(end) )
+            (market)(bucket_seconds)(start)(end) )
 
 FC_REFLECT( steem::plugins::market_history::get_market_history_return,
             (buckets) )
