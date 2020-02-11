@@ -2714,7 +2714,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    condenser_api::legacy_signed_transaction wallet_api::smt_setup_ico_tier(
       account_name_type control_account,
       asset_symbol_type symbol,
-      share_type steem_units_cap,
+      share_type steem_satoshi_cap,
       string json_generation_policy,
       bool broadcast )
    {
@@ -2724,7 +2724,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       op.control_account = control_account;
       op.symbol = symbol;
       op.generation_policy = fc::json::from_string( json_generation_policy ).as< smt_generation_policy >();
-      op.steem_units_cap = steem_units_cap;
+      op.steem_satoshi_cap = steem_satoshi_cap;
 
       signed_transaction trx;
       trx.operations.push_back( op );
@@ -2739,7 +2739,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       time_point_sec contribution_begin_time,
       time_point_sec contribution_end_time,
       time_point_sec launch_time,
-      share_type steem_units_min,
+      share_type steem_satoshi_min,
       uint32_t min_unit_ratio,
       uint32_t max_unit_ratio,
       bool broadcast )
@@ -2753,7 +2753,7 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       op.contribution_begin_time = contribution_begin_time;
       op.contribution_end_time = contribution_end_time;
       op.launch_time = launch_time;
-      op.steem_units_min = steem_units_min;
+      op.steem_satoshi_min = steem_satoshi_min;
       op.min_unit_ratio = min_unit_ratio;
       op.max_unit_ratio = max_unit_ratio;
 

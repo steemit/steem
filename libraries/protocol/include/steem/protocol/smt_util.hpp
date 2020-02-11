@@ -11,6 +11,8 @@
 #define SMT_DESTINATION_REWARDS        unit_target_type( SMT_DESTINATION_PREFIX "rewards" )
 #define SMT_DESTINATION_VESTING        unit_target_type( SMT_DESTINATION_PREFIX "vesting" )
 
+#define SMT_DESTINATION_ACCOUNT_VESTING(name) unit_target_type( SMT_DESTINATION_ACCOUNT_PREFIX name SMT_DESTINATION_VESTING_SUFFIX )
+
 namespace steem { namespace protocol { namespace smt {
 
 namespace unit_target {

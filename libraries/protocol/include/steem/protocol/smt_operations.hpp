@@ -70,7 +70,7 @@ struct smt_setup_operation : public base_operation
    time_point_sec          contribution_end_time;
    time_point_sec          launch_time;
 
-   share_type              steem_units_min;
+   share_type              steem_satoshi_min;
 
    uint32_t                min_unit_ratio = 0;
    uint32_t                max_unit_ratio = 0;
@@ -96,7 +96,7 @@ struct smt_setup_ico_tier_operation : public base_operation
    account_name_type     control_account;
    asset_symbol_type     symbol;
 
-   share_type            steem_units_cap;
+   share_type            steem_satoshi_cap;
    smt_generation_policy generation_policy;
    bool                  remove = false;
 
@@ -239,7 +239,7 @@ FC_REFLECT(
    (contribution_begin_time)
    (contribution_end_time)
    (launch_time)
-   (steem_units_min)
+   (steem_satoshi_min)
    (min_unit_ratio)
    (max_unit_ratio)
    (extensions)
@@ -267,7 +267,7 @@ FC_REFLECT(
    steem::protocol::smt_setup_ico_tier_operation,
    (control_account)
    (symbol)
-   (steem_units_cap)
+   (steem_satoshi_cap)
    (generation_policy)
    (remove)
    (extensions)

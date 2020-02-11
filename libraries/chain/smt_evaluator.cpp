@@ -100,6 +100,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
       FC_ASSERT( token_ptr->control_account == o.control_account, "You do not control this SMT. Control Account: ${a}", ("a", token_ptr->control_account) );
       FC_ASSERT( token_ptr->phase == smt_phase::setup, "SMT cannot be reset if setup is completed. Phase: ${p}", ("p", token_ptr->phase) );
       FC_ASSERT( !util::smt::last_emission_time( _db, token_ptr->liquid_symbol ), "Cannot reset an SMT that has existing token emissions." );
+      FC_ASSERT( util::smt::ico::ico_tier_size(_db, token_ptr->liquid_symbol ) == 0, "Cannot reset an SMT that has existing ICO tiers." );
 
       _db.remove( *token_ptr );
    }
@@ -170,21 +171,21 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
    const smt_token_object& _token = common_pre_setup_evaluation( _db, o.symbol, o.control_account );
    share_type hard_cap;
 
-   if ( o.steem_units_min > 0 )
+   if ( o.steem_satoshi_min > 0 )
    {
       auto possible_hard_cap = util::smt::ico::get_ico_steem_hard_cap( _db, o.symbol );
 
       FC_ASSERT( possible_hard_cap.valid(),
-         "An SMT with a Steem Units Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_units_min) );
+         "An SMT with a Steem Satoshi Minimum of ${s} cannot succeed without an ICO tier.", ("s", o.steem_satoshi_min) );
 
       hard_cap = *possible_hard_cap;
 
-      FC_ASSERT( o.steem_units_min <= hard_cap,
-         "The Steem Units Minimum must be less than the hard cap. Steem Units Minimum: ${s}, Hard Cap: ${c}",
-         ("s", o.steem_units_min)("c", hard_cap) );
+      FC_ASSERT( o.steem_satoshi_min <= hard_cap,
+         "The Steem Satoshi Minimum must be less than the hard cap. Steem Satoshi Minimum: ${s}, Hard Cap: ${c}",
+         ("s", o.steem_satoshi_min)("c", hard_cap) );
    }
 
-   auto ico_tiers = _db.get_index< smt_ico_tier_index, by_symbol_steem_units_cap >().equal_range( _token.liquid_symbol );
+   auto ico_tiers = _db.get_index< smt_ico_tier_index, by_symbol_steem_satoshi_cap >().equal_range( _token.liquid_symbol );
    share_type prev_tier_cap = 0;
    share_type total_tokens = 0;
 
@@ -196,7 +197,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 
       // This is done with share_types, which are safe< int64_t >. Overflow is detected but does not provide
       // a useful error message. Do the checks manually to provide actionable information.
-      fc::uint128_t new_tokens = ( ( ico_tiers.first->steem_units_cap - prev_tier_cap ).value / ico_tiers.first->generation_unit.steem_unit_sum() );
+      fc::uint128_t new_tokens = ( ( ico_tiers.first->steem_satoshi_cap - prev_tier_cap ).value / ico_tiers.first->generation_unit.steem_unit_sum() );
 
       new_tokens *= o.min_unit_ratio;
       FC_ASSERT( new_tokens.hi == 0 && new_tokens.lo <= uint64_t( std::numeric_limits<int64_t>::max() ),
@@ -207,7 +208,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
          "Overflow detected in ICO tier '${t}'", ("tier", *ico_tiers.first) );
 
       total_tokens += new_tokens.to_int64();
-      prev_tier_cap = ico_tiers.first->steem_units_cap;
+      prev_tier_cap = ico_tiers.first->steem_satoshi_cap;
    }
 
    FC_ASSERT( total_tokens < STEEM_MAX_SHARE_SUPPLY,
@@ -228,7 +229,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
       token_ico_obj.contribution_begin_time = o.contribution_begin_time;
       token_ico_obj.contribution_end_time = o.contribution_end_time;
       token_ico_obj.launch_time = o.launch_time;
-      token_ico_obj.steem_units_min = o.steem_units_min;
+      token_ico_obj.steem_satoshi_min = o.steem_satoshi_min;
       token_ico_obj.min_unit_ratio = o.min_unit_ratio;
       token_ico_obj.max_unit_ratio = o.max_unit_ratio;
    } );
@@ -251,12 +252,12 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
 
    if ( o.remove )
    {
-      auto key = boost::make_tuple( token.liquid_symbol, o.steem_units_cap );
-      const auto* ito = _db.find< smt_ico_tier_object, by_symbol_steem_units_cap >( key );
+      auto key = boost::make_tuple( token.liquid_symbol, o.steem_satoshi_cap );
+      const auto* ito = _db.find< smt_ico_tier_object, by_symbol_steem_satoshi_cap >( key );
 
       FC_ASSERT( ito != nullptr,
-         "The specified ICO tier does not exist. Symbol: ${s}, Steem Units Cap: ${c}",
-         ("s", token.liquid_symbol)("c", o.steem_units_cap)
+         "The specified ICO tier does not exist. Symbol: ${s}, Steem Satoshi Cap: ${c}",
+         ("s", token.liquid_symbol)("c", o.steem_satoshi_cap)
       );
 
       _db.remove( *ito );
@@ -273,7 +274,7 @@ void smt_setup_ico_tier_evaluator::do_apply( const smt_setup_ico_tier_operation&
       _db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& ito )
       {
          ito.symbol                   = token.liquid_symbol;
-         ito.steem_units_cap          = o.steem_units_cap;
+         ito.steem_satoshi_cap        = o.steem_satoshi_cap;
          ito.generation_unit          = generation_policy.generation_unit;
       });
    }
@@ -311,6 +312,16 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
          FC_ASSERT( o.schedule_time >= *end_time + SMT_EMISSION_MIN_INTERVAL_SECONDS,
             "New token emissions must begin no earlier than ${s} seconds after the last emission. Last emission time: ${end}",
             ("s", SMT_EMISSION_MIN_INTERVAL_SECONDS)("end", *end_time) );
+      }
+
+      for ( const auto& e : o.emissions_unit.token_unit )
+      {
+         if ( smt::unit_target::is_account_name_type( e.first ) )
+         {
+            std::string name = smt::unit_target::get_unit_target_account( e.first );
+            auto acc = _db.find< account_object, by_name >( name );
+            FC_ASSERT( acc != nullptr, "Invalid emission destination, account ${a} must exist", ("a", name) );
+         }
       }
 
       _db.create< smt_token_emissions_object >( [&]( smt_token_emissions_object& eo )

@@ -65,8 +65,8 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       setup_op.control_account = "alice";
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
-      setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min      = 2400001;
+      setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+      setup_op.steem_satoshi_min       = 2400001;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
       setup_op.min_unit_ratio = 1;
       setup_op.max_unit_ratio = 2;
@@ -80,13 +80,13 @@ BOOST_AUTO_TEST_CASE( smt_refunds )
       ico_tier_op1.control_account = "alice";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 2400001;
+      ico_tier_op1.steem_satoshi_cap = 2400001;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "alice";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 4000000;
+      ico_tier_op2.steem_satoshi_cap = 4000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -257,13 +257,13 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -417,22 +417,22 @@ BOOST_AUTO_TEST_CASE( smt_ico_payouts_special_destinations )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy1;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_capped_generation_policy capped_generation_policy2;
       capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 3;
-      capped_generation_policy2.generation_unit.steem_unit[ "$!george.vesting" ] = 2;
+      capped_generation_policy2.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "george" ) ] = 2;
 
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 5;
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 1;
       capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
-      capped_generation_policy2.generation_unit.token_unit[ "$!george.vesting" ] = 2;
+      capped_generation_policy2.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "george" ) ] = 2;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy2;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -1124,7 +1124,7 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.max_supply              = 22400000000;
       setup_op.max_unit_ratio          = 100;
       setup_op.min_unit_ratio          = 50;
@@ -1142,13 +1142,13 @@ BOOST_AUTO_TEST_CASE( smt_token_emissions )
       ico_tier_op1.control_account = "creator";
       ico_tier_op1.symbol = symbol;
       ico_tier_op1.generation_policy = capped_generation_policy;
-      ico_tier_op1.steem_units_cap = 100000000;
+      ico_tier_op1.steem_satoshi_cap = 100000000;
 
       smt_setup_ico_tier_operation ico_tier_op2;
       ico_tier_op2.control_account = "creator";
       ico_tier_op2.symbol = symbol;
       ico_tier_op2.generation_policy = capped_generation_policy;
-      ico_tier_op2.steem_units_cap = 150000000;
+      ico_tier_op2.steem_satoshi_cap = 150000000;
 
       tx.operations.push_back( ico_tier_op1 );
       tx.operations.push_back( ico_tier_op2 );
@@ -1593,7 +1593,7 @@ BOOST_AUTO_TEST_CASE( smt_without_ico )
       setup_op.symbol                  = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time;
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio          = 50;
       setup_op.max_unit_ratio          = 100;
       setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;
@@ -1712,7 +1712,7 @@ BOOST_AUTO_TEST_CASE( smt_action_delay )
    setup_op.symbol                  = create_op.symbol;
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL; // time 1
    setup_op.contribution_end_time   = setup_op.contribution_begin_time + 3 * STEEM_BLOCK_INTERVAL; // time 4
-   setup_op.steem_units_min         = 0;
+   setup_op.steem_satoshi_min       = 0;
    setup_op.min_unit_ratio          = 50;
    setup_op.max_unit_ratio          = 100;
    setup_op.max_supply              = STEEM_MAX_SHARE_SUPPLY;

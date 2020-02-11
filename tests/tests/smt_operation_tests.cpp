@@ -1949,10 +1949,21 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       op4.control_account = "alice";
       op4.symbol = alice_symbol;
 
+      smt_capped_generation_policy valid_capped_generation_policy;
+      valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
+
+      smt_setup_ico_tier_operation op5;
+      op5.control_account = "alice";
+      op5.steem_satoshi_cap = 100000;
+      op5.generation_policy = valid_capped_generation_policy;
+      op5.symbol = alice_symbol;
+
       tx.operations.push_back( op1 );
       tx.operations.push_back( op2 );
       tx.operations.push_back( op3 );
       tx.operations.push_back( op4 );
+      tx.operations.push_back( op5 );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
@@ -1989,6 +2000,20 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
       tx.clear();
       tx.operations.push_back( op2 );
       tx.operations.push_back( op1 );
+      sign( tx, alice_private_key );
+      db->push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Failure resetting SMT" );
+      op.smt_creation_fee = ASSET( "0.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Success deleting ICO tier" );
+      op5.remove = true;
+      tx.clear();
+      tx.operations.push_back( op5 );
       sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
@@ -2250,7 +2275,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       op.symbol = alice_symbol;
-      op.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       op.schedule_time = emissions1_schedule_time;
       op.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op.emission_count = 2;
@@ -2276,13 +2301,26 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_apply )
       {
          obj.phase = smt_phase::setup;
       } );
+
+      BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent account" );
+      op.emissions_unit.token_unit[ "charlie" ] = 10;
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Failure when submitting an emission to a non-existent vesting account" );
+      op.emissions_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "charlie" ) ] = 10;
+      FAIL_WITH_OP( op, alice_private_key, fc::assert_exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Successfully submitting a token emission" );
+      op.emissions_unit.token_unit[ "alice" ] = 10;
       PUSH_OP( op, alice_private_key );
 
       BOOST_TEST_MESSAGE( " -- Emissions range is overlapping" );
       smt_setup_emissions_operation op2;
       op2.control_account = "alice";
       op2.symbol = alice_symbol;
-      op2.emissions_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 10;
+      op2.emissions_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "bob" ) ] = 10;
       op2.schedule_time = emissions1_schedule_time + fc::seconds( SMT_EMISSION_MIN_INTERVAL_SECONDS * 2 - 1 );
       op2.interval_seconds = SMT_EMISSION_MIN_INTERVAL_SECONDS;
       op2.emission_count = 6;
@@ -2957,13 +2995,13 @@ BOOST_AUTO_TEST_CASE( smt_contribute_apply )
          db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& o )
          {
             o.symbol = alice_symbol;
-            o.steem_units_cap = 1000;
+            o.steem_satoshi_cap = 1000;
          } );
 
          db.create< smt_ico_tier_object >( [&]( smt_ico_tier_object& o )
          {
             o.symbol = alice_symbol;
-            o.steem_units_cap = 99000;
+            o.steem_satoshi_cap = 99000;
          } );
       } );
 
@@ -3293,7 +3331,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_validate )
    op.max_supply  = STEEM_MAX_SHARE_SUPPLY;
    op.min_unit_ratio  = 50;
    op.max_unit_ratio  = 100;
-   op.steem_units_min = 0;
+   op.steem_satoshi_min = 0;
 
    op.validate();
 
@@ -3359,7 +3397,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_apply )
    setup_op.symbol = symbol;
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
    setup_op.contribution_end_time   = setup_op.contribution_begin_time + fc::days( 30 );
-   setup_op.steem_units_min         = 0;
+   setup_op.steem_satoshi_min       = 0;
    setup_op.min_unit_ratio = 50;
    setup_op.max_unit_ratio = 100;
    setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
@@ -4891,15 +4929,15 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_validate )
       smt_setup_ico_tier_operation op;
       op.control_account = "alice";
       op.symbol = symbol;
-      op.steem_units_cap = 0;
+      op.steem_satoshi_cap = 0;
 
       smt_capped_generation_policy valid_capped_generation_policy;
       valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.steem_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
 
       valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.token_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 2;
@@ -4914,16 +4952,16 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_validate )
       BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.control_account = "alice";
 
-      BOOST_TEST_MESSAGE( " -- Failure on negative steem_units_cap" );
-      op.steem_units_cap = -1;
+      BOOST_TEST_MESSAGE( " -- Failure on negative steem_satoshi_cap" );
+      op.steem_satoshi_cap = -1;
       BOOST_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-      op.steem_units_cap = 0;
-      BOOST_TEST_MESSAGE( " -- Success on steem_units_cap" );
+      op.steem_satoshi_cap = 0;
+      BOOST_TEST_MESSAGE( " -- Success on steem_satoshi_cap" );
       op.validate();
 
-      op.steem_units_cap = 1000;
-      BOOST_TEST_MESSAGE( " -- Success on positive steem_units_cap" );
+      op.steem_satoshi_cap = 1000;
+      BOOST_TEST_MESSAGE( " -- Success on positive steem_satoshi_cap" );
       op.validate();
 
       BOOST_TEST_MESSAGE( " -- Failure on SMT_DESTINATION_REWARDS in steem_unit" );
@@ -5057,15 +5095,15 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       smt_setup_ico_tier_operation op;
       op.control_account = "alice";
       op.symbol = symbol;
-      op.steem_units_cap = 0;
+      op.steem_satoshi_cap = 0;
 
       smt_capped_generation_policy valid_capped_generation_policy;
       valid_capped_generation_policy.generation_unit.steem_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.steem_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
 
       valid_capped_generation_policy.generation_unit.token_unit[ "alice" ] = 2;
-      valid_capped_generation_policy.generation_unit.token_unit[ "$!alice.vesting" ] = 2;
+      valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "alice" ) ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_MARKET_MAKER ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 2;
       valid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_FROM ] = 2;
@@ -5099,7 +5137,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       tx.signatures.clear();
 
       invalid_capped_generation_policy = valid_capped_generation_policy;
-      invalid_capped_generation_policy.generation_unit.steem_unit[ "$!elaine.vesting" ] = 2;
+      invalid_capped_generation_policy.generation_unit.steem_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "elaine" ) ] = 2;
 
       op.generation_policy = invalid_capped_generation_policy;
 
@@ -5113,7 +5151,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       tx.signatures.clear();
 
       invalid_capped_generation_policy = valid_capped_generation_policy;
-      invalid_capped_generation_policy.generation_unit.token_unit[ "$!elaine.vesting" ] = 2;
+      invalid_capped_generation_policy.generation_unit.token_unit[ SMT_DESTINATION_ACCOUNT_VESTING( "elaine" ) ] = 2;
 
       op.generation_policy = invalid_capped_generation_policy;
 
@@ -5179,7 +5217,7 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
       setup_op.symbol = symbol;
       setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
       setup_op.contribution_end_time   = setup_op.contribution_begin_time + fc::days( 30 );
-      setup_op.steem_units_min         = 0;
+      setup_op.steem_satoshi_min       = 0;
       setup_op.min_unit_ratio = 50;
       setup_op.max_unit_ratio = 100;
       setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
@@ -5219,7 +5257,7 @@ BOOST_AUTO_TEST_CASE( smt_max_share_ico )
    setup_op.symbol = symbol;
    setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
    setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
-   setup_op.steem_units_min      = 0;
+   setup_op.steem_satoshi_min     = 0;
    setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
    setup_op.min_unit_ratio = std::numeric_limits< uint32_t >::max() / 28147068;
    setup_op.max_unit_ratio = std::numeric_limits< uint32_t >::max();
@@ -5244,7 +5282,7 @@ BOOST_AUTO_TEST_CASE( smt_max_share_ico )
       ico_tier_op.control_account = "alice";
       ico_tier_op.symbol = symbol;
       ico_tier_op.generation_policy = capped_generation_policy;
-      ico_tier_op.steem_units_cap = 1000000 * (i + 1);
+      ico_tier_op.steem_satoshi_cap = 1000000 * (i + 1);
       tx.operations.push_back( ico_tier_op );
    }
 
@@ -5266,7 +5304,7 @@ BOOST_AUTO_TEST_CASE( smt_max_share_ico )
       ico_tier_op.control_account = "alice";
       ico_tier_op.symbol = symbol;
       ico_tier_op.generation_policy = capped_generation_policy;
-      ico_tier_op.steem_units_cap = 1000000 * (i + 1);
+      ico_tier_op.steem_satoshi_cap = 1000000 * (i + 1);
       tx.operations.push_back( ico_tier_op );
    }
 
@@ -5288,7 +5326,7 @@ BOOST_AUTO_TEST_CASE( smt_max_share_ico )
    ico_tier_op.control_account = "alice";
    ico_tier_op.symbol = symbol;
    ico_tier_op.generation_policy = capped_generation_policy;
-   ico_tier_op.steem_units_cap = 2147483649;
+   ico_tier_op.steem_satoshi_cap = 2147483649;
    tx.operations.push_back( ico_tier_op );
 
    tx.operations.push_back( setup_op );
@@ -5301,7 +5339,7 @@ BOOST_AUTO_TEST_CASE( smt_max_share_ico )
 
    tx.clear();
 
-   ico_tier_op.steem_units_cap = 232830;
+   ico_tier_op.steem_satoshi_cap = 232830;
    tx.operations.push_back( ico_tier_op );
 
    tx.operations.push_back( setup_op );
