@@ -1955,7 +1955,7 @@ BOOST_AUTO_TEST_CASE( smt_create_reset )
 
       smt_setup_ico_tier_operation op5;
       op5.control_account = "alice";
-      op5.steem_units_cap = 100000;
+      op5.steem_satoshi_cap = 100000;
       op5.generation_policy = valid_capped_generation_policy;
       op5.symbol = alice_symbol;
 
