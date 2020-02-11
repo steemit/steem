@@ -25,6 +25,9 @@
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
 
+// Sentinel value for newley created accounts.
+#define RC_PLUGIN_DEFAULT_INITIALIZED_MANA std::numeric_limits< int64_t >::max()
+
 #ifndef IS_TEST_NET
 #define STEEM_HF20_BLOCK_NUM                              26256743
 #endif
@@ -159,7 +162,7 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
       // The first time the rc account's mana is regenerated, it will be
       // capped to the actual max value. This allows creating account's
       // in the past and not begin tracking RCs until later (Issue #3589)
-      rca.rc_manabar.current_mana = std::numeric_limits< int64_t >::max();
+      rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
       rca.last_max_rc = max_rc;
 
       rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = creator;
@@ -706,8 +709,8 @@ struct pre_apply_operation_visitor
 
       try {
 
-      // current_mana == numeric_limits< int64_t >::max() is a unique case for an newly created account
-      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != std::numeric_limits< int64_t >::max() )
+      // current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA is a unique case for an newly created account
+      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != RC_PLUGIN_DEFAULT_INITIALIZED_MANA )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
@@ -1251,7 +1254,7 @@ struct post_apply_operation_visitor
          // The first time the rc account's mana is regenerated, it will be
          // capped to the actual max value. This allows creating account's
          // in the past and not begin tracking RCs until later (Issue #3589)
-         rca.rc_manabar.current_mana = std::numeric_limits< int64_t >::max();
+         rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
          rca.last_max_rc = max_rc;
 
          rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = nai;
