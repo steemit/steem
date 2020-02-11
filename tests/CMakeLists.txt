@@ -296,6 +296,7 @@ add_boost_test( chain_test
    smt_operation_tests/smt_delegate_vesting_shares_apply
    smt_operation_tests/vote2_authorities
    smt_operation_tests/vote2_apply
+   smt_operation_tests/smt_max_share_ico
    smt_operation_time_tests/smt_refunds
    smt_operation_time_tests/smt_ico_payouts
    smt_operation_time_tests/smt_ico_payouts_special_destinations
