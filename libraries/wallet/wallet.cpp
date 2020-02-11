@@ -12,6 +12,9 @@
 #include <steem/wallet/remote_node_api.hpp>
 
 #include <steem/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/rc/rc_objects.hpp>
+#include <steem/plugins/rc/rc_operations.hpp>
+#include <steem/plugins/rc/rc_plugin.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -2787,6 +2790,95 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    vector< asset_symbol_type > wallet_api::get_nai_pool()
    {
       return my->_remote_api->get_nai_pool();
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::delegate_to_pool(
+      account_name_type from_account,
+      account_name_type to_pool,
+      asset amount,
+      bool broadcast )
+   {
+      using namespace plugins::rc;
+      FC_ASSERT( !is_locked() );
+
+      delegate_to_pool_operation cop;
+      cop.from_account = from_account;
+      cop.to_pool      = to_pool;
+      cop.amount       = amount;
+
+      custom_json_operation op;
+      op.json = fc::json::to_string( rc_plugin_operation( cop ) );
+      op.id = STEEM_RC_PLUGIN_NAME;
+
+      flat_set< account_name_type > required_auths;
+      cop.get_required_active_authorities( required_auths );
+      op.required_auths = required_auths;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::delegate_drc_from_pool(
+      account_name_type from_pool,
+      account_name_type to_account,
+      uint8_t to_slot,
+      asset_symbol_type asset_symbol,
+      int64_t drc_max_mana,
+      bool broadcast )
+   {
+      using namespace plugins::rc;
+      FC_ASSERT( !is_locked() );
+
+      delegate_drc_from_pool_operation cop;
+      cop.from_pool    = from_pool;
+      cop.to_account   = to_account;
+      cop.to_slot      = to_slot;
+      cop.drc_max_mana = drc_max_mana;
+
+      custom_json_operation op;
+      op.json = fc::json::to_string( rc_plugin_operation( cop ) );
+      op.id = STEEM_RC_PLUGIN_NAME;
+
+      flat_set< account_name_type > required_auths;
+      cop.get_required_active_authorities( required_auths );
+      op.required_auths = required_auths;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
+   }
+
+   condenser_api::legacy_signed_transaction wallet_api::set_slot_delegator(
+      account_name_type from_pool,
+      account_name_type to_account,
+      uint8_t to_slot,
+      account_name_type signer,
+      bool broadcast )
+   {
+      using namespace plugins::rc;
+      FC_ASSERT( !is_locked() );
+
+      set_slot_delegator_operation cop;
+      cop.from_pool    = from_pool;
+      cop.to_account   = to_account;
+      cop.to_slot      = to_slot;
+      cop.signer       = signer;
+
+      custom_json_operation op;
+      op.json = fc::json::to_string( rc_plugin_operation( cop ) );
+      op.id = STEEM_RC_PLUGIN_NAME;
+
+      flat_set< account_name_type > required_auths;
+      cop.get_required_active_authorities( required_auths );
+      op.required_auths = required_auths;
+
+      signed_transaction trx;
+      trx.operations.push_back( op );
+      trx.validate();
+      return my->sign_transaction( trx, broadcast );
    }
 
 } } // steem::wallet

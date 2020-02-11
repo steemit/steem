@@ -1311,6 +1311,54 @@ class wallet_api
        */
       vector< asset_symbol_type > get_nai_pool();
 
+      /**
+       *  Delegate from a user to a pool.
+       *
+       *  @param from_account The source account
+       *  @param to_pool The destination pool
+       *  @param amount The amount to delegate
+       *  @param broadcast To broadcast this transaction or not
+       */
+      condenser_api::legacy_signed_transaction delegate_to_pool(
+         account_name_type from_account,
+         account_name_type to_pool,
+         asset amount,
+         bool broadcast );
+
+      /**
+       *  Delegate from a pool to a user.
+       *
+       *  @param from_pool The source pool
+       *  @param to_account The destination account
+       *  @param to_slot The slot
+       *  @param asset_symbol The symbol of the delegation
+       *  @param drc_max_mana The maximum mana to delegate
+       *  @param broadcast To broadcast this transaction or not
+       */
+      condenser_api::legacy_signed_transaction delegate_drc_from_pool(
+         account_name_type from_pool,
+         account_name_type to_account,
+         uint8_t to_slot,
+         asset_symbol_type asset_symbol,
+         int64_t drc_max_mana,
+         bool broadcast );
+
+      /**
+       *  Designate an account the privilege to delegate a slot.
+       *
+       *  @param from_pool The source pool
+       *  @param to_account The destination account
+       *  @param to_slot The slot
+       *  @param signer The appointed delegator
+       *  @param broadcast To broadcast this transaction or not
+       */
+      condenser_api::legacy_signed_transaction set_slot_delegator(
+         account_name_type from_pool,
+         account_name_type to_account,
+         uint8_t to_slot,
+         account_name_type signer,
+         bool broadcast );
+
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
       fc::signal<void(bool)> lock_changed;
 
@@ -1442,6 +1490,11 @@ FC_API( steem::wallet::wallet_api,
         (smt_setup)
         (smt_contribute)
         (get_nai_pool)
+
+        /// delegation pool api
+        (delegate_to_pool)
+        (delegate_drc_from_pool)
+        (set_slot_delegator)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
