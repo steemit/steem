@@ -71,7 +71,9 @@ DEFINE_API_IMPL( market_history_api_impl, get_volume )
    {
       auto itr = bucket_idx.lower_bound( boost::make_tuple( args.market, bucket_size, latest_time ) );
 
-      while( itr != bucket_idx.end() && itr->symbol == args.market )
+      while( itr != bucket_idx.end()
+         && itr->symbol == args.market
+         && itr->seconds == bucket_size )
       {
          result.steem_volume.amount += itr->steem.volume;
          result.sbd_volume.amount += itr->non_steem.volume;
@@ -83,7 +85,10 @@ DEFINE_API_IMPL( market_history_api_impl, get_volume )
 
       itr = bucket_idx.lower_bound( boost::make_tuple( args.market, bucket_size, earliest_time ) );
 
-      while( itr->open < earliest_time )
+      while( itr != bucket_idx.end()
+         && itr->open < earliest_time
+         && itr->symbol == args.market
+         && itr->seconds == bucket_size )
       {
          result.steem_volume.amount += itr->steem.volume;
          result.sbd_volume.amount += itr->non_steem.volume;
