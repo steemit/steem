@@ -706,7 +706,8 @@ struct pre_apply_operation_visitor
 
       try {
 
-      if( mbparams.max_mana != rc_account.last_max_rc )
+      // current_mana == numeric_limits< int64_t >::max() is a unique case for an newly created account
+      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != std::numeric_limits< int64_t >::max() )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
