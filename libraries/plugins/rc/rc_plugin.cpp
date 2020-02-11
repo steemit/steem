@@ -25,7 +25,7 @@
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
 
-// Sentinel value for newley created accounts.
+// Sentinel value for newly created accounts.
 #define RC_PLUGIN_DEFAULT_INITIALIZED_MANA std::numeric_limits< int64_t >::max()
 
 #ifndef IS_TEST_NET
