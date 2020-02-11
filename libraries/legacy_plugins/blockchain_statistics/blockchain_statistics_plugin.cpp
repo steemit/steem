@@ -282,7 +282,7 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    for( const auto& bucket : _tracked_buckets )
    {
       auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
-      auto itr = bucket_idx.find( boost::make_tuple( bucket, open ) );
+      auto itr = bucket_idx.find( boost::make_tuple( SBD_SYMBOL, bucket, open ) );
 
       if( itr == bucket_idx.end() )
       {

@@ -75,8 +75,8 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
       tx.operations.clear();
       tx.signatures.clear();
 
-      const auto& bucket_idx = db->get_index< bucket_index >().indices().get< by_bucket >();
-      const auto& order_hist_idx = db->get_index< order_history_index >().indices().get< by_id >();
+      const auto& bucket_idx = db->get_index< bucket_index, by_bucket >();
+      const auto& order_hist_idx = db->get_index< order_history_index, by_id >();
 
       BOOST_REQUIRE( bucket_idx.begin() == bucket_idx.end() );
       BOOST_REQUIRE( order_hist_idx.begin() == order_hist_idx.end() );

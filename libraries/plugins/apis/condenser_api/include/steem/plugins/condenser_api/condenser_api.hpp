@@ -1071,7 +1071,7 @@ DEFINE_API_ARGS( get_order_book,                         vector< variant >,   or
 DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
-DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
+DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   vector< uint32_t > )
 DEFINE_API_ARGS( list_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( find_proposals,                         vector< variant >,   vector< api_proposal_object > )
 DEFINE_API_ARGS( list_proposal_votes,                    vector< variant >,   vector< database_api::api_proposal_vote_object > )
