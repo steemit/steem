@@ -344,6 +344,11 @@ void use_account_rcs(
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
+      if( rca.rc_manabar.current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA )
+      {
+         rca.last_max_rc = mbparams.max_mana;
+      }
+
       rca.rc_manabar = rca_manabar;
 
       if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
@@ -710,7 +715,7 @@ struct pre_apply_operation_visitor
       try {
 
       // current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA is a unique case for an newly created account
-      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != RC_PLUGIN_DEFAULT_INITIALIZED_MANA )
+      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != RC_PLUGIN_DEFAULT_INITIALIZED_MANA  )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
@@ -727,6 +732,11 @@ struct pre_apply_operation_visitor
 
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
+         if( rca.rc_manabar.current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA  )
+         {
+            rca.last_max_rc = mbparams.max_mana;
+         }
+
          rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
       } );
       } FC_CAPTURE_AND_RETHROW( (account)(rc_account)(mbparams.max_mana) )
@@ -1012,6 +1022,10 @@ struct post_apply_operation_visitor
    void operator()( const account_create_with_delegation_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
+
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.creator );
    }
 
@@ -1048,6 +1062,7 @@ struct post_apply_operation_visitor
    {
       if( _before_first_block )
          return;
+
       account_name_type target = op.to.size() ? op.to : op.from;
       _mod_accounts.emplace_back( target );
    }
@@ -1145,6 +1160,32 @@ struct post_apply_operation_visitor
 
    void operator()( const hardfork_operation& op )const
    {
+#ifdef IS_TEST_NET
+      if( op.hardfork_id == STEEM_HARDFORK_0_21 )
+      {
+         _db.create< rc_account_object >( [&]( rc_account_object& rca )
+         {
+            rca.account = STEEM_TREASURY_ACCOUNT;
+            rca.rc_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
+            rca.max_rc_creation_adjustment = asset( 0, STEEM_SYMBOL );
+            int64_t max_rc = get_maximum_rc( _db.get_account( STEEM_TREASURY_ACCOUNT ), rca );
+
+            // The first time the rc account's mana is regenerated, it will be
+            // capped to the actual max value. This allows creating account's
+            // in the past and not begin tracking RCs until later (Issue #3589)
+            rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
+            rca.last_max_rc = max_rc;
+
+            rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = account_name_type();
+            rca.indel_slots[ STEEM_RC_RECOVERY_SLOT_NUM ] = account_name_type();
+            for( int i = STEEM_RC_USER_SLOT_NUM; i < STEEM_RC_MAX_SLOTS; i++ )
+            {
+               rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
+            }
+         });
+      }
+#endif
+
       if( _before_first_block )
          return;
 
