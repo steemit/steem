@@ -12,15 +12,11 @@
 
 #include <fc/int_array.hpp>
 
-namespace steem { namespace chain {
-struct by_account;
-} }
-
 namespace steem { namespace plugins { namespace rc {
 
-using namespace std;
 using namespace steem::chain;
-using namespace steem::protocol;
+using steem::protocol::asset;
+using steem::protocol::asset_symbol_type;
 
 #ifndef STEEM_RC_SPACE_ID
 #define STEEM_RC_SPACE_ID 16
@@ -302,7 +298,7 @@ typedef multi_index_container<
 typedef multi_index_container<
    rc_outdel_drc_edge_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_object::id_type, &rc_outdel_drc_edge_object::id > >,
+      ordered_unique< tag< by_id >, member< rc_outdel_drc_edge_object, rc_outdel_drc_edge_id_type, &rc_outdel_drc_edge_object::id > >,
       ordered_unique< tag< by_edge >,
          composite_key< rc_outdel_drc_edge_object,
             member< rc_outdel_drc_edge_object, account_name_type, &rc_outdel_drc_edge_object::from_pool >,

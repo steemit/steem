@@ -2,7 +2,7 @@
 #include <steem/plugins/json_rpc/utility.hpp>
 #include <steem/plugins/rc/rc_objects.hpp>
 
-#include <steem/protocol/types.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/optional.hpp>
 #include <fc/variant.hpp>
@@ -73,11 +73,15 @@ struct rc_account_api_object
    {
       max_rc = get_maximum_rc( db.get_account( account ), rca );
 
-      for( const auto& pool : delegation_slots )
+      db.get_index< chain::comment_index, chain::by_permlink >(); // works
+      db.get_index< rc_outdel_drc_edge_index, by_edge >(); // does not work
+      db.get_index< rc_outdel_drc_edge_index >().indices().get< by_edge >(); // works
+      for( const account_name_type& pool : delegation_slots )
       {
          pool_delegation del;
 
-         auto indel_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) );
+         db.get< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) ); // does not work
+         auto indel_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) ); // does not work
          if( indel_edge != nullptr )
          {
             del.rc_manabar = indel_edge->drc_manabar;

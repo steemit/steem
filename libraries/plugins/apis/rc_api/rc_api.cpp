@@ -4,9 +4,9 @@
 #include <steem/plugins/rc/rc_objects.hpp>
 #include <steem/plugins/rc/resource_sizes.hpp>
 
-#include <steem/plugins/database_api/util/iterate_results.hpp>
-
 #include <steem/chain/account_object.hpp>
+
+#include <steem/plugins/database_api/util/iterate_results.hpp>
 
 #include <fc/variant_object.hpp>
 #include <fc/reflect/variant.hpp>
