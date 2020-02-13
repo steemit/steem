@@ -218,6 +218,7 @@ FC_REFLECT( steem::plugins::rc::rc_account_api_object,
    (rc_manabar)
    (max_rc_creation_adjustment)
    (max_rc)
+   (vests_delegated_to_pools)
    (delegation_slots)
    (incoming_delegations)
    (out_delegation_total) )
