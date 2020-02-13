@@ -287,6 +287,13 @@ typedef multi_index_container<
             const_mem_fun< rc_indel_edge_object, asset_symbol_type, &rc_indel_edge_object::get_asset_symbol >,
             member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::to_pool >
          >
+      >,
+      ordered_unique< tag< by_pool >,
+         composite_key< rc_indel_edge_object,
+            member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::to_pool >,
+            const_mem_fun< rc_indel_edge_object, asset_symbol_type, &rc_indel_edge_object::get_asset_symbol >,
+            member< rc_indel_edge_object, account_name_type, &rc_indel_edge_object::from_account >
+         >
       >
    >,
    allocator< rc_indel_edge_object >
