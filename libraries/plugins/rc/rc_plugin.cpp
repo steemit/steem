@@ -25,6 +25,9 @@
 // TODO: What should this value be for testnet?
 #define STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT      2020748973
 
+// Sentinel value for newly created accounts.
+#define RC_PLUGIN_DEFAULT_INITIALIZED_MANA std::numeric_limits< int64_t >::max()
+
 #ifndef IS_TEST_NET
 #define STEEM_HF20_BLOCK_NUM                              26256743
 #endif
@@ -80,7 +83,7 @@ class rc_plugin_impl
 
       bool before_first_block()
       {
-         return (_db.count< rc_account_object >() == 0);
+         return (_db.count< rc_resource_param_object >() == 0);
       }
 
       database&                     _db;
@@ -155,7 +158,11 @@ void create_rc_account( database& db, uint32_t now, const account_object& accoun
       rca.rc_manabar.last_update_time = now;
       rca.max_rc_creation_adjustment = max_rc_creation_adjustment;
       int64_t max_rc = get_maximum_rc( account, rca );
-      rca.rc_manabar.current_mana = max_rc;
+
+      // The first time the rc account's mana is regenerated, it will be
+      // capped to the actual max value. This allows creating account's
+      // in the past and not begin tracking RCs until later (Issue #3589)
+      rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
       rca.last_max_rc = max_rc;
 
       rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = creator;
@@ -337,6 +344,11 @@ void use_account_rcs(
 
    db.modify( rc_account, [&]( rc_account_object& rca )
    {
+      if( rca.rc_manabar.current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA )
+      {
+         rca.last_max_rc = mbparams.max_mana;
+      }
+
       rca.rc_manabar = rca_manabar;
 
       if( (!skip.skip_reject_not_enough_rc) && db.has_hardfork( STEEM_HARDFORK_0_20 ) )
@@ -611,7 +623,6 @@ void rc_plugin_impl::on_first_block()
    fc::variant resource_params_var = fc::json::from_string( resource_params_json, fc::json::strict_parser );
    std::vector< std::pair< fc::variant, std::pair< fc::variant_object, fc::variant_object > > > resource_params_pairs;
    fc::from_variant( resource_params_var, resource_params_pairs );
-   fc::time_point_sec now = _db.get_dynamic_global_properties().time;
 
    _db.create< rc_resource_param_object >(
       [&]( rc_resource_param_object& params_obj )
@@ -640,12 +651,6 @@ void rc_plugin_impl::on_first_block()
 
          ilog( "Genesis pool_obj is ${o}", ("o", pool_obj) );
       } );
-
-   const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
-   for( auto it=idx.begin(); it!=idx.end(); ++it )
-   {
-      create_rc_account( _db, now.sec_since_epoch(), *it, asset( STEEM_HISTORICAL_ACCOUNT_CREATION_ADJUSTMENT, VESTS_SYMBOL ), it->name );
-   }
 
    return;
 }
@@ -709,7 +714,8 @@ struct pre_apply_operation_visitor
 
       try {
 
-      if( mbparams.max_mana != rc_account.last_max_rc )
+      // current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA is a unique case for an newly created account
+      if( mbparams.max_mana != rc_account.last_max_rc && rc_account.rc_manabar.current_mana != RC_PLUGIN_DEFAULT_INITIALIZED_MANA  )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
@@ -726,6 +732,11 @@ struct pre_apply_operation_visitor
 
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
+         if( rca.rc_manabar.current_mana == RC_PLUGIN_DEFAULT_INITIALIZED_MANA  )
+         {
+            rca.last_max_rc = mbparams.max_mana;
+         }
+
          rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
       } );
       } FC_CAPTURE_AND_RETHROW( (account)(rc_account)(mbparams.max_mana) )
@@ -913,14 +924,16 @@ struct post_apply_operation_visitor
    uint32_t                                 _current_time = 0;
    uint32_t                                 _current_block_number = 0;
    account_name_type                        _current_witness;
+   bool                                     _before_first_block = false;
 
    post_apply_operation_visitor(
       vector< account_regen_info >& ma,
       database& db,
       uint32_t t,
       uint32_t b,
-      account_name_type w
-      ) : _mod_accounts(ma), _db(db), _current_time(t), _current_block_number(b), _current_witness(w)
+      account_name_type w,
+      bool bfb = false
+      ) : _mod_accounts(ma), _db(db), _current_time(t), _current_block_number(b), _current_witness(w), _before_first_block(bfb)
    {}
 
    void update_outdel_overflow( const account_name_type& account, const asset& amount ) const
@@ -1009,6 +1022,10 @@ struct post_apply_operation_visitor
    void operator()( const account_create_with_delegation_operation& op )const
    {
       create_rc_account( _db, _current_time, op.new_account_name, op.fee, op.creator );
+
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.creator );
    }
 
@@ -1021,6 +1038,10 @@ struct post_apply_operation_visitor
    {
       // ilog( "handling post-apply pow_operation" );
       create_rc_account< true >( _db, _current_time, op.worker_account, asset( 0, STEEM_SYMBOL ), op.worker_account );
+
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.worker_account );
       _mod_accounts.emplace_back( _current_witness );
    }
@@ -1029,18 +1050,28 @@ struct post_apply_operation_visitor
    {
       auto worker_name = get_worker_name( op.work );
       create_rc_account< true >( _db, _current_time, worker_name, asset( 0, STEEM_SYMBOL ), worker_name );
+
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( worker_name );
       _mod_accounts.emplace_back( _current_witness );
    }
 
    void operator()( const transfer_to_vesting_operation& op )
    {
+      if( _before_first_block )
+         return;
+
       account_name_type target = op.to.size() ? op.to : op.from;
       _mod_accounts.emplace_back( target );
    }
 
    void operator()( const withdraw_vesting_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.account, false );
 
       update_outdel_overflow( op.account, op.vesting_shares );
@@ -1048,6 +1079,9 @@ struct post_apply_operation_visitor
 
    void operator()( const delegate_vesting_shares_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.delegator );
       _mod_accounts.emplace_back( op.delegatee );
 
@@ -1057,22 +1091,34 @@ struct post_apply_operation_visitor
 
    void operator()( const author_reward_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const curation_reward_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.curator );
    }
 
    // Is this one actually necessary?
    void operator()( const comment_reward_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.author );
    }
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.from_account );
       _mod_accounts.emplace_back( op.to_account );
 
@@ -1081,27 +1127,68 @@ struct post_apply_operation_visitor
 
    void operator()( const claim_reward_balance_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.account );
    }
 
    void operator()( const claim_reward_balance2_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.account );
    }
 
    void operator()( const smt_contributor_payout_action& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.contributor );
    }
 
    void operator()( const smt_founder_payout_action& op )const
    {
+      if( _before_first_block )
+         return;
+
       for ( auto& e : op.account_payouts )
          _mod_accounts.emplace_back( e.first );
    }
 
    void operator()( const hardfork_operation& op )const
    {
+#ifdef IS_TEST_NET
+      if( op.hardfork_id == STEEM_HARDFORK_0_21 )
+      {
+         _db.create< rc_account_object >( [&]( rc_account_object& rca )
+         {
+            rca.account = STEEM_TREASURY_ACCOUNT;
+            rca.rc_manabar.last_update_time = _db.head_block_time().sec_since_epoch();
+            rca.max_rc_creation_adjustment = asset( 0, STEEM_SYMBOL );
+            int64_t max_rc = get_maximum_rc( _db.get_account( STEEM_TREASURY_ACCOUNT ), rca );
+
+            // The first time the rc account's mana is regenerated, it will be
+            // capped to the actual max value. This allows creating account's
+            // in the past and not begin tracking RCs until later (Issue #3589)
+            rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
+            rca.last_max_rc = max_rc;
+
+            rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = account_name_type();
+            rca.indel_slots[ STEEM_RC_RECOVERY_SLOT_NUM ] = account_name_type();
+            for( int i = STEEM_RC_USER_SLOT_NUM; i < STEEM_RC_MAX_SLOTS; i++ )
+            {
+               rca.indel_slots[ i ] = STEEM_NULL_ACCOUNT;
+            }
+         });
+      }
+#endif
+
+      if( _before_first_block )
+         return;
+
       if( op.hardfork_id == STEEM_HARDFORK_0_1 )
       {
          const auto& idx = _db.get_index< account_index >().indices().get< by_id >();
@@ -1129,42 +1216,66 @@ struct post_apply_operation_visitor
 
    void operator()( const return_vesting_delegation_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.account );
    }
 
    void operator()( const comment_benefactor_reward_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.benefactor );
    }
 
    void operator()( const producer_reward_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.producer );
    }
 
    void operator()( const clear_null_account_balance_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( STEEM_NULL_ACCOUNT );
    }
 
    void operator()( const create_proposal_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.creator );
       _mod_accounts.emplace_back( op.receiver );
    }
 
    void operator()( const update_proposal_votes_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.voter );
    }
 
    void operator()( const remove_proposal_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.proposal_owner );
    }
 
    void operator()( const delegate_to_pool_operation& op )const
    {
+      if( _before_first_block )
+         return;
+
       _mod_accounts.emplace_back( op.from_account );
    }
 
@@ -1180,7 +1291,11 @@ struct post_apply_operation_visitor
          rca.rc_manabar.last_update_time = now;
          rca.max_rc_creation_adjustment = asset( 0, STEEM_SYMBOL );
          int64_t max_rc = 0;
-         rca.rc_manabar.current_mana = max_rc;
+
+         // The first time the rc account's mana is regenerated, it will be
+         // capped to the actual max value. This allows creating account's
+         // in the past and not begin tracking RCs until later (Issue #3589)
+         rca.rc_manabar.current_mana = RC_PLUGIN_DEFAULT_INITIALIZED_MANA;
          rca.last_max_rc = max_rc;
 
          rca.indel_slots[ STEEM_RC_CREATOR_SLOT_NUM ] = nai;
@@ -1303,17 +1418,17 @@ void rc_plugin_impl::on_post_apply_required_action( const required_action_notifi
 
 void rc_plugin_impl::on_post_apply_operation( const operation_notification& note )
 { try {
-   if( before_first_block() )
-      return;
-
    const dynamic_global_property_object& gpo = _db.get_dynamic_global_properties();
    const uint32_t now = gpo.time.sec_since_epoch();
 
    vector< account_regen_info > modified_accounts;
 
    // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
-   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness, before_first_block() );
    note.op.visit( vtor );
+
+   if( before_first_block() )
+      return;
 
    update_modified_accounts( _db, modified_accounts );
 } FC_CAPTURE_AND_RETHROW( (note.op) ) }
@@ -1321,6 +1436,9 @@ void rc_plugin_impl::on_post_apply_operation( const operation_notification& note
 template< typename OpType >
 void rc_plugin_impl::post_apply_custom_op_type( const custom_operation_notification& note )
 {
+   if( before_first_block() )
+      return;
+
    const OpType* op = note.maybe_get_op< OpType >();
    if( !op )
       return;
@@ -1331,7 +1449,7 @@ void rc_plugin_impl::post_apply_custom_op_type( const custom_operation_notificat
    vector< account_regen_info > modified_accounts;
 
    // ilog( "Calling post-vtor on ${op}", ("op", note.op) );
-   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness );
+   post_apply_operation_visitor vtor( modified_accounts, _db, now, gpo.head_block_number, gpo.current_witness, false );
    op->visit( vtor );
 
    update_modified_accounts( _db, modified_accounts );
