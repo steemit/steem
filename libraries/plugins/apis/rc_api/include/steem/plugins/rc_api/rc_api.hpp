@@ -17,7 +17,7 @@ namespace detail
    class rc_api_impl;
 }
 
-enum sort_order_type
+enum class sort_order_type
 {
    by_name,
    by_edge,

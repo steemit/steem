@@ -116,20 +116,22 @@ DEFINE_API_IMPL( rc_api_impl, list_rc_accounts )
 
    switch( args.order )
    {
-      case( by_name ):
+      case( sort_order_type::by_name ):
       {
          iterate_results(
             _db.get_index< rc_account_index, by_name >(),
-            args.start.as< account_name_type >,
+            args.start.as< account_name_type >(),
             result.rc_accounts,
             args.limit,
-            [&]( const rc_account_object& rca ){ return rc_account_api_object( rca, _db ); }
+            [&]( const rc_account_object& rca ){ return rc_account_api_object( rca, _db ); },
             &filter_default< rc_account_object > );
          break;
       }
       default:
          FC_ASSERT( false, "Unknown or unsupported sort order" );
    }
+
+   return result;
 }
 
 DEFINE_API_IMPL( rc_api_impl, find_rc_delegation_pools )
@@ -161,20 +163,22 @@ DEFINE_API_IMPL( rc_api_impl, list_rc_delegation_pools )
 
    switch( args.order )
    {
-      case( by_name ):
+      case( sort_order_type::by_name ):
       {
          iterate_results(
             _db.get_index< rc_delegation_pool_index, by_account_symbol >(),
             boost::make_tuple( args.start.as< account_name_type >(), VESTS_SYMBOL ),
             result.rc_delegation_pools,
             args.limit,
-            &on_push_default< rc_delegation_pool_object >
+            &on_push_default< rc_delegation_pool_object >,
             &filter_default< rc_delegation_pool_object > );
          break;
       }
       default:
          FC_ASSERT( false, "Unknown or unsupported sort order" );
    }
+
+   return result;
 }
 
 DEFINE_API_IMPL( rc_api_impl, find_rc_delegations )
@@ -184,7 +188,7 @@ DEFINE_API_IMPL( rc_api_impl, find_rc_delegations )
    find_rc_delegations_return result;
    result.rc_delegations.reserve( STEEM_RC_MAX_INDEL );
 
-   const auto& del_idx = _db.get_index< rc_outdel_drc_edge_index, by_edge >();
+   const auto& del_idx = _db.get_index< rc_indel_edge_index, by_edge >();
 
    for( auto itr = del_idx.lower_bound( args.account ); itr != del_idx.end() && itr->from_account == args.account; ++itr )
    {
@@ -203,37 +207,39 @@ DEFINE_API_IMPL( rc_api_impl, list_rc_delegations )
 
    switch( args.order )
    {
-      case( by_edge ):
+      case( sort_order_type::by_edge ):
       {
          auto key = args.start.as< vector< fc::variant > >();
          FC_ASSERT( key.size() == 2, "by_edge start requires 2 values. (from_account, pool_name)" );
 
          iterate_results(
-            _db.get_index< rc_outdel_drc_edge_index, by_edge >(),
-            boost::make_tuple( key[0].as< account_name_type >(), key[1].as< account_name_type >() ),
+            _db.get_index< rc_indel_edge_index, by_edge >(),
+            boost::make_tuple( key[0].as< account_name_type >(), asset_symbol_type(), key[1].as< account_name_type >() ),
             result.rc_delegations,
             args.limit,
-            &on_push_default< rc_outdel_drc_edge_object >
-            &filter_default< rc_outdel_drc_edge_object > );
+            &on_push_default< rc_indel_edge_object >,
+            &filter_default< rc_indel_edge_object > );
          break;
       }
-      case( by_pool ):
+      case( sort_order_type::by_pool ):
       {
          auto key = args.start.as< vector< fc::variant > >();
          FC_ASSERT( key.size() == 2, "by_edge start requires 2 values. (from_account, pool_name)" );
 
          iterate_results(
-            _db.get_index< rc_outdel_drc_edge_index, by_pool >(),
-            boost::make_tuple( key[0].as< account_name_type >(), key[1].as< account_name_type >() ),
+            _db.get_index< rc_indel_edge_index, by_pool >(),
+            boost::make_tuple( key[0].as< account_name_type >(), asset_symbol_type(), key[1].as< account_name_type >() ),
             result.rc_delegations,
             args.limit,
-            &on_push_default< rc_outdel_drc_edge_object >
-            &filter_default< rc_outdel_drc_edge_object > );
+            &on_push_default< rc_indel_edge_object >,
+            &filter_default< rc_indel_edge_object > );
          break;
       }
       default:
          FC_ASSERT( false, "Unknown or unsupported sort order" );
    }
+
+   return result;
 }
 
 } // detail
