@@ -5236,5 +5236,117 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_max_share_ico )
+{ try {
+   BOOST_TEST_MESSAGE( "Testing SMT contribution refunds" );
+   ACTORS( (alice)(bob)(charlie)(dave)(ellie)(francis)(george)(helen)(ivan)(julia) )
+
+   generate_block();
+
+   BOOST_TEST_MESSAGE( " --- SMT creation" );
+   auto symbol = create_smt( "alice", alice_private_key, 3 );
+
+   generate_block();
+
+   BOOST_TEST_MESSAGE( " --- Good SMT ICO config" );
+   signed_transaction tx;
+   smt_setup_operation setup_op;
+
+   uint64_t contribution_window_blocks = 10;
+   setup_op.control_account = "alice";
+   setup_op.symbol = symbol;
+   setup_op.contribution_begin_time = db->head_block_time() + STEEM_BLOCK_INTERVAL;
+   setup_op.contribution_end_time = setup_op.contribution_begin_time + ( STEEM_BLOCK_INTERVAL * contribution_window_blocks );
+   setup_op.steem_satoshi_min     = 0;
+   setup_op.max_supply = STEEM_MAX_SHARE_SUPPLY;
+   setup_op.min_unit_ratio = std::numeric_limits< uint32_t >::max() / 28147068;
+   setup_op.max_unit_ratio = std::numeric_limits< uint32_t >::max();
+   setup_op.launch_time = setup_op.contribution_end_time + STEEM_BLOCK_INTERVAL;
+
+   smt_capped_generation_policy capped_generation_policy;
+   capped_generation_policy.generation_unit.steem_unit[ "alice" ]    = 1;
+   capped_generation_policy.generation_unit.token_unit[ "alice" ]    = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "bob" ]      = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "charlie" ]  = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "dave" ]     = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "ellie" ]    = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "francis" ]  = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "george" ]   = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "helen" ]    = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "ivan" ]     = std::numeric_limits< uint16_t >::max();
+   capped_generation_policy.generation_unit.token_unit[ "julia" ]    = std::numeric_limits< uint16_t >::max();
+
+   for( int i = 0; i < SMT_MAX_ICO_TIERS; i++ )
+   {
+      smt_setup_ico_tier_operation ico_tier_op;
+      ico_tier_op.control_account = "alice";
+      ico_tier_op.symbol = symbol;
+      ico_tier_op.generation_policy = capped_generation_policy;
+      ico_tier_op.steem_satoshi_cap = 1000000 * (i + 1);
+      tx.operations.push_back( ico_tier_op );
+   }
+
+   tx.operations.push_back( setup_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+   BOOST_TEST_MESSAGE( " --- Overflow of total tokens" );
+
+   db->clear_pending();
+
+   tx.clear();
+   setup_op.min_unit_ratio++;
+
+   for( int i = 0; i < SMT_MAX_ICO_TIERS; i++ )
+   {
+      smt_setup_ico_tier_operation ico_tier_op;
+      ico_tier_op.control_account = "alice";
+      ico_tier_op.symbol = symbol;
+      ico_tier_op.generation_policy = capped_generation_policy;
+      ico_tier_op.steem_satoshi_cap = 1000000 * (i + 1);
+      tx.operations.push_back( ico_tier_op );
+   }
+
+   tx.operations.push_back( setup_op );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " --- Overflow of max_token_units" );
+
+   db->clear_pending();
+
+   tx.clear();
+   setup_op.min_unit_ratio = std::numeric_limits< uint32_t >::max();
+
+   capped_generation_policy.generation_unit.token_unit.clear();
+   capped_generation_policy.generation_unit.token_unit[ "alice" ] = 1;
+
+   smt_setup_ico_tier_operation ico_tier_op;
+   ico_tier_op.control_account = "alice";
+   ico_tier_op.symbol = symbol;
+   ico_tier_op.generation_policy = capped_generation_policy;
+   ico_tier_op.steem_satoshi_cap = 2147483649;
+   tx.operations.push_back( ico_tier_op );
+
+   tx.operations.push_back( setup_op );
+   sign( tx, alice_private_key );
+   BOOST_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+   BOOST_TEST_MESSAGE( " --- Check good max_token_units" );
+
+   db->clear_pending();
+
+   tx.clear();
+
+   ico_tier_op.steem_satoshi_cap = 232830;
+   tx.operations.push_back( ico_tier_op );
+
+   tx.operations.push_back( setup_op );
+   sign( tx, alice_private_key );
+   db->push_transaction( tx, 0 );
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
