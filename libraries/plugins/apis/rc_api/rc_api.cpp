@@ -214,11 +214,11 @@ DEFINE_API_IMPL( rc_api_impl, list_rc_delegations )
 
          iterate_results(
             _db.get_index< rc_indel_edge_index, by_edge >(),
-            boost::make_tuple( key[0].as< account_name_type >(), asset_symbol_type(), key[1].as< account_name_type >() ),
+            boost::make_tuple( key[0].as< account_name_type >(), VESTS_SYMBOL, key[1].as< account_name_type >() ),
             result.rc_delegations,
             args.limit,
-            &on_push_default< rc_indel_edge_object >,
-            &filter_default< rc_indel_edge_object > );
+            &on_push_default< rc_indel_edge_api_object >,
+            &filter_default< rc_indel_edge_api_object > );
          break;
       }
       case( sort_order_type::by_pool ):
@@ -228,11 +228,11 @@ DEFINE_API_IMPL( rc_api_impl, list_rc_delegations )
 
          iterate_results(
             _db.get_index< rc_indel_edge_index, by_pool >(),
-            boost::make_tuple( key[0].as< account_name_type >(), asset_symbol_type(), key[1].as< account_name_type >() ),
+            boost::make_tuple( key[0].as< account_name_type >(), VESTS_SYMBOL, key[1].as< account_name_type >() ),
             result.rc_delegations,
             args.limit,
-            &on_push_default< rc_indel_edge_object >,
-            &filter_default< rc_indel_edge_object > );
+            &on_push_default< rc_indel_edge_api_object >,
+            &filter_default< rc_indel_edge_api_object > );
          break;
       }
       default:
