@@ -194,7 +194,7 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
       case( by_name ):
       {
          iterate_results(
-				_db.get_index< chain::witness_index, chain::by_name >(),
+            _db.get_index< chain::witness_index, chain::by_name >(),
             args.start.as< protocol::account_name_type >(),
             result.witnesses,
             args.limit,
@@ -206,7 +206,7 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
       {
          auto key = args.start.as< std::pair< share_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::witness_index, chain::by_vote_name >(),
+            _db.get_index< chain::witness_index, chain::by_vote_name >(),
             boost::make_tuple( key.first, key.second ),
             result.witnesses,
             args.limit,
@@ -219,7 +219,7 @@ DEFINE_API_IMPL( database_api_impl, list_witnesses )
          auto key = args.start.as< std::pair< fc::uint128, account_name_type > >();
          auto wit_id = _db.get< chain::witness_object, chain::by_name >( key.second ).id;
          iterate_results(
-				_db.get_index< chain::witness_index, chain::by_schedule_time >(),
+            _db.get_index< chain::witness_index, chain::by_schedule_time >(),
             boost::make_tuple( key.first, wit_id ),
             result.witnesses,
             args.limit,
@@ -264,7 +264,7 @@ DEFINE_API_IMPL( database_api_impl, list_witness_votes )
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::witness_vote_index, chain::by_account_witness >(),
+            _db.get_index< chain::witness_vote_index, chain::by_account_witness >(),
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
@@ -276,7 +276,7 @@ DEFINE_API_IMPL( database_api_impl, list_witness_votes )
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::witness_vote_index, chain::by_witness_account >(),
+            _db.get_index< chain::witness_vote_index, chain::by_witness_account >(),
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
@@ -323,7 +323,7 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
       case( by_name ):
       {
          iterate_results(
-				_db.get_index< chain::account_index, chain::by_name >(),
+            _db.get_index< chain::account_index, chain::by_name >(),
             args.start.as< protocol::account_name_type >(),
             result.accounts,
             args.limit,
@@ -335,7 +335,7 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::account_index, chain::by_proxy >(),
+            _db.get_index< chain::account_index, chain::by_proxy >(),
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
@@ -347,7 +347,7 @@ DEFINE_API_IMPL( database_api_impl, list_accounts )
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::account_index, chain::by_next_vesting_withdrawal >(),
+            _db.get_index< chain::account_index, chain::by_next_vesting_withdrawal >(),
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
@@ -430,7 +430,7 @@ DEFINE_API_IMPL( database_api_impl, list_account_recovery_requests )
       case( by_account ):
       {
          iterate_results(
-				_db.get_index< chain::account_recovery_request_index, chain::by_account >(),
+            _db.get_index< chain::account_recovery_request_index, chain::by_account >(),
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -442,7 +442,7 @@ DEFINE_API_IMPL( database_api_impl, list_account_recovery_requests )
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::account_recovery_request_index, chain::by_expiration >(),
+            _db.get_index< chain::account_recovery_request_index, chain::by_expiration >(),
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -488,7 +488,7 @@ DEFINE_API_IMPL( database_api_impl, list_change_recovery_account_requests )
       case( by_account ):
       {
          iterate_results(
-				_db.get_index< chain::change_recovery_account_request_index, chain::by_account >(),
+            _db.get_index< chain::change_recovery_account_request_index, chain::by_account >(),
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -500,7 +500,7 @@ DEFINE_API_IMPL( database_api_impl, list_change_recovery_account_requests )
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::change_recovery_account_request_index, chain::by_effective_date >(),
+            _db.get_index< chain::change_recovery_account_request_index, chain::by_effective_date >(),
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -547,7 +547,7 @@ DEFINE_API_IMPL( database_api_impl, list_escrows )
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
          iterate_results(
-				_db.get_index< chain::escrow_index, chain::by_from_id >(),
+            _db.get_index< chain::escrow_index, chain::by_from_id >(),
             boost::make_tuple( key.first, key.second ),
             result.escrows,
             args.limit,
@@ -560,7 +560,7 @@ DEFINE_API_IMPL( database_api_impl, list_escrows )
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_ratification_deadline start requires 3 values. (bool, time_point_sec, escrow_id_type)" );
          iterate_results(
-				_db.get_index< chain::escrow_index, chain::by_ratification_deadline >(),
+            _db.get_index< chain::escrow_index, chain::by_ratification_deadline >(),
             boost::make_tuple( key[0].as< bool >(), key[1].as< fc::time_point_sec >(), key[2].as< escrow_id_type >() ),
             result.escrows,
             args.limit,
@@ -607,7 +607,7 @@ DEFINE_API_IMPL( database_api_impl, list_withdraw_vesting_routes )
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::withdraw_vesting_route_index, chain::by_withdraw_route >(),
+            _db.get_index< chain::withdraw_vesting_route_index, chain::by_withdraw_route >(),
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
@@ -619,7 +619,7 @@ DEFINE_API_IMPL( database_api_impl, list_withdraw_vesting_routes )
       {
          auto key = args.start.as< std::pair< account_name_type, withdraw_vesting_route_id_type > >();
          iterate_results(
-				_db.get_index< chain::withdraw_vesting_route_index, chain::by_destination >(),
+            _db.get_index< chain::withdraw_vesting_route_index, chain::by_destination >(),
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
@@ -689,7 +689,7 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
          iterate_results(
-				_db.get_index< chain::savings_withdraw_index, chain::by_from_rid >(),
+            _db.get_index< chain::savings_withdraw_index, chain::by_from_rid >(),
             boost::make_tuple( key.first, key.second ),
             result.withdrawals,
             args.limit,
@@ -702,7 +702,7 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_complete_from_id start requires 3 values. (time_point_sec, account_name_type, uint32_t)" );
          iterate_results(
-				_db.get_index< chain::savings_withdraw_index, chain::by_complete_from_rid >(),
+            _db.get_index< chain::savings_withdraw_index, chain::by_complete_from_rid >(),
             boost::make_tuple( key[0].as< fc::time_point_sec >(), key[1].as< account_name_type >(), key[2].as< uint32_t >() ),
             result.withdrawals,
             args.limit,
@@ -715,7 +715,7 @@ DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_to_complete start requires 3 values. (account_name_type, time_point_sec, savings_withdraw_id_type" );
          iterate_results(
-				_db.get_index< chain::savings_withdraw_index, chain::by_to_complete >(),
+            _db.get_index< chain::savings_withdraw_index, chain::by_to_complete >(),
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), key[2].as< savings_withdraw_id_type >() ),
             result.withdrawals,
             args.limit,
@@ -761,7 +761,7 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegations )
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::vesting_delegation_index, chain::by_delegation >(),
+            _db.get_index< chain::vesting_delegation_index, chain::by_delegation >(),
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
@@ -807,7 +807,7 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegation_expirations )
       {
          auto key = args.start.as< std::pair< time_point_sec, vesting_delegation_expiration_id_type > >();
          iterate_results(
-				_db.get_index< chain::vesting_delegation_expiration_index, chain::by_expiration >(),
+            _db.get_index< chain::vesting_delegation_expiration_index, chain::by_expiration >(),
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
@@ -820,7 +820,7 @@ DEFINE_API_IMPL( database_api_impl, list_vesting_delegation_expirations )
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_account_expiration start requires 3 values. (account_name_type, time_point_sec, vesting_delegation_expiration_id_type" );
          iterate_results(
-				_db.get_index< chain::vesting_delegation_expiration_index, chain::by_account_expiration >(),
+            _db.get_index< chain::vesting_delegation_expiration_index, chain::by_account_expiration >(),
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< time_point_sec >(), key[2].as< vesting_delegation_expiration_id_type >() ),
             result.delegations,
             args.limit,
@@ -866,7 +866,7 @@ DEFINE_API_IMPL( database_api_impl, list_sbd_conversion_requests )
       {
          auto key = args.start.as< std::pair< time_point_sec, convert_request_id_type > >();
          iterate_results(
-				_db.get_index< chain::convert_request_index, chain::by_conversion_date >(),
+            _db.get_index< chain::convert_request_index, chain::by_conversion_date >(),
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -878,7 +878,7 @@ DEFINE_API_IMPL( database_api_impl, list_sbd_conversion_requests )
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
          iterate_results(
-				_db.get_index< chain::convert_request_index, chain::by_owner >(),
+            _db.get_index< chain::convert_request_index, chain::by_owner >(),
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -923,7 +923,7 @@ DEFINE_API_IMPL( database_api_impl, list_decline_voting_rights_requests )
       case( by_account ):
       {
          iterate_results(
-				_db.get_index< chain::decline_voting_rights_request_index, chain::by_account >(),
+            _db.get_index< chain::decline_voting_rights_request_index, chain::by_account >(),
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -935,7 +935,7 @@ DEFINE_API_IMPL( database_api_impl, list_decline_voting_rights_requests )
       {
          auto key = args.start.as< std::pair< time_point_sec, account_name_type > >();
          iterate_results(
-				_db.get_index< chain::decline_voting_rights_request_index, chain::by_effective_date >(),
+            _db.get_index< chain::decline_voting_rights_request_index, chain::by_effective_date >(),
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -1001,7 +1001,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_cashout_time >(),
+            _db.get_index< chain::comment_index, chain::by_cashout_time >(),
             boost::make_tuple( key[0].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
@@ -1013,7 +1013,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
       {
          auto key = args.start.as< std::pair< account_name_type, string > >();
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_permlink >(),
+            _db.get_index< chain::comment_index, chain::by_permlink >(),
             boost::make_tuple( key.first, key.second ),
             result.comments,
             args.limit,
@@ -1049,7 +1049,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_root >(),
+            _db.get_index< chain::comment_index, chain::by_root >(),
             boost::make_tuple( root_id, child_id ),
             result.comments,
             args.limit,
@@ -1074,7 +1074,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_parent >(),
+            _db.get_index< chain::comment_index, chain::by_parent >(),
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< string >(), child_id ),
             result.comments,
             args.limit,
@@ -1100,7 +1100,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_last_update >(),
+            _db.get_index< chain::comment_index, chain::by_last_update >(),
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), child_id ),
             result.comments,
             args.limit,
@@ -1125,7 +1125,7 @@ DEFINE_API_IMPL( database_api_impl, list_comments )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_index, chain::by_last_update >(),
+            _db.get_index< chain::comment_index, chain::by_last_update >(),
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
@@ -1298,7 +1298,7 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_vote_index, chain::by_comment_symbol_voter >(),
+            _db.get_index< chain::comment_vote_index, chain::by_comment_symbol_voter >(),
             boost::make_tuple( comment_id, start_symbol, voter_id ),
             result.votes,
             args.limit,
@@ -1339,7 +1339,7 @@ DEFINE_API_IMPL( database_api_impl, list_votes )
          }
 
          iterate_results(
-				_db.get_index< chain::comment_vote_index, chain::by_voter_symbol_comment >(),
+            _db.get_index< chain::comment_vote_index, chain::by_voter_symbol_comment >(),
             boost::make_tuple( voter_id, start_symbol, comment_id ),
             result.votes,
             args.limit,
@@ -1395,7 +1395,7 @@ DEFINE_API_IMPL( database_api_impl, list_limit_orders )
       {
          auto key = args.start.as< std::pair< price, limit_order_id_type > >();
          iterate_results(
-				_db.get_index< chain::limit_order_index, chain::by_price >(),
+            _db.get_index< chain::limit_order_index, chain::by_price >(),
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
@@ -1407,7 +1407,7 @@ DEFINE_API_IMPL( database_api_impl, list_limit_orders )
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
          iterate_results(
-				_db.get_index< chain::limit_order_index, chain::by_account >(),
+            _db.get_index< chain::limit_order_index, chain::by_account >(),
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
@@ -1549,7 +1549,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposals )
       {
          auto key = args.start.as< std::pair< account_name_type, api_id_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_index, steem::chain::by_creator >(),
+            _db.get_index< steem::chain::proposal_index, steem::chain::by_creator >(),
             boost::make_tuple( key.first, key.second ),
             result.proposals,
             args.limit,
@@ -1563,7 +1563,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposals )
       {
          auto key = args.start.as< std::pair< time_point_sec, api_id_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_index, steem::chain::by_start_date >(),
+            _db.get_index< steem::chain::proposal_index, steem::chain::by_start_date >(),
             boost::make_tuple( key.first, key.second ),
             result.proposals,
             args.limit,
@@ -1577,7 +1577,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposals )
       {
          auto key = args.start.as< std::pair< time_point_sec, api_id_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_index, steem::chain::by_end_date >(),
+            _db.get_index< steem::chain::proposal_index, steem::chain::by_end_date >(),
             boost::make_tuple( key.first, key.second ),
             result.proposals,
             args.limit,
@@ -1591,7 +1591,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposals )
       {
          auto key = args.start.as< std::pair< uint64_t, api_id_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_index, steem::chain::by_total_votes >(),
+            _db.get_index< steem::chain::proposal_index, steem::chain::by_total_votes >(),
             boost::make_tuple( key.first, key.second ),
             result.proposals,
             args.limit,
@@ -1647,7 +1647,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposal_votes )
       {
          auto key = args.start.as< std::pair< account_name_type, api_id_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_vote_index, steem::chain::by_voter_proposal >(),
+            _db.get_index< steem::chain::proposal_vote_index, steem::chain::by_voter_proposal >(),
             boost::make_tuple( key.first, key.second ),
             result.proposal_votes,
             args.limit,
@@ -1665,7 +1665,7 @@ DEFINE_API_IMPL( database_api_impl, list_proposal_votes )
       {
          auto key = args.start.as< std::pair< api_id_type, account_name_type > >();
          iterate_results(
-				_db.get_index< steem::chain::proposal_vote_index, steem::chain::by_proposal_voter >(),
+            _db.get_index< steem::chain::proposal_vote_index, steem::chain::by_proposal_voter >(),
             boost::make_tuple( key.first, key.second ),
             result.proposal_votes,
             args.limit,
@@ -1855,7 +1855,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< account_name_type >(), key[ 2 ].as< uint32_t >() );
 
          iterate_results(
-				_db.get_index< chain::smt_contribution_index, chain::by_symbol_contributor >(),
+            _db.get_index< chain::smt_contribution_index, chain::by_symbol_contributor >(),
             start,
             result.contributions,
             args.limit,
@@ -1875,7 +1875,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< smt_contribution_object_id_type >() );
 
          iterate_results(
-				_db.get_index< chain::smt_contribution_index, chain::by_symbol_id >(),
+            _db.get_index< chain::smt_contribution_index, chain::by_symbol_id >(),
             start,
             result.contributions,
             args.limit,
@@ -1896,7 +1896,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_contributions )
             start = boost::make_tuple( key[ 0 ].as< account_name_type >(), key[ 1 ].as< asset_symbol_type >(), key[ 2 ].as< uint32_t >() );
 
          iterate_results(
-				_db.get_index< chain::smt_contribution_index, chain::by_contributor >(),
+            _db.get_index< chain::smt_contribution_index, chain::by_contributor >(),
             start,
             result.contributions,
             args.limit,
@@ -1950,7 +1950,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
          }
 
          iterate_results(
-				_db.get_index< chain::smt_token_index, chain::by_stripped_symbol >(),
+            _db.get_index< chain::smt_token_index, chain::by_stripped_symbol >(),
             start,
             result.tokens,
             args.limit,
@@ -1976,7 +1976,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_tokens )
          }
 
          iterate_results(
-				_db.get_index< chain::smt_token_index, chain::by_control_account >(),
+            _db.get_index< chain::smt_token_index, chain::by_control_account >(),
             start,
             result.tokens,
             args.limit,
@@ -2032,7 +2032,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_token_emissions )
             start = boost::make_tuple( key[ 0 ].as< asset_symbol_type >(), key[ 1 ].as< time_point_sec >() );
 
          iterate_results(
-				_db.get_index< chain::smt_token_emissions_index, chain::by_symbol_time >(),
+            _db.get_index< chain::smt_token_emissions_index, chain::by_symbol_time >(),
             start,
             result.token_emissions,
             args.limit,
@@ -2105,7 +2105,7 @@ DEFINE_API_IMPL( database_api_impl, list_smt_token_balances )
             asset_symbol_type::from_asset_num( key[ 1 ].as< asset_symbol_type >().get_stripped_precision_smt_num() ) );
 
          iterate_results(
-				_db.get_index< chain::account_regular_balance_index, chain::by_name_stripped_symbol >(),
+            _db.get_index< chain::account_regular_balance_index, chain::by_name_stripped_symbol >(),
             start,
             result.balances,
             args.limit,
