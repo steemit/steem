@@ -3596,6 +3596,7 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
 void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_operation& op )
 {
+   FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "claim_reward_balance2_operation is not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    for( const asset& token : op.reward_tokens )
    {
       if( token.amount == 0 )
