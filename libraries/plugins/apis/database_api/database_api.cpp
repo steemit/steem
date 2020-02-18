@@ -20,10 +20,6 @@ namespace steem { namespace plugins { namespace database_api {
 
 using namespace util;
 
-//using util::iterate_results;
-//using util::filter_default;
-//using util::on_push_default;
-
 class database_api_impl
 {
    public:
