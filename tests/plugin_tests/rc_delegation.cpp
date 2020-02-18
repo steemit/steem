@@ -673,7 +673,7 @@ BOOST_AUTO_TEST_CASE( rc_drc_pool_consumption )
 
       const auto& gpo = db->get_dynamic_global_properties();
       rc_plugin_skip_flags skip {0, 0, 0, 0};
-      set< account_name_type > whitelist;
+      std::set< account_name_type > whitelist;
 
       use_account_rcs( *db, gpo, "alice", 100, skip, whitelist );
       BOOST_REQUIRE( poola_pool.rc_pool_manabar.current_mana == 50 );
