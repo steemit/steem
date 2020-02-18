@@ -142,7 +142,7 @@ void update_manabar( const PropType& gpo, AccountType& account, bool downvote_ma
       {
          FC_TODO( "Cleanup once we have verified the overflow has not permanently made it in to the chain" );
          uint128_t numerator = effective_vests * gpo.downvote_pool_percent;
-         if( numerator.hi != 0 && numerator.lo <= uint64_t( std::numeric_limits<int64_t>::max() ) )
+         if( numerator.hi != 0 || numerator.lo > uint64_t( std::numeric_limits<int64_t>::max() ) )
             elog( "NOTIFYALERT! max mana overflow made it in to the chain" );
 
          params.max_mana = ( effective_vests * gpo.downvote_pool_percent ) / STEEM_100_PERCENT;
