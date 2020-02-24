@@ -62,6 +62,8 @@ struct pool_delegation
 
 struct rc_account_api_object
 {
+   rc_account_api_object(){}
+
    rc_account_api_object( const rc_account_object& rca, const database& db ) :
       account( rca.account ),
       creator( rca.creator ),
