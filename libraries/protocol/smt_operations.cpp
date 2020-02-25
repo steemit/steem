@@ -193,6 +193,16 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( lep_abs_amount > 0 || lep_rel_amount_numerator > 0 || rep_abs_amount > 0 || rep_rel_amount_numerator > 0,
       "An emission operation must have positive non-zero emission" );
 
+    for ( const auto& e : emissions_unit.token_unit )
+    {
+        if ( smt::unit_target::is_account_name_type( e.first ) )
+        {
+            std::string name = smt::unit_target::get_unit_target_account( e.first );
+            FC_ASSERT( name != STEEM_TREASURY_ACCOUNT, "Invalid emission destination, cannot emit to the treasury account ${a}", ("a", STEEM_TREASURY_ACCOUNT) );
+            FC_ASSERT( name != STEEM_NULL_ACCOUNT, "Invalid emission destination, cannot emit to ${a}", ("a", STEEM_NULL_ACCOUNT) );
+        }
+    }
+
    // rel_amount_denom_bits <- any value of unsigned int is OK
 }
 

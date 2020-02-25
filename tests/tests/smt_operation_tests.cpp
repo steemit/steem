@@ -1,6 +1,5 @@
 #include <fc/macros.hpp>
 
-#if defined IS_TEST_NET
 
 #include <boost/test/unit_test.hpp>
 
@@ -2135,6 +2134,15 @@ BOOST_AUTO_TEST_CASE( smt_setup_emissions_validate )
 
       BOOST_TEST_MESSAGE( " -- Invalid emission unit token unit account" );
       op.emissions_unit.token_unit[ "@@@@" ] = 10;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.emissions_unit.token_unit.clear();
+
+      BOOST_TEST_MESSAGE( " -- Invalid emission unit token unit account is the treasury account" );
+      op.emissions_unit.token_unit[ STEEM_TREASURY_ACCOUNT ] = 10;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      op.emissions_unit.token_unit.clear();
+      BOOST_TEST_MESSAGE( " -- Invalid emission unit token unit account is the null account" );
+      op.emissions_unit.token_unit[ STEEM_NULL_ACCOUNT ] = 10;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
       op.emissions_unit.token_unit.clear();
       op.emissions_unit.token_unit[ SMT_DESTINATION_REWARDS ] = 1;
@@ -5179,4 +5187,3 @@ BOOST_AUTO_TEST_CASE( smt_setup_ico_tier_apply )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-#endif
