@@ -1553,6 +1553,12 @@ FC_API( steem::wallet::wallet_api,
         (delegate_to_pool)
         (delegate_drc_from_pool)
         (set_slot_delegator)
+        (find_rc_accounts)
+        (list_rc_accounts)
+        (find_rc_delegation_pools)
+        (list_rc_delegation_pools)
+        (find_rc_delegations)
+        (list_rc_delegations)
       )
 
 FC_REFLECT( steem::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )
