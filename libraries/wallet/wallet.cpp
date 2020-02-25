@@ -2881,4 +2881,43 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
       return my->sign_transaction( trx, broadcast );
    }
 
+   vector< rc::rc_account_api_object > wallet_api::find_rc_accounts( vector< account_name_type > accounts )
+   {
+      return my->_remote_api->find_rc_accounts( accounts );
+   }
+
+   vector< rc::rc_account_api_object > wallet_api::list_rc_accounts(
+      account_name_type account,
+      uint32_t limit,
+      rc::sort_order_type order )
+   {
+      return my->_remote_api->list_rc_accounts( account, limit, order );
+   }
+
+   vector< rc::rc_delegation_pool_api_object > wallet_api::find_rc_delegation_pools( vector< account_name_type > accounts )
+   {
+      return my->_remote_api->find_rc_delegation_pools( accounts );
+   }
+
+   vector< rc::rc_delegation_pool_api_object > wallet_api::list_rc_delegation_pools(
+      account_name_type account,
+      uint32_t limit,
+      rc::sort_order_type order )
+   {
+      return my->_remote_api->list_rc_delegation_pools( account, limit, order );
+   }
+
+   vector< rc::rc_indel_edge_api_object > wallet_api::find_rc_delegations( account_name_type account )
+   {
+      return my->_remote_api->find_rc_delegations( account );
+   }
+
+   vector< rc::rc_indel_edge_api_object > wallet_api::list_rc_delegations(
+      account_name_type account,
+      uint32_t limit,
+      rc::sort_order_type order )
+   {
+      return my->_remote_api->list_rc_delegations( account, limit, order );
+   }
+
 } } // steem::wallet

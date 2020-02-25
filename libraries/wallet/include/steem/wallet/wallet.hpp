@@ -1359,6 +1359,64 @@ class wallet_api
          account_name_type signer,
          bool broadcast );
 
+      /**
+       *  Retrieve RC information for the given accounts.
+       *
+       *  @param accounts The vector of accounts
+       */
+      vector< rc::rc_account_api_object > find_rc_accounts( vector< account_name_type > accounts );
+
+      /**
+       *  List RC accounts.
+       *
+       *  @param account The starting account
+       *  @param limit   The limit of returned results
+       *  @param order   The sort order
+       */
+      vector< rc::rc_account_api_object > list_rc_accounts(
+         account_name_type account,
+         uint32_t limit,
+         rc::sort_order_type order );
+
+      /**
+       *  Retrieve RC delegation pools for the given accounts.
+       *
+       *  @param accounts The vector of accounts
+       */
+      vector< rc::rc_delegation_pool_api_object > find_rc_delegation_pools( vector< account_name_type > accounts );
+
+      /**
+       *  List RC delegation pools.
+       *
+       *  @param account The starting account
+       *  @param limit   The limit of returned results
+       *  @param order   The sort order
+       */
+      vector< rc::rc_delegation_pool_api_object > list_rc_delegation_pools(
+         account_name_type account,
+         uint32_t limit,
+         rc::sort_order_type order );
+
+      /**
+       *  Retrieve RC delegations information for the given account.
+       *
+       *  @param account The account
+       */
+      vector< rc::rc_indel_edge_api_object > find_rc_delegations( account_name_type account );
+
+      /**
+       *  List RC delegations.
+       *
+       *  @param account The starting account
+       *  @param limit   The limit of returned results
+       *  @param order   The sort order
+       */
+      vector< rc::rc_indel_edge_api_object > list_rc_delegations(
+         account_name_type account,
+         uint32_t limit,
+         rc::sort_order_type order );
+
+
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
       fc::signal<void(bool)> lock_changed;
 
