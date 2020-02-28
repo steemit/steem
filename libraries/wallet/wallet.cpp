@@ -2913,11 +2913,11 @@ condenser_api::legacy_signed_transaction wallet_api::follow( string follower, st
    }
 
    vector< rc::rc_indel_edge_api_object > wallet_api::list_rc_delegations(
-      account_name_type account,
+      vector< account_name_type > accounts,
       uint32_t limit,
       rc::sort_order_type order )
    {
-      return my->_remote_api->list_rc_delegations( account, limit, order );
+      return my->_remote_api->list_rc_delegations( accounts, limit, order );
    }
 
 } } // steem::wallet

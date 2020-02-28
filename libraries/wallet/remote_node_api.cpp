@@ -474,7 +474,7 @@ vector< rc::rc_indel_edge_api_object > remote_node_api::find_rc_delegations( acc
    FC_ASSERT( false );
 }
 
-vector< rc::rc_indel_edge_api_object > remote_node_api::list_rc_delegations( account_name_type, uint32_t, rc::sort_order_type )
+vector< rc::rc_indel_edge_api_object > remote_node_api::list_rc_delegations( vector< account_name_type >, uint32_t, rc::sort_order_type )
 {
    FC_ASSERT( false );
 }

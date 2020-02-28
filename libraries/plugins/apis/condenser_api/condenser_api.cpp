@@ -2211,7 +2211,7 @@ namespace detail
       FC_ASSERT( _rc_api, "rc_api_plugin not enabled." );
 
       rc::list_rc_delegations_args a;
-      a.start = args[0].as< account_name_type >();
+      a.start = args[0].as< vector< fc::variant > >();
       a.limit = args[1].as< uint32_t >();
       a.order = args[2].as< rc::sort_order_type >();
 

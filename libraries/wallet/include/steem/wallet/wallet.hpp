@@ -1412,7 +1412,7 @@ class wallet_api
        *  @param order   The sort order
        */
       vector< rc::rc_indel_edge_api_object > list_rc_delegations(
-         account_name_type account,
+         vector< account_name_type > account,
          uint32_t limit,
          rc::sort_order_type order );
 

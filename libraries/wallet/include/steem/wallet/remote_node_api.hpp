@@ -116,7 +116,7 @@ struct remote_node_api
    vector< rc::rc_delegation_pool_api_object > find_rc_delegation_pools( vector< account_name_type > );
    vector< rc::rc_delegation_pool_api_object > list_rc_delegation_pools( account_name_type, uint32_t, rc::sort_order_type );
    vector< rc::rc_indel_edge_api_object > find_rc_delegations( account_name_type );
-   vector< rc::rc_indel_edge_api_object > list_rc_delegations( account_name_type, uint32_t, rc::sort_order_type );
+   vector< rc::rc_indel_edge_api_object > list_rc_delegations( vector< account_name_type >, uint32_t, rc::sort_order_type );
 };
 
 } }
