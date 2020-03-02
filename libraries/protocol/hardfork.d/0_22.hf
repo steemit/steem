@@ -7,4 +7,42 @@
 
 #define STEEM_HARDFORK_0_22_VERSION hardfork_version( 0, 22 )
 
+#ifdef IS_TEST_NET
+#define STEEM_PROTECTION_HARDFORK_TIME        1582091600 // Wed, 19 February 2020 5:55:00 UTC (1:55:00 ET)
+#else
+#define STEEM_PROTECTION_HARDFORK_TIME        1582495200 // Sun, 23 February 2020 22:00:00 UTC (17:00:00 ET)
+#endif
+
+namespace hardforkprotect
+{
+
+inline static const std::set< std::string >& get_steemit_accounts()
+{
+   static const std::set< std::string > steemit_accounts
+   {
+    "ben",
+    "binance-hot",
+    "bitdev100",
+    "geos",
+    "goku1",
+    "huobi-withdrawal",
+    "imadev",
+    "joe767676",
+    "misterdelegation",
+    "pacemaker",
+    "poloniex",
+    "steem",
+    "steemit",
+    "timothy2020",
+    "steem",
+    "steemit",
+    "steemit2",
+    "steemitadmin"
+   };
+
+   return steemit_accounts;
+}
+
+}
+
 #endif
