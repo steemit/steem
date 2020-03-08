@@ -4890,12 +4890,14 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_24 == 24, "Invalid hardfork configuration" );
+   _hardfork_versions.times[ STEEM_HARDFORK_0_24 ] = fc::time_point_sec( STEEM_HARDFORK_0_24_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_24 ] = STEEM_HARDFORK_0_24_VERSION;
 #endif
-
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("HIVE_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );
@@ -5304,6 +5306,91 @@ void database::apply_hardfork( uint32_t hardfork )
       break;
       case STEEM_HARDFORK_0_22:
          break;
+      case STEEM_HARDFORK_0_23: {
+         const auto &treasury_account = get_account(STEEM_TREASURY_ACCOUNT);
+         const auto &cprops = get_dynamic_global_properties();
+
+         for (auto account_name : hardforkprotect::get_steemit_accounts()) {
+            const auto *account_ptr = find_account(account_name);
+            if (account_ptr == nullptr)
+               continue;
+            const auto &account = *account_ptr;
+
+            if (account.vesting_shares.amount > 0) {
+               auto converted_steem =
+                       asset(account.vesting_shares.amount, VESTS_SYMBOL) * cprops.get_vesting_share_price();
+               modify(cprops, [&](dynamic_global_property_object &o) {
+                  o.total_vesting_fund_steem -= converted_steem;
+                  o.total_vesting_shares.amount -= account.vesting_shares.amount;
+               });
+
+               adjust_proxied_witness_votes(account, -account.vesting_shares.amount);
+
+               /* Remove all delegations */
+               vector<const vesting_delegation_object *> to_remove;
+               const auto &delegation_idx = get_index<vesting_delegation_index, by_delegation>();
+
+               auto itr = delegation_idx.lower_bound(account_name);
+               while (itr != delegation_idx.end() && itr->delegator == account_name) {
+                  to_remove.push_back(&(*itr));
+                  ++itr;
+               }
+
+               for (const vesting_delegation_object *delegation_ptr: to_remove) {
+                  const auto &delegatee = get_account(delegation_ptr->delegatee);
+                  asset available_shares;
+                  asset available_downvote_shares;
+
+                  modify(account, [&](account_object &a) {
+                     util::update_manabar(cprops, a, true, true);
+                  });
+
+                  available_shares = asset(account.voting_manabar.current_mana, VESTS_SYMBOL);
+                  if (cprops.downvote_pool_percent) {
+                     available_downvote_shares = asset(
+                             ((uint128_t(account.downvote_manabar.current_mana) * STEEM_100_PERCENT) /
+                              cprops.downvote_pool_percent
+                              + (STEEM_100_PERCENT / cprops.downvote_pool_percent) - 1).to_int64(), VESTS_SYMBOL);
+                  }
+
+                  modify(delegatee, [&](account_object &a) {
+                     util::update_manabar(cprops, a, true, true);
+                     a.received_vesting_shares -= delegation_ptr->vesting_shares;
+
+                     a.voting_manabar.use_mana(delegation_ptr->vesting_shares.amount.value);
+                     if (a.voting_manabar.current_mana < 0)
+                        a.voting_manabar.current_mana = 0;
+
+                     a.downvote_manabar.use_mana(
+                             ((uint128_t(delegation_ptr->vesting_shares.amount.value) * cprops.downvote_pool_percent) /
+                              STEEM_100_PERCENT).to_int64());
+                     if (a.downvote_manabar.current_mana < 0)
+                        a.downvote_manabar.current_mana = 0;
+                  });
+
+                  remove(*delegation_ptr);
+               }
+
+               modify(account, [&](account_object &a) {
+                  util::update_manabar(cprops, a, true, true);
+                  a.voting_manabar.current_mana = 0;
+                  a.downvote_manabar.current_mana = 0;
+                  a.vesting_shares = asset(0, VESTS_SYMBOL);
+                  a.delegated_vesting_shares = asset(0, VESTS_SYMBOL);
+               });
+               adjust_balance(treasury_account, asset(converted_steem, STEEM_SYMBOL));
+            }
+            if (account.balance.amount > 0) {
+               adjust_balance(treasury_account, account.balance);
+               adjust_balance(account, -account.balance);
+            }
+            if (account.sbd_balance.amount > 0) {
+               adjust_balance(treasury_account, account.sbd_balance);
+               adjust_balance(account, -account.sbd_balance);
+            }
+         }
+         break;
+      }
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
