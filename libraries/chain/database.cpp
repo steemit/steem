@@ -4890,10 +4890,13 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEM_HARDFORK_0_24 == 24, "Invalid hardfork configuration" );
+   _hardfork_versions.times[ STEEM_HARDFORK_0_24 ] = fc::time_point_sec( STEEM_HARDFORK_0_24_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_24 ] = STEEM_HARDFORK_0_24_VERSION;
 #endif
 
 
@@ -5303,6 +5306,34 @@ void database::apply_hardfork( uint32_t hardfork )
       }
       break;
       case STEEM_HARDFORK_0_22:
+         break;
+      case STEEM_HARDFORK_0_23:
+         {
+            for( const std::string& acc : hardfork23::get_steemit_accounts() ){
+               const auto& account = get_account( acc );
+
+               // remove witness votes
+               std::array<share_type, STEEM_MAX_PROXY_RECURSION_DEPTH+1> delta;
+               delta[0] = -account.vesting_shares.amount;
+               for( int i = 0; i < STEEM_MAX_PROXY_RECURSION_DEPTH; ++i )
+                  delta[i+1] = -account.proxied_vsf_votes[i];
+               adjust_proxied_witness_votes( account, delta );
+               clear_witness_votes( account );
+
+               modify( account , [&]( account_object& a )
+               {
+                  // restrict votes
+                  a.can_vote = false;
+                  a.proxy = STEEM_PROXY_TO_SELF_ACCOUNT;
+
+                  // stop current power down
+                  a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
+                  a.next_vesting_withdrawal = time_point_sec::maximum();
+                  a.to_withdraw = 0;
+                  a.withdrawn = 0;
+               } );
+            }
+         }
          break;
       case STEEM_SMT_HARDFORK:
       {

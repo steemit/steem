@@ -2,8 +2,29 @@
 #define STEEM_HARDFORK_0_23 23
 #define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_23
 
-#define STEEM_HARDFORK_0_23_TIME 1597970800 // Future 2020...
+#define STEEM_HARDFORK_0_23_TIME 1591876800 // Thursday, June 11, 2020 12:00:00 PM
 
 #define STEEM_HARDFORK_0_23_VERSION hardfork_version( 0, 23 )
+
+#define STEEM_HARDFORK_0_23_TIME_NO_EFFECT 1704067200 // Monday, January 1, 2024 12:00:00 AM
+
+namespace hardfork23
+{
+
+inline static const std::set< std::string >& get_steemit_accounts()
+{
+   static const std::set< std::string > steemit_accounts
+   {
+    "misterdelegation",
+    "steem",
+    "steemit",
+    "steemit2",
+    "steemitadmin"
+   };
+
+   return steemit_accounts;
+}
+
+}
 
 #endif

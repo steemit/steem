@@ -1253,9 +1253,18 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    }
    else
    {
+      bool is_special_case_hf23 = false;
+      if ( _db.head_block_time() < STEEM_HARDFORK_0_23_TIME_NO_EFFECT )
+      {
+         if( hardfork23::get_steemit_accounts().count( o.account ) )
+            is_special_case_hf23 = true;
+      }
+
       int vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
       if( _db.has_hardfork( STEEM_HARDFORK_0_16__551 ) )
          vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS; /// 13 weeks = 1 quarter of a year
+      if( is_special_case_hf23 )
+         vesting_withdraw_intervals = STEEM_VESTING_WITHDRAW_INTERVALS_SPECIAL_CASE_HF_23;
 
       _db.modify( account, [&]( account_object& a )
       {
