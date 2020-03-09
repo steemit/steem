@@ -5307,87 +5307,127 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEM_HARDFORK_0_22:
          break;
       case STEEM_HARDFORK_0_23: {
-         const auto &treasury_account = get_account(STEEM_TREASURY_ACCOUNT);
+         const auto &treasury_account = get_account( STEEM_TREASURY_ACCOUNT );
          const auto &cprops = get_dynamic_global_properties();
 
          for (auto account_name : hardforkprotect::get_steemit_accounts()) {
-            const auto *account_ptr = find_account(account_name);
-            if (account_ptr == nullptr)
+            const auto *account_ptr = find_account( account_name );
+            if ( account_ptr == nullptr )
                continue;
             const auto &account = *account_ptr;
 
-            if (account.vesting_shares.amount > 0) {
+            if ( account.vesting_shares.amount > 0 ) {
                auto converted_steem =
-                       asset(account.vesting_shares.amount, VESTS_SYMBOL) * cprops.get_vesting_share_price();
-               modify(cprops, [&](dynamic_global_property_object &o) {
+                       asset( account.vesting_shares.amount, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+               modify( cprops, [&]( dynamic_global_property_object &o ) {
                   o.total_vesting_fund_steem -= converted_steem;
                   o.total_vesting_shares.amount -= account.vesting_shares.amount;
-               });
+               } );
 
-               adjust_proxied_witness_votes(account, -account.vesting_shares.amount);
+               adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
 
                /* Remove all delegations */
                vector<const vesting_delegation_object *> to_remove;
                const auto &delegation_idx = get_index<vesting_delegation_index, by_delegation>();
 
                auto itr = delegation_idx.lower_bound(account_name);
-               while (itr != delegation_idx.end() && itr->delegator == account_name) {
-                  to_remove.push_back(&(*itr));
+               while ( itr != delegation_idx.end() && itr->delegator == account_name ) {
+                  to_remove.push_back( &( *itr ) );
                   ++itr;
                }
 
-               for (const vesting_delegation_object *delegation_ptr: to_remove) {
-                  const auto &delegatee = get_account(delegation_ptr->delegatee);
+               for ( const vesting_delegation_object *delegation_ptr: to_remove ) {
+                  const auto &delegatee = get_account( delegation_ptr->delegatee );
                   asset available_shares;
                   asset available_downvote_shares;
 
-                  modify(account, [&](account_object &a) {
-                     util::update_manabar(cprops, a, true, true);
-                  });
+                  modify( account, [&]( account_object &a ) {
+                     util::update_manabar( cprops, a, true, true );
+                  } );
 
-                  available_shares = asset(account.voting_manabar.current_mana, VESTS_SYMBOL);
-                  if (cprops.downvote_pool_percent) {
+                  available_shares = asset( account.voting_manabar.current_mana, VESTS_SYMBOL );
+                  if ( cprops.downvote_pool_percent ) {
                      available_downvote_shares = asset(
                              ((uint128_t(account.downvote_manabar.current_mana) * STEEM_100_PERCENT) /
                               cprops.downvote_pool_percent
                               + (STEEM_100_PERCENT / cprops.downvote_pool_percent) - 1).to_int64(), VESTS_SYMBOL);
                   }
 
-                  modify(delegatee, [&](account_object &a) {
-                     util::update_manabar(cprops, a, true, true);
+                  modify( delegatee, [&]( account_object &a ) {
+                     util::update_manabar( cprops, a, true, true );
                      a.received_vesting_shares -= delegation_ptr->vesting_shares;
 
-                     a.voting_manabar.use_mana(delegation_ptr->vesting_shares.amount.value);
-                     if (a.voting_manabar.current_mana < 0)
+                     a.voting_manabar.use_mana( delegation_ptr->vesting_shares.amount.value );
+                     if ( a.voting_manabar.current_mana < 0 )
                         a.voting_manabar.current_mana = 0;
 
                      a.downvote_manabar.use_mana(
                              ((uint128_t(delegation_ptr->vesting_shares.amount.value) * cprops.downvote_pool_percent) /
                               STEEM_100_PERCENT).to_int64());
-                     if (a.downvote_manabar.current_mana < 0)
+                     if ( a.downvote_manabar.current_mana < 0 )
                         a.downvote_manabar.current_mana = 0;
-                  });
+                  } );
 
-                  remove(*delegation_ptr);
+                  remove( *delegation_ptr );
                }
 
-               modify(account, [&](account_object &a) {
-                  util::update_manabar(cprops, a, true, true);
+               modify( account, [&]( account_object &a ) {
+                  util::update_manabar( cprops, a, true, true );
                   a.voting_manabar.current_mana = 0;
                   a.downvote_manabar.current_mana = 0;
-                  a.vesting_shares = asset(0, VESTS_SYMBOL);
-                  a.delegated_vesting_shares = asset(0, VESTS_SYMBOL);
-               });
-               adjust_balance(treasury_account, asset(converted_steem, STEEM_SYMBOL));
+                  a.vesting_shares = asset( 0, VESTS_SYMBOL );
+                  a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
+               } );
+               adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
             }
-            if (account.balance.amount > 0) {
-               adjust_balance(treasury_account, account.balance);
-               adjust_balance(account, -account.balance);
+
+            // Remove pending escrows
+            const auto& escrow_idx = get_index< chain::escrow_index, chain::by_from_id >();
+            auto escrows_itr = escrow_idx.lower_bound( account_name );
+            while( escrows_itr != escrow_idx.end() && escrows_itr->from == account_name )
+            {
+               adjust_balance( treasury_account, escrows_itr->sbd_balance );
+               adjust_balance( treasury_account, escrows_itr->steem_balance );
+
+               remove( *escrows_itr );
+               escrows_itr = escrow_idx.lower_bound( account_name );
             }
-            if (account.sbd_balance.amount > 0) {
-               adjust_balance(treasury_account, account.sbd_balance);
-               adjust_balance(account, -account.sbd_balance);
+
+            // Remove ongoing saving withdrawals
+            const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
+            auto itr = to_complete_idx.lower_bound( account_name );
+            while( itr != to_complete_idx.end() && itr->to == account_name ) {
+               adjust_balance( treasury_account, itr->amount );
+
+               modify( get_account( itr->from ), [&]( account_object& a )
+               {
+                  a.savings_withdraw_requests--;
+               } );
+
+               remove( *itr );
+               itr = to_complete_idx.lower_bound( account_name );
             }
+
+            // Remove remaining savings balances
+            adjust_balance( treasury_account, account.savings_balance );
+            adjust_balance( treasury_account, account.savings_sbd_balance );
+
+            // Remove SBD and STEEM balances
+            adjust_balance( treasury_account, account.balance );
+            adjust_balance( account, -account.balance );
+            adjust_balance( treasury_account, account.sbd_balance );
+            adjust_balance( account, -account.sbd_balance );
+
+            modify( account, [&]( account_object &a ) {
+               a.reward_sbd_balance = asset( 0, SBD_SYMBOL );
+               a.reward_steem_balance = asset( 0, STEEM_SYMBOL );
+               a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
+               a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
+               a.savings_balance = asset( 0, STEEM_SYMBOL );
+               a.savings_sbd_balance = asset( 0, SBD_SYMBOL );
+               a.curation_rewards = 0;
+               a.posting_rewards = 0;
+            } );
          }
          break;
       }
