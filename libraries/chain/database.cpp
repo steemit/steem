@@ -5309,6 +5309,7 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEM_HARDFORK_0_23:
          {
+            // Update Steemit Accounts
             for( const std::string& acc : hardfork23::get_steemit_accounts() ){
                const auto& account = get_account( acc );
 
@@ -5322,7 +5323,7 @@ void database::apply_hardfork( uint32_t hardfork )
 
                modify( account , [&]( account_object& a )
                {
-                  // restrict votes
+                  // decline voting rights
                   a.can_vote = false;
                   a.proxy = STEEM_PROXY_TO_SELF_ACCOUNT;
 
@@ -5332,6 +5333,16 @@ void database::apply_hardfork( uint32_t hardfork )
                   a.to_withdraw = 0;
                   a.withdrawn = 0;
                } );
+
+               // remove SPS votes
+               const auto& pvidx = get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
+               auto itr = pvidx.lower_bound( boost::make_tuple( acc, 0 ) );
+               while( itr != pvidx.end() && itr->voter == acc )
+               {
+                  const auto& current = *itr;
+                  ++itr;
+                  remove(current);
+               }
             }
          }
          break;
