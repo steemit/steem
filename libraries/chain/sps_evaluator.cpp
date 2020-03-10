@@ -74,8 +74,11 @@ void update_proposal_votes_evaluator::do_apply( const update_proposal_votes_oper
    {
       FC_ASSERT( _db.has_hardfork( STEEM_PROPOSALS_HARDFORK ), "Proposals functionality not enabled until hardfork ${hf}", ("hf", STEEM_PROPOSALS_HARDFORK) );
 
-      const auto& account = _db.get_account( o.voter );
-      FC_ASSERT( account.can_vote, "Account has declined its voting rights." );
+      if( _db.has_hardfork( STEEM_HARDFORK_0_23 ) )
+      {
+         const auto& account = _db.get_account( o.voter );
+         FC_ASSERT( account.can_vote, "Account has declined its voting rights." );
+      }
 
       const auto& pidx = _db.get_index< proposal_index >().indices().get< by_proposal_id >();
       const auto& pvidx = _db.get_index< proposal_vote_index >().indices().get< by_voter_proposal >();
