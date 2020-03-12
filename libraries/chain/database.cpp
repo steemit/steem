@@ -5317,12 +5317,7 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto &account = *account_ptr;
 
             if ( account.vesting_shares.amount > 0 ) {
-               auto converted_steem =
-                       asset( account.vesting_shares.amount, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
-               modify( cprops, [&]( dynamic_global_property_object &o ) {
-                  o.total_vesting_fund_steem -= converted_steem;
-                  o.total_vesting_shares.amount -= account.vesting_shares.amount;
-               } );
+               auto converted_steem = account.vesting_shares * cprops.get_vesting_share_price();
 
                adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
 
@@ -5338,14 +5333,12 @@ void database::apply_hardfork( uint32_t hardfork )
 
                for ( const vesting_delegation_object *delegation_ptr: to_remove ) {
                   const auto &delegatee = get_account( delegation_ptr->delegatee );
-                  asset available_shares;
                   asset available_downvote_shares;
 
                   modify( account, [&]( account_object &a ) {
                      util::update_manabar( cprops, a, true, true );
                   } );
 
-                  available_shares = asset( account.voting_manabar.current_mana, VESTS_SYMBOL );
                   if ( cprops.downvote_pool_percent ) {
                      available_downvote_shares = asset(
                              ((uint128_t(account.downvote_manabar.current_mana) * STEEM_100_PERCENT) /
@@ -5378,7 +5371,12 @@ void database::apply_hardfork( uint32_t hardfork )
                   a.vesting_shares = asset( 0, VESTS_SYMBOL );
                   a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
                } );
+
                adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
+               modify( cprops, [&]( dynamic_global_property_object &o ) {
+                  o.total_vesting_fund_steem += converted_steem;
+                  o.total_vesting_shares -= account.vesting_shares;
+               } );
             }
 
             // Remove pending escrows
@@ -5418,6 +5416,23 @@ void database::apply_hardfork( uint32_t hardfork )
             adjust_balance( treasury_account, account.sbd_balance );
             adjust_balance( account, -account.sbd_balance );
 
+            // Transfer reward balances
+            adjust_reward_balance( account, -account.reward_steem_balance );
+            adjust_reward_balance( account, -account.reward_sbd_balance );
+            adjust_balance( treasury_account, account.reward_sbd_balance );
+            adjust_balance( treasury_account, account.reward_steem_balance );
+
+            auto converted_reward_vests = account.reward_vesting_balance * cprops.get_vesting_share_price();
+            adjust_balance( treasury_account, asset( converted_reward_vests, STEEM_SYMBOL ) );
+
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.pending_rewarded_vesting_shares -= account.reward_vesting_balance;
+               gpo.pending_rewarded_vesting_steem -= account.reward_vesting_steem;
+
+               gpo.total_vesting_fund_steem += converted_reward_vests;
+            } );
+
             modify( account, [&]( account_object &a ) {
                a.reward_sbd_balance = asset( 0, SBD_SYMBOL );
                a.reward_steem_balance = asset( 0, STEEM_SYMBOL );
@@ -5427,6 +5442,8 @@ void database::apply_hardfork( uint32_t hardfork )
                a.savings_sbd_balance = asset( 0, SBD_SYMBOL );
                a.curation_rewards = 0;
                a.posting_rewards = 0;
+               a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
+               a.reward_vesting_steem = asset( 0, VESTS_SYMBOL );
             } );
          }
          break;
