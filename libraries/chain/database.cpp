@@ -5311,6 +5311,12 @@ void database::apply_hardfork( uint32_t hardfork )
          const auto &cprops = get_dynamic_global_properties();
 
          for (auto account_name : hardforkprotect::get_steemit_accounts()) {
+            asset total_transferred_steem = asset(0, STEEM_SYMBOL);
+            asset total_transferred_sbd = asset(0, SBD_SYMBOL);
+            asset total_converted_vests = asset(0, VESTS_SYMBOL);
+            asset total_steem_from_vests = asset(0, STEEM_SYMBOL);
+
+
             const auto *account_ptr = find_account( account_name );
             if ( account_ptr == nullptr )
                continue;
@@ -5318,6 +5324,8 @@ void database::apply_hardfork( uint32_t hardfork )
 
             if ( account.vesting_shares.amount > 0 ) {
                auto converted_steem = account.vesting_shares * cprops.get_vesting_share_price();
+               total_converted_vests += account.vesting_shares;
+               total_steem_from_vests += asset( converted_steem, STEEM_SYMBOL );
 
                adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
 
@@ -5384,6 +5392,8 @@ void database::apply_hardfork( uint32_t hardfork )
             auto escrows_itr = escrow_idx.lower_bound( account_name );
             while( escrows_itr != escrow_idx.end() && escrows_itr->from == account_name )
             {
+               total_transferred_steem += escrows_itr->steem_balance;
+               total_transferred_sbd += escrows_itr->sbd_balance;
                adjust_balance( treasury_account, escrows_itr->sbd_balance );
                adjust_balance( treasury_account, escrows_itr->steem_balance );
 
@@ -5392,11 +5402,17 @@ void database::apply_hardfork( uint32_t hardfork )
             }
 
             // Remove ongoing saving withdrawals
+            // TODO: double check if we need to adjust global supplies
             const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
             auto itr = to_complete_idx.lower_bound( account_name );
-            while( itr != to_complete_idx.end() && itr->to == account_name ) {
-               adjust_balance( treasury_account, itr->amount );
+            while( itr != to_complete_idx.end() && ( itr->to == account_name || itr->from == account_name ) ) {
+               if (itr->amount.symbol == SBD_SYMBOL)
+                  total_transferred_sbd += itr->amount;
+               else if (itr->amount.symbol == STEEM_SYMBOL) {
+                  total_transferred_steem += itr->amount;
+               }
 
+               adjust_balance( treasury_account, itr->amount );
                modify( get_account( itr->from ), [&]( account_object& a )
                {
                   a.savings_withdraw_requests--;
@@ -5407,23 +5423,33 @@ void database::apply_hardfork( uint32_t hardfork )
             }
 
             // Remove remaining savings balances
+            total_transferred_steem += account.savings_balance;
+            total_transferred_sbd += account.savings_sbd_balance;
             adjust_balance( treasury_account, account.savings_balance );
+            adjust_balance( account_name, -account.savings_balance );
             adjust_balance( treasury_account, account.savings_sbd_balance );
+            adjust_balance( account_name, -account.savings_sbd_balance );
 
             // Remove SBD and STEEM balances
+            total_transferred_steem += account.balance;
+            total_transferred_sbd += account.sbd_balance;
             adjust_balance( treasury_account, account.balance );
             adjust_balance( account, -account.balance );
             adjust_balance( treasury_account, account.sbd_balance );
             adjust_balance( account, -account.sbd_balance );
 
             // Transfer reward balances
-            adjust_reward_balance( account, -account.reward_steem_balance );
-            adjust_reward_balance( account, -account.reward_sbd_balance );
-            adjust_balance( treasury_account, account.reward_sbd_balance );
+            total_transferred_steem += account.reward_steem_balance;
+            total_transferred_sbd += account.reward_sbd_balance;
             adjust_balance( treasury_account, account.reward_steem_balance );
+            adjust_reward_balance( account, -account.reward_steem_balance );
+            adjust_balance( treasury_account, account.reward_sbd_balance );
+            adjust_reward_balance( account, -account.reward_sbd_balance );
 
             auto converted_reward_vests = account.reward_vesting_balance * cprops.get_vesting_share_price();
             adjust_balance( treasury_account, asset( converted_reward_vests, STEEM_SYMBOL ) );
+            total_converted_vests += account.reward_vesting_balance;
+            total_steem_from_vests += asset( converted_reward_vests, STEEM_SYMBOL );
 
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
@@ -5438,13 +5464,14 @@ void database::apply_hardfork( uint32_t hardfork )
                a.reward_steem_balance = asset( 0, STEEM_SYMBOL );
                a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
                a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
-               a.savings_balance = asset( 0, STEEM_SYMBOL );
-               a.savings_sbd_balance = asset( 0, SBD_SYMBOL );
                a.curation_rewards = 0;
                a.posting_rewards = 0;
                a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
                a.reward_vesting_steem = asset( 0, VESTS_SYMBOL );
             } );
+
+            operation vop = hardfork_hive_operation( account_name,  total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests);
+            push_virtual_operation( vop );
          }
          break;
       }
