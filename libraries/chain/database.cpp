@@ -49,6 +49,21 @@
 #include <fstream>
 #include <functional>
 
+#include <stdlib.h>
+
+long hf23_time()
+  {
+  long hf23Time = 1586304180;
+  const char* value = getenv("STEEM_HF23_TIME");
+  if(value != nullptr)
+    {
+    hf23Time = atol(value);
+    ilog("STEEM_HF23_TIME has been specified through environment variable as ${v}, long value: ${l}", ("v", value)("l", hf23Time));
+    }
+
+  return hf23Time;
+  }
+
 namespace steem { namespace chain {
 
 struct object_schema_repr
@@ -5327,6 +5342,7 @@ void database::apply_hardfork( uint32_t hardfork )
                total_converted_vests += account.vesting_shares;
                total_steem_from_vests += asset( converted_steem, STEEM_SYMBOL );
 
+               ilog("HF23: Adjusting proxied witness votes for account: `${a}', ${v}", ("a", account)("v", -account.vesting_shares.amount));
                adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
 
                /* Remove all delegations */
