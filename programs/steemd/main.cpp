@@ -37,8 +37,8 @@ using std::vector;
 string& version_string()
 {
    static string v_str =
-      "steem_blockchain_version: " + fc::string( STEEM_BLOCKCHAIN_VERSION ) + "\n" +
-      "steem_git_revision:       " + fc::string( steem::utilities::git_revision_sha ) + "\n" +
+      "hive_blockchain_version: " + fc::string( STEEM_BLOCKCHAIN_VERSION ) + "\n" +
+      "hive_git_revision:       " + fc::string( steem::utilities::git_revision_sha ) + "\n" +
       "fc_git_revision:          " + fc::string( fc::git_revision_sha ) + "\n";
    return v_str;
 }

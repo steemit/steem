@@ -29,8 +29,8 @@ void smt_create_operation::validate()const
 {
    smt_admin_operation_validate( *this );
    FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
-   FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
-   FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
+   FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than HIVE_MAX_SHARE_SUPPLY" );
+   FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be HIVE or HBD" );
    FC_ASSERT( symbol.decimals() == precision, "Mismatch between redundantly provided precision ${prec1} vs ${prec2}",
       ("prec1",symbol.decimals())("prec2",precision) );
 }
@@ -298,7 +298,7 @@ void smt_contribute_operation::validate() const
 {
    validate_account_name( contributor );
    common_symbol_validation( symbol );
-   FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contributions must be made in STEEM" );
+   FC_ASSERT( contribution.symbol == STEEM_SYMBOL, "Contributions must be made in HIVE" );
    FC_ASSERT( contribution.amount > 0, "Contribution amount must be greater than 0" );
 }
 

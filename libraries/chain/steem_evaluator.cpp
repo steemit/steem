@@ -746,7 +746,7 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards, "Curation rewards cannot be re-enabled." );
    FC_ASSERT( comment.allow_votes >= o.allow_votes, "Voting cannot be re-enabled." );
    FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout, "A comment cannot accept a greater payout." );
-   FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars, "A comment cannot accept a greater percent SBD." );
+   FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars, "A comment cannot accept a greater percent HBD." );
 
    _db.modify( comment, [&]( comment_object& c ) {
        c.max_accepted_payout   = o.max_accepted_payout;
@@ -1178,7 +1178,7 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
-         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+         "Can only transfer HBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
    }
 
    _db.adjust_balance( o.from, -o.amount );
@@ -1194,7 +1194,7 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
    if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( o.amount.symbol == SBD_SYMBOL || o.to != STEEM_TREASURY_ACCOUNT,
-         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+         "Can only transfer HBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
    }
 
    _db.adjust_balance( from_account, -o.amount );
@@ -2504,7 +2504,7 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__409 ) )
       FC_ASSERT( is_asset_type( o.exchange_rate.base, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ),
-            "Price feed must be a SBD/STEEM price" );
+            "Price feed must be a HBD/HIVE price" );
 
    const auto& witness = _db.get_witness( o.publisher );
    _db.modify( witness, [&]( witness_object& w )
@@ -2519,7 +2519,7 @@ void convert_evaluator::do_apply( const convert_operation& o )
   _db.adjust_balance( o.owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
-  FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
+  FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert HBD because there is no price feed." );
 
   auto steem_conversion_delay = STEEM_CONVERSION_DELAY_PRE_HF_16;
   if( _db.has_hardfork( STEEM_HARDFORK_0_16__551) )
@@ -2875,7 +2875,7 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    if( _db.is_producing() || _db.has_hardfork( STEEM_HARDFORK_0_21__3343 ) )
    {
       FC_ASSERT( op.amount.symbol == SBD_SYMBOL || op.to != STEEM_TREASURY_ACCOUNT,
-         "Can only transfer SBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
+         "Can only transfer HBD to ${s}", ("s", STEEM_TREASURY_ACCOUNT) );
    }
 
    FC_ASSERT( _db.get_savings_balance( from, op.amount.symbol ) >= op.amount );
@@ -2970,9 +2970,9 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 {
    const auto& acnt = _db.get_account( op.account );
 
-   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}",
+   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much HIVE. Claim: ${c} Actual: ${a}",
       ("c", op.reward_steem)("a", acnt.reward_steem_balance) );
-   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much SBD. Claim: ${c} Actual: ${a}",
+   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much HBD. Claim: ${c} Actual: ${a}",
       ("c", op.reward_sbd)("a", acnt.reward_sbd_balance) );
    FC_ASSERT( op.reward_vests <= acnt.reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
       ("c", op.reward_vests)("a", acnt.reward_vesting_balance) );
@@ -3070,9 +3070,9 @@ void claim_reward_balance2_evaluator::do_apply( const claim_reward_balance2_oper
          else if( token.symbol == STEEM_SYMBOL || token.symbol == SBD_SYMBOL )
          {
             FC_ASSERT( is_asset_type( token, STEEM_SYMBOL ) == false || token <= a->reward_steem_balance,
-                       "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
+                       "Cannot claim that much HIVE. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_steem_balance) );
             FC_ASSERT( is_asset_type( token, SBD_SYMBOL ) == false || token <= a->reward_sbd_balance,
-                       "Cannot claim that much SBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
+                       "Cannot claim that much HBD. Claim: ${c} Actual: ${a}", ("c", token)("a", a->reward_sbd_balance) );
             _db.adjust_reward_balance( *a, -token );
             _db.adjust_balance( *a, token );
          }

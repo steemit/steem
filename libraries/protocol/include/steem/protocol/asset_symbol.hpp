@@ -99,7 +99,7 @@ class asset_symbol_type
       bool is_vesting() const;
       /**Returns vesting symbol when called from liquid one
        * and liquid symbol when called from vesting one.
-       * Returns back the SBD symbol if represents SBD.
+       * Returns back the HBD symbol if represents HBD.
        */
       asset_symbol_type get_paired_symbol() const;
       /**Returns asset_num stripped of precision holding bits.

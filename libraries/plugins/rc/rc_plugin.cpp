@@ -276,7 +276,7 @@ void use_account_rcs(
          if( db.is_producing() )
          {
             STEEM_ASSERT( has_mana, plugin_exception,
-               "Account: ${account} has ${rc_current} RC, needs ${rc_needed} RC. Please wait to transact, or power up STEEM.",
+               "Account: ${account} has ${rc_current} RC, needs ${rc_needed} RC. Please wait to transact, or power up HIVE.",
                ("account", account_name)
                ("rc_needed", rc)
                ("rc_current", rca.rc_manabar.current_mana)

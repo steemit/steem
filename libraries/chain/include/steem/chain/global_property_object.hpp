@@ -79,7 +79,7 @@ namespace steem { namespace chain {
          }
 
          /**
-          *  This property defines the interest rate that SBD deposits receive.
+          *  This property defines the interest rate that HBD deposits receive.
           */
          uint16_t sbd_interest_rate = 0;
 

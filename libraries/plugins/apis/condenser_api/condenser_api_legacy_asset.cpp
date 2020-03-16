@@ -93,9 +93,9 @@ std::string asset_num_to_string( uint32_t asset_num )
          return "TBD";
 #else
       case STEEM_ASSET_NUM_STEEM:
-         return "STEEM";
+         return "HIVE";
       case STEEM_ASSET_NUM_SBD:
-         return "SBD";
+         return "HBD";
 #endif
       case STEEM_ASSET_NUM_VESTS:
          return "VESTS";

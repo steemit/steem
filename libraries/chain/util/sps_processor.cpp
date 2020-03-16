@@ -118,7 +118,7 @@ asset sps_processor::get_treasury_fund()
 
 asset sps_processor::get_daily_inflation()
 {
-   FC_TODO( "to invent how to get inflation needed for STEEM_TREASURY_ACCOUNT" )
+   FC_TODO( "to invent how to get inflation needed for HIVE_TREASURY_ACCOUNT" )
    return asset( 0, SBD_SYMBOL );
 }
 
@@ -160,7 +160,7 @@ void sps_processor::transfer_daily_inflation_to_treasury( const asset& daily_inf
          in to the treasury account in database::process_funds or added to a temp fund in the dgpo
          that is then transferred in to the treasury account during maintenance.
    */
-   FC_TODO( "to choose how to transfer inflation into STEEM_TREASURY_ACCOUNT" )
+   FC_TODO( "to choose how to transfer inflation into HIVE_TREASURY_ACCOUNT" )
    // Ifdeffing this out so that no inflation is accidentally created on main net.
 #ifdef IS_TEST_NET
    if( daily_inflation.amount.value > 0 )

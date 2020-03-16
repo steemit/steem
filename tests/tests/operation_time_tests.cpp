@@ -1889,7 +1889,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       generate_blocks( db->head_block_time() + STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10, true );
 
-      BOOST_TEST_MESSAGE( "Creating Limit Order for SBD that will be filled immediately." );
+      BOOST_TEST_MESSAGE( "Creating Limit Order for HBD that will be filled immediately." );
 
       op.owner = "bob";
       op.min_to_receive = op.amount_to_sell;
@@ -1939,7 +1939,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       BOOST_CHECK( limit_order_idx.find( boost::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
       BOOST_CHECK( limit_order_idx.find( boost::make_tuple( "bob", 2 ) ) == limit_order_idx.end() );
 
-      BOOST_TEST_MESSAGE( "Creating Limit Order for SBD that will stay on the books for 60 minutes." );
+      BOOST_TEST_MESSAGE( "Creating Limit Order for HBD that will stay on the books for 60 minutes." );
 
       op.owner = "sam";
       op.amount_to_sell = asset( ( alice_sbd.amount.value / 20 ), STEEM_SYMBOL );
@@ -1956,7 +1956,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       generate_blocks( db->head_block_time() + STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10, true );
 
-      BOOST_TEST_MESSAGE( "Creating Limit Order for SBD that will stay on the books for 30 minutes." );
+      BOOST_TEST_MESSAGE( "Creating Limit Order for HBD that will stay on the books for 30 minutes." );
 
       op.owner = "bob";
       op.orderid = 4;
@@ -2744,7 +2744,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto alice_sbd = db->get_account( "alice" ).sbd_balance + db->get_account( "alice" ).reward_sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
       auto alice_steem = db->get_account( "alice" ).balance + db->get_account( "alice" ).reward_steem_balance ;
 
-      BOOST_TEST_MESSAGE( "Checking printing SBD has slowed" );
+      BOOST_TEST_MESSAGE( "Checking printing HBD has slowed" );
       BOOST_REQUIRE( db->get_dynamic_global_properties().sbd_print_rate < STEEM_100_PERCENT );
 
       BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
@@ -2755,7 +2755,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance + db->get_account( "alice" ).reward_sbd_balance == alice_sbd );
       BOOST_REQUIRE( db->get_account( "alice" ).balance + db->get_account( "alice" ).reward_steem_balance > alice_steem );
 
-      BOOST_TEST_MESSAGE( "Letting percent market cap fall to sbd_start_percent to verify printing of SBD turns back on" );
+      BOOST_TEST_MESSAGE( "Letting percent market cap fall to sbd_start_percent to verify printing of HBD turns back on" );
 
       // Get close to sbd_start_percent for printing SBD to start again, but not all the way
       db_plugin->debug_update( [=]( database& db )
@@ -2835,7 +2835,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 
       generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time, true );
 
-      BOOST_TEST_MESSAGE( "Setting SBD percent to greater than 10% market cap." );
+      BOOST_TEST_MESSAGE( "Setting HBD percent to greater than 10% market cap." );
 
       db->skip_price_feed_limit_check = false;
       const auto& gpo = db->get_dynamic_global_properties();

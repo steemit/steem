@@ -52,7 +52,7 @@ namespace steem { namespace chain {
          asset             savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
 
          /**
-          *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
+          *  HBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
           *  fields is to track the total (time * sbd_balance) that it is held. Then at the appointed time
           *  interest can be paid using the following equation:
           *

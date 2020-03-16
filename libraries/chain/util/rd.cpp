@@ -89,7 +89,7 @@ void rd_setup_dynamics_params(
 
    // Worst-case assert for the following is d=1, in which case b << s must be less than 2^64
    static_assert( STEEM_RD_MAX_BUDGET < (uint64_t(1) << (64-STEEM_RD_DECAY_DENOM_SHIFT)),
-      "Computation of temp could overflow here, set smaller STEEM_RD_MAX_BUDGET" );
+      "Computation of temp could overflow here, set smaller HIVE_RD_MAX_BUDGET" );
 
    fc::uint128_t temp = user_params.budget_per_time_unit;
    temp <<= system_params.decay_per_time_unit_denom_shift;

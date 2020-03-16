@@ -4381,7 +4381,7 @@ void database::modify_balance( const account_object& a, const asset& delta, bool
             acnt.balance += delta;
             if( check_balance )
             {
-               FC_ASSERT( acnt.balance.amount.value >= 0, "Insufficient STEEM funds" );
+               FC_ASSERT( acnt.balance.amount.value >= 0, "Insufficient HIVE funds" );
             }
             break;
          case STEEM_ASSET_NUM_SBD:
@@ -4414,7 +4414,7 @@ void database::modify_balance( const account_object& a, const asset& delta, bool
             acnt.sbd_balance += delta;
             if( check_balance )
             {
-               FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient SBD funds" );
+               FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient HBD funds" );
             }
             break;
          case STEEM_ASSET_NUM_VESTS:
@@ -4442,7 +4442,7 @@ void database::modify_reward_balance( const account_object& a, const asset& valu
                acnt.reward_steem_balance += value_delta;
                if( check_balance )
                {
-                  FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+                  FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward HIVE funds" );
                }
             }
             else
@@ -4460,7 +4460,7 @@ void database::modify_reward_balance( const account_object& a, const asset& valu
             acnt.reward_sbd_balance += value_delta;
             if( check_balance )
             {
-               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
+               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward HBD funds" );
             }
             break;
          default:
@@ -4610,7 +4610,7 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
             acnt.savings_balance += delta;
             if( check_balance )
             {
-               FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
+               FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings HIVE funds" );
             }
             break;
          case STEEM_ASSET_NUM_SBD:
@@ -4643,7 +4643,7 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
             acnt.savings_sbd_balance += delta;
             if( check_balance )
             {
-               FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
+               FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings HBD funds" );
             }
             break;
          default:
@@ -4898,7 +4898,7 @@ void database::init_hardforks()
 
 
    const auto& hardforks = get_hardfork_property_object();
-   FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEM_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );
+   FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("HIVE_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );
    FC_ASSERT( _hardfork_versions.versions[ hardforks.last_hardfork ] <= STEEM_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
    FC_ASSERT( STEEM_BLOCKCHAIN_HARDFORK_VERSION >= STEEM_BLOCKCHAIN_VERSION );
    FC_ASSERT( STEEM_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions.versions[ STEEM_NUM_HARDFORKS ] );
@@ -5092,10 +5092,10 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             static_assert(
                STEEM_MAX_VOTED_WITNESSES_HF0 + STEEM_MAX_MINER_WITNESSES_HF0 + STEEM_MAX_RUNNER_WITNESSES_HF0 == STEEM_MAX_WITNESSES,
-               "HF0 witness counts must add up to STEEM_MAX_WITNESSES" );
+               "HF0 witness counts must add up to HIVE_MAX_WITNESSES" );
             static_assert(
                STEEM_MAX_VOTED_WITNESSES_HF17 + STEEM_MAX_MINER_WITNESSES_HF17 + STEEM_MAX_RUNNER_WITNESSES_HF17 == STEEM_MAX_WITNESSES,
-               "HF17 witness counts must add up to STEEM_MAX_WITNESSES" );
+               "HF17 witness counts must add up to HIVE_MAX_WITNESSES" );
 
             modify( get_witness_schedule_object(), [&]( witness_schedule_object& wso )
             {
@@ -5419,7 +5419,7 @@ void database::validate_invariants()const
          else if( itr->pending_fee.symbol == SBD_SYMBOL )
             total_sbd += itr->pending_fee;
          else
-            FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
+            FC_ASSERT( false, "found escrow pending fee that is not HBD or HIVE" );
       }
 
       const auto& savings_withdraw_idx = get_index< savings_withdraw_index >().indices().get< by_id >();
@@ -5431,7 +5431,7 @@ void database::validate_invariants()const
          else if( itr->amount.symbol == SBD_SYMBOL )
             total_sbd += itr->amount;
          else
-            FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
+            FC_ASSERT( false, "found savings withdraw that is not HBD or HIVE" );
       }
 
       const auto& reward_idx = get_index< reward_fund_index, by_id >();
