@@ -1399,11 +1399,11 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       op.symbol = op.symbol.get_paired_symbol();
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: STEEM cannot be an SMT" );
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: HIVE cannot be an SMT" );
       op.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: SBD cannot be an SMT" );
+      BOOST_TEST_MESSAGE( " -- Invalid SMT creation symbol: HBD cannot be an SMT" );
       op.symbol = SBD_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
@@ -1683,7 +1683,7 @@ BOOST_AUTO_TEST_CASE( smt_creation_fee_test )
          // Succeed because we have paid the equivilant of 1 TBD or 2 TESTS
          PUSH_OP( op, alice_private_key );
 
-         BOOST_TEST_MESSAGE( " -- Valid creation fee, using SBD" );
+         BOOST_TEST_MESSAGE( " -- Valid creation fee, using HBD" );
          // We should be able to pay with SBD
          smt_create_operation op2;
          op2.control_account = "alice";
@@ -2347,11 +2347,11 @@ BOOST_AUTO_TEST_CASE( smt_set_runtime_parameters_validate )
       op.symbol = op.symbol.get_paired_symbol();
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: STEEM cannot be an SMT" );
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: HIVE cannot be an SMT" );
       op.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: SBD cannot be an SMT" );
+      BOOST_TEST_MESSAGE( "--- Invalid SMT creation symbol: HBD cannot be an SMT" );
       op.symbol = SBD_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
@@ -2746,7 +2746,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.contribution = asset( 1000, STEEM_SYMBOL );
 
-      BOOST_TEST_MESSAGE( " -- Failure on SBD contribution" );
+      BOOST_TEST_MESSAGE( " -- Failure on HBD contribution" );
       op.contribution = asset( 1000, SBD_SYMBOL );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.contribution = asset( 1000, STEEM_SYMBOL );
@@ -2756,7 +2756,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.contribution = asset( 1000, STEEM_SYMBOL );
 
-      BOOST_TEST_MESSAGE( " -- Failure on contribution to STEEM" );
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to HIVE" );
       op.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.symbol = new_symbol;
@@ -2766,7 +2766,7 @@ BOOST_AUTO_TEST_CASE( smt_contribute_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.symbol = new_symbol;
 
-      BOOST_TEST_MESSAGE( " -- Failure on contribution to SBD" );
+      BOOST_TEST_MESSAGE( " -- Failure on contribution to HBD" );
       op.symbol = SBD_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.symbol = new_symbol;

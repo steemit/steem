@@ -187,7 +187,7 @@ namespace steem { namespace protocol {
       {
          FC_ASSERT(votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
          FC_ASSERT(is_allowed(STEEM_SYMBOL) == false,
-            "STEEM can not be explicitly specified as one of allowed_vote_assets");
+            "HIVE can not be explicitly specified as one of allowed_vote_assets");
       }
 
       flat_map< asset_symbol_type, votable_asset_info > votable_assets;

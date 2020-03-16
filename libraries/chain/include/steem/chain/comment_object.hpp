@@ -87,7 +87,7 @@ namespace steem { namespace chain {
 
          uint16_t          reward_weight = 0;
 
-         /** tracks the total payout this comment has received over time, measured in SBD */
+         /** tracks the total payout this comment has received over time, measured in HBD */
          asset             total_payout_value = asset(0, SBD_SYMBOL);
          asset             curator_payout_value = asset(0, SBD_SYMBOL);
          asset             beneficiary_payout_value = asset( 0, SBD_SYMBOL );
