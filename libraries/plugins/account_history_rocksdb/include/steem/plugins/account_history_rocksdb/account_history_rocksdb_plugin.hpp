@@ -43,6 +43,7 @@ public:
       std::function<void(const rocksdb_operation_object&)> processor) const;
    uint32_t enum_operations_from_block_range(uint32_t blockRangeBegin, uint32_t blockRangeEnd,
       std::function<void(const rocksdb_operation_object&)> processor) const;
+   bool find_transaction_info(const protocol::transaction_id_type& trxId, uint32_t* blockNo, uint32_t* txInBlock) const;
 
 private:
    class impl;
