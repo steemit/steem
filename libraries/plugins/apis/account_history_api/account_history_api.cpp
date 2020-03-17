@@ -166,7 +166,33 @@ DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_account_history )
 
 DEFINE_API_IMPL( account_history_api_rocksdb_impl, get_transaction )
 {
-   FC_ASSERT( false, "This API is not supported for account history backed by RocksDB" );
+#ifdef SKIP_BY_TX_ID
+  FC_ASSERT(false, "This node's operator has disabled operation indexing by transaction_id");
+#else
+  uint32_t blockNo = 0;
+  uint32_t txInBlock = 0;
+
+  if(_dataSource.find_transaction_info(args.id, &blockNo, &txInBlock))
+    {
+    get_transaction_return result;
+    _db.with_read_lock([this, blockNo, txInBlock, &result]()
+      {
+      auto blk = _db.fetch_block_by_number(blockNo);
+      FC_ASSERT(blk.valid());
+      FC_ASSERT(blk->transactions.size() > txInBlock);
+      result = blk->transactions[txInBlock];
+      result.block_num = blockNo;
+      result.transaction_num = txInBlock;
+      });
+
+    return result;
+    }
+  else
+    {
+    FC_ASSERT(false, "Unknown Transaction ${t}", ("t", args.id));
+    }
+#endif
+
 }
 
 DEFINE_API_IMPL( account_history_api_rocksdb_impl, enum_virtual_ops)

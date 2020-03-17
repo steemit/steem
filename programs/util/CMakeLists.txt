@@ -103,6 +103,18 @@ install( TARGETS
    ARCHIVE DESTINATION lib
 )
 
+add_executable( truncate_block_log truncate_block_log.cpp )
+target_link_libraries( truncate_block_log
+                       PRIVATE steem_chain steem_protocol fc ${CMAKE_DL_LIB} ${PLATFORM_SPECIFIC_LIBS} )
+
+install( TARGETS
+   truncate_block_log
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)
+
 add_executable( test_fixed_string test_fixed_string.cpp )
 target_link_libraries( test_fixed_string
                        PRIVATE steem_chain steem_protocol fc ${CMAKE_DL_LIB} ${PLATFORM_SPECIFIC_LIBS} )
