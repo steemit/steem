@@ -53,12 +53,12 @@
 
 long hf23_time()
   {
-  long hf23Time = 1586304180;
+  long hf23Time = 1584486906;
   const char* value = getenv("STEEM_HF23_TIME");
   if(value != nullptr)
     {
-    hf23Time = atol(value);
-    ilog("STEEM_HF23_TIME has been specified through environment variable as ${v}, long value: ${l}", ("v", value)("l", hf23Time));
+       hf23Time = atol(value);
+       ilog("STEEM_HF23_TIME has been specified through environment variable as ${v}, long value: ${l}", ("v", value)("l", hf23Time));
     }
 
   return hf23Time;
@@ -5338,13 +5338,6 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto &account = *account_ptr;
 
             if ( account.vesting_shares.amount > 0 ) {
-               auto converted_steem = account.vesting_shares * cprops.get_vesting_share_price();
-               total_converted_vests += account.vesting_shares;
-               total_steem_from_vests += asset( converted_steem, STEEM_SYMBOL );
-
-               ilog("HF23: Adjusting proxied witness votes for account: `${a}', ${v}", ("a", account)("v", -account.vesting_shares.amount));
-               adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
-
                /* Remove all delegations */
                vector<const vesting_delegation_object *> to_remove;
                const auto &delegation_idx = get_index<vesting_delegation_index, by_delegation>();
@@ -5388,25 +5381,35 @@ void database::apply_hardfork( uint32_t hardfork )
                   remove( *delegation_ptr );
                }
 
+               auto vests_to_convert = account.vesting_shares;
+               auto converted_steem = vests_to_convert * cprops.get_vesting_share_price();
+               total_converted_vests += account.vesting_shares;
+               total_steem_from_vests += asset( converted_steem, STEEM_SYMBOL );
+
+               adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
+
                modify( account, [&]( account_object &a ) {
                   util::update_manabar( cprops, a, true, true );
                   a.voting_manabar.current_mana = 0;
                   a.downvote_manabar.current_mana = 0;
                   a.vesting_shares = asset( 0, VESTS_SYMBOL );
                   a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
+                  a.vesting_withdraw_rate.amount = 0;
+                  a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+                  a.withdrawn = vests_to_convert.amount;
                } );
 
                adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
                modify( cprops, [&]( dynamic_global_property_object &o ) {
                   o.total_vesting_fund_steem += converted_steem;
-                  o.total_vesting_shares -= account.vesting_shares;
+                  o.total_vesting_shares -= vests_to_convert;
                } );
             }
 
             // Remove pending escrows
             const auto& escrow_idx = get_index< chain::escrow_index, chain::by_from_id >();
             auto escrows_itr = escrow_idx.lower_bound( account_name );
-            while( escrows_itr != escrow_idx.end() && escrows_itr->from == account_name )
+            while( escrows_itr != escrow_idx.end() && (escrows_itr->from == account_name || escrows_itr->to == account_name) )
             {
                total_transferred_steem += escrows_itr->steem_balance;
                total_transferred_sbd += escrows_itr->sbd_balance;
@@ -5418,7 +5421,6 @@ void database::apply_hardfork( uint32_t hardfork )
             }
 
             // Remove ongoing saving withdrawals
-            // TODO: double check if we need to adjust global supplies
             const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
             auto itr = to_complete_idx.lower_bound( account_name );
             while( itr != to_complete_idx.end() && ( itr->to == account_name || itr->from == account_name ) ) {
