@@ -5350,18 +5350,6 @@ void database::apply_hardfork( uint32_t hardfork )
 
                for ( const vesting_delegation_object *delegation_ptr: to_remove ) {
                   const auto &delegatee = get_account( delegation_ptr->delegatee );
-                  asset available_downvote_shares;
-
-                  modify( account, [&]( account_object &a ) {
-                     util::update_manabar( cprops, a, true, true );
-                  } );
-
-                  if ( cprops.downvote_pool_percent ) {
-                     available_downvote_shares = asset(
-                             ((uint128_t(account.downvote_manabar.current_mana) * STEEM_100_PERCENT) /
-                              cprops.downvote_pool_percent
-                              + (STEEM_100_PERCENT / cprops.downvote_pool_percent) - 1).to_int64(), VESTS_SYMBOL);
-                  }
 
                   modify( delegatee, [&]( account_object &a ) {
                      util::update_manabar( cprops, a, true, true );
