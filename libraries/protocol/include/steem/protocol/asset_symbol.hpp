@@ -35,13 +35,16 @@
 
 #define VESTS_SYMBOL_U64  (uint64_t('V') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
 #define STEEM_SYMBOL_U64  (uint64_t('T') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
+#define HIVE_SYMBOL_U64   STEEM_SYMBOL_U64
 #define SBD_SYMBOL_U64    (uint64_t('T') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
-
+#define HBD_SYMBOL_U64    SBD_SYMBOL_U64
 #else
 
 #define VESTS_SYMBOL_U64  (uint64_t('V') | (uint64_t('E') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('S') << 32))
 #define STEEM_SYMBOL_U64  (uint64_t('S') | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('E') << 24) | (uint64_t('M') << 32))
+#define HIVE_SYMBOL_U64   (uint64_t('H') | (uint64_t('I') << 8) | (uint64_t('V') << 16) | (uint64_t('E') << 24))
 #define SBD_SYMBOL_U64    (uint64_t('S') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
+#define HBD_SYMBOL_U64    (uint64_t('H') | (uint64_t('B') << 8) | (uint64_t('D') << 16))
 
 #endif
 
