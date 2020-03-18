@@ -5489,17 +5489,15 @@ void database::apply_hardfork( uint32_t hardfork )
             adjust_balance( treasury_account, account.reward_sbd_balance );
             adjust_reward_balance( account, -account.reward_sbd_balance );
 
-            auto converted_reward_vests = account.reward_vesting_balance * cprops.get_vesting_share_price();
-            adjust_balance( treasury_account, asset( converted_reward_vests, STEEM_SYMBOL ) );
+            // Convert and transfer vesting rewards
+            adjust_balance( treasury_account, account.reward_vesting_steem );
             total_converted_vests += account.reward_vesting_balance;
-            total_steem_from_vests += asset( converted_reward_vests, STEEM_SYMBOL );
+            total_steem_from_vests += account.reward_vesting_steem;
 
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
                gpo.pending_rewarded_vesting_shares -= account.reward_vesting_balance;
                gpo.pending_rewarded_vesting_steem -= account.reward_vesting_steem;
-
-               gpo.total_vesting_fund_steem += converted_reward_vests;
             } );
 
             modify( account, [&]( account_object &a ) {
