@@ -5396,7 +5396,8 @@ void database::apply_hardfork( uint32_t hardfork )
                   a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
                   a.vesting_withdraw_rate.amount = 0;
                   a.next_vesting_withdrawal = fc::time_point_sec::maximum();
-                  a.withdrawn = vests_to_convert.amount;
+                  a.to_withdraw = 0;
+                  a.withdrawn = 0;
                } );
 
                adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
