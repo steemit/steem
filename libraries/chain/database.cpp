@@ -5478,8 +5478,6 @@ void database::apply_hardfork( uint32_t hardfork )
             } );
 
             modify( account, [&]( account_object &a ) {
-               a.reward_sbd_balance = asset( 0, SBD_SYMBOL );
-               a.reward_steem_balance = asset( 0, STEEM_SYMBOL );
                a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
                a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
                a.curation_rewards = 0;
