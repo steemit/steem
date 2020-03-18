@@ -5406,18 +5406,19 @@ void database::apply_hardfork( uint32_t hardfork )
                } );
             }
 
-            // Remove pending escrows
+            // Remove pending escrows (return balance to account - compare with expire_escrow_ratification())
             const auto& escrow_idx = get_index< chain::escrow_index, chain::by_from_id >();
-            auto escrows_itr = escrow_idx.lower_bound( account_name );
-            while( escrows_itr != escrow_idx.end() && (escrows_itr->from == account_name || escrows_itr->to == account_name) )
+            auto escrow_itr = escrow_idx.lower_bound( account_name );
+            while( escrow_itr != escrow_idx.end() && escrow_itr->from == account_name )
             {
-               total_transferred_steem += escrows_itr->steem_balance;
-               total_transferred_sbd += escrows_itr->sbd_balance;
-               adjust_balance( treasury_account, escrows_itr->sbd_balance );
-               adjust_balance( treasury_account, escrows_itr->steem_balance );
+               auto& escrow = *escrow_itr;
+               ++escrow_itr;
 
-               remove( *escrows_itr );
-               escrows_itr = escrow_idx.lower_bound( account_name );
+               adjust_balance( account, escrow.steem_balance );
+               adjust_balance( account, escrow.sbd_balance );
+               adjust_balance( account, escrow.pending_fee );
+
+               remove( escrow );
             }
 
             // Remove ongoing saving withdrawals
