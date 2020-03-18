@@ -5421,6 +5421,17 @@ void database::apply_hardfork( uint32_t hardfork )
                remove( escrow );
             }
 
+            // Remove open limit orders (return balance to account - compare with clear_expired_orders())
+            const auto& order_idx = get_index< chain::limit_order_index, chain::by_account >();
+            auto order_itr = order_idx.lower_bound( account_name );
+            while( order_itr != order_idx.end() && order_itr->seller == account_name )
+            {
+               auto& order = *order_itr;
+               ++order_itr;
+
+               cancel_order( order );
+            }
+
             // Remove ongoing saving withdrawals
             const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
             auto itr = to_complete_idx.lower_bound( account_name );
