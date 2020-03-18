@@ -5480,8 +5480,6 @@ void database::apply_hardfork( uint32_t hardfork )
             modify( account, [&]( account_object &a ) {
                a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
                a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
-               a.curation_rewards = 0;
-               a.posting_rewards = 0;
             } );
 
             operation vop = hardfork_hive_operation( account_name,  total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests);
