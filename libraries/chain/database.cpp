@@ -5322,47 +5322,51 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEM_HARDFORK_0_22:
          break;
       case STEEM_HARDFORK_0_23: {
-         const auto &treasury_account = get_account( STEEM_TREASURY_ACCOUNT );
-         const auto &cprops = get_dynamic_global_properties();
+         const auto& treasury_account = get_account( STEEM_TREASURY_ACCOUNT );
+         const auto& cprops = get_dynamic_global_properties();
 
-         for (auto account_name : hardforkprotect::get_steemit_accounts()) {
-            asset total_transferred_steem = asset(0, STEEM_SYMBOL);
-            asset total_transferred_sbd = asset(0, SBD_SYMBOL);
-            asset total_converted_vests = asset(0, VESTS_SYMBOL);
-            asset total_steem_from_vests = asset(0, STEEM_SYMBOL);
+         for( auto account_name : hardforkprotect::get_steemit_accounts() )
+         {
+            asset total_transferred_steem = asset( 0, STEEM_SYMBOL );
+            asset total_transferred_sbd = asset( 0, SBD_SYMBOL );
+            asset total_converted_vests = asset( 0, VESTS_SYMBOL );
+            asset total_steem_from_vests = asset( 0, STEEM_SYMBOL );
 
-
-            const auto *account_ptr = find_account( account_name );
-            if ( account_ptr == nullptr )
+            const auto* account_ptr = find_account( account_name );
+            if( account_ptr == nullptr )
                continue;
-            const auto &account = *account_ptr;
+            const auto& account = *account_ptr;
 
-            if ( account.vesting_shares.amount > 0 ) {
-               /* Remove all delegations */
-               vector<const vesting_delegation_object *> to_remove;
-               const auto &delegation_idx = get_index<vesting_delegation_index, by_delegation>();
+            if( account.vesting_shares.amount > 0 )
+            {
+               // Remove all delegations
+               vector< const vesting_delegation_object* > to_remove;
+               const auto& delegation_idx = get_index< vesting_delegation_index, by_delegation >();
 
-               auto itr = delegation_idx.lower_bound(account_name);
-               while ( itr != delegation_idx.end() && itr->delegator == account_name ) {
+               auto itr = delegation_idx.lower_bound( account_name );
+               while( itr != delegation_idx.end() && itr->delegator == account_name )
+               {
                   to_remove.push_back( &( *itr ) );
                   ++itr;
                }
 
-               for ( const vesting_delegation_object *delegation_ptr: to_remove ) {
-                  const auto &delegatee = get_account( delegation_ptr->delegatee );
+               for( const vesting_delegation_object* delegation_ptr: to_remove )
+               {
+                  const auto& delegatee = get_account( delegation_ptr->delegatee );
 
-                  modify( delegatee, [&]( account_object &a ) {
+                  modify( delegatee, [&]( account_object& a )
+                  {
                      util::update_manabar( cprops, a, true, true );
                      a.received_vesting_shares -= delegation_ptr->vesting_shares;
 
                      a.voting_manabar.use_mana( delegation_ptr->vesting_shares.amount.value );
-                     if ( a.voting_manabar.current_mana < 0 )
+                     if( a.voting_manabar.current_mana < 0 )
                         a.voting_manabar.current_mana = 0;
 
                      a.downvote_manabar.use_mana(
                              ((uint128_t(delegation_ptr->vesting_shares.amount.value) * cprops.downvote_pool_percent) /
                               STEEM_100_PERCENT).to_int64());
-                     if ( a.downvote_manabar.current_mana < 0 )
+                     if( a.downvote_manabar.current_mana < 0 )
                         a.downvote_manabar.current_mana = 0;
                   } );
 
@@ -5376,7 +5380,8 @@ void database::apply_hardfork( uint32_t hardfork )
 
                adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
 
-               modify( account, [&]( account_object &a ) {
+               modify( account, [&]( account_object& a )
+               {
                   util::update_manabar( cprops, a, true, true );
                   a.voting_manabar.current_mana = 0;
                   a.downvote_manabar.current_mana = 0;
@@ -5389,7 +5394,8 @@ void database::apply_hardfork( uint32_t hardfork )
                } );
 
                adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
-               modify( cprops, [&]( dynamic_global_property_object &o ) {
+               modify( cprops, [&]( dynamic_global_property_object& o )
+               {
                   o.total_vesting_fund_steem -= converted_steem;
                   o.total_vesting_shares -= vests_to_convert;
                } );
@@ -5452,7 +5458,7 @@ void database::apply_hardfork( uint32_t hardfork )
 
             const auto& withdraw_to_idx = get_index< savings_withdraw_index, by_to_complete >();
             auto withdraw_to_itr = withdraw_to_idx.lower_bound( account_name );
-            while ( withdraw_to_itr != withdraw_to_idx.end() && withdraw_to_itr->to == account_name )
+            while( withdraw_to_itr != withdraw_to_idx.end() && withdraw_to_itr->to == account_name )
             {
                auto& withdrawal = *withdraw_to_itr;
                ++withdraw_to_itr;
@@ -5501,12 +5507,13 @@ void database::apply_hardfork( uint32_t hardfork )
                gpo.pending_rewarded_vesting_steem -= account.reward_vesting_steem;
             } );
 
-            modify( account, [&]( account_object &a ) {
+            modify( account, [&]( account_object &a )
+            {
                a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
                a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
             } );
 
-            operation vop = hardfork_hive_operation( account_name,  total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests);
+            operation vop = hardfork_hive_operation( account_name, total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests );
             push_virtual_operation( vop );
          }
          break;
