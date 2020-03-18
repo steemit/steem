@@ -5402,7 +5402,7 @@ void database::apply_hardfork( uint32_t hardfork )
 
                adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
                modify( cprops, [&]( dynamic_global_property_object &o ) {
-                  o.total_vesting_fund_steem += converted_steem;
+                  o.total_vesting_fund_steem -= converted_steem;
                   o.total_vesting_shares -= vests_to_convert;
                } );
             }
