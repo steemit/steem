@@ -5444,9 +5444,9 @@ void database::apply_hardfork( uint32_t hardfork )
             total_transferred_steem += account.savings_balance;
             total_transferred_sbd += account.savings_sbd_balance;
             adjust_balance( treasury_account, account.savings_balance );
-            adjust_balance( account_name, -account.savings_balance );
+            adjust_savings_balance( account, -account.savings_balance );
             adjust_balance( treasury_account, account.savings_sbd_balance );
-            adjust_balance( account_name, -account.savings_sbd_balance );
+            adjust_savings_balance( account, -account.savings_sbd_balance );
 
             // Remove SBD and STEEM balances
             total_transferred_steem += account.balance;
