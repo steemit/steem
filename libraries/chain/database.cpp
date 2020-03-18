@@ -5527,6 +5527,15 @@ void database::apply_hardfork( uint32_t hardfork )
             operation vop = hardfork_hive_operation( account_name, total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests );
             push_virtual_operation( vop );
          }
+         
+         // Reset TAPOS buffer to avoid replay attack
+         const auto& bs_idx = get_index< block_summary_index, by_id >();
+         for( auto itr = bs_idx.begin(); itr != bs_idx.end(); ++itr )
+         {
+            modify( *itr, [&](block_summary_object& p) {
+               p.block_id = block_id_type();
+            });
+         }
          break;
       }
       case STEEM_SMT_HARDFORK:
