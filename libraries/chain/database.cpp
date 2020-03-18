@@ -5340,37 +5340,47 @@ void database::apply_hardfork( uint32_t hardfork )
             if( account.vesting_shares.amount > 0 )
             {
                // Remove all delegations
-               vector< const vesting_delegation_object* > to_remove;
+               asset freed_delegations = asset( 0, VESTS_SYMBOL );
+
                const auto& delegation_idx = get_index< vesting_delegation_index, by_delegation >();
-
-               auto itr = delegation_idx.lower_bound( account_name );
-               while( itr != delegation_idx.end() && itr->delegator == account_name )
+               auto delegation_itr = delegation_idx.lower_bound( account_name );
+               while( delegation_itr != delegation_idx.end() && delegation_itr->delegator == account_name )
                {
-                  to_remove.push_back( &( *itr ) );
-                  ++itr;
-               }
+                  auto& delegation = *delegation_itr;
+                  ++delegation_itr;
 
-               for( const vesting_delegation_object* delegation_ptr: to_remove )
-               {
-                  const auto& delegatee = get_account( delegation_ptr->delegatee );
+                  const auto& delegatee = get_account( delegation.delegatee );
 
                   modify( delegatee, [&]( account_object& a )
                   {
                      util::update_manabar( cprops, a, true, true );
-                     a.received_vesting_shares -= delegation_ptr->vesting_shares;
+                     a.received_vesting_shares -= delegation.vesting_shares;
+                     freed_delegations += delegation.vesting_shares;
 
-                     a.voting_manabar.use_mana( delegation_ptr->vesting_shares.amount.value );
+                     a.voting_manabar.use_mana( delegation.vesting_shares.amount.value );
                      if( a.voting_manabar.current_mana < 0 )
                         a.voting_manabar.current_mana = 0;
 
                      a.downvote_manabar.use_mana(
-                             ((uint128_t(delegation_ptr->vesting_shares.amount.value) * cprops.downvote_pool_percent) /
+                             ((uint128_t(delegation.vesting_shares.amount.value) * cprops.downvote_pool_percent) /
                               STEEM_100_PERCENT).to_int64());
                      if( a.downvote_manabar.current_mana < 0 )
                         a.downvote_manabar.current_mana = 0;
                   } );
 
-                  remove( *delegation_ptr );
+                  remove( delegation );
+               }
+
+               // Remove pending expired delegations
+               const auto& exp_delegation_idx = get_index< vesting_delegation_expiration_index, by_account_expiration >();
+               auto exp_delegation_itr = exp_delegation_idx.lower_bound( account_name );
+               while( exp_delegation_itr != exp_delegation_idx.end() && exp_delegation_itr->delegator == account_name )
+               {
+                  auto& delegation = *exp_delegation_itr;
+                  ++exp_delegation_itr;
+
+                  freed_delegations += delegation.vesting_shares;
+                  remove( delegation );
                }
 
                auto vests_to_convert = account.vesting_shares;
@@ -5386,6 +5396,7 @@ void database::apply_hardfork( uint32_t hardfork )
                   a.voting_manabar.current_mana = 0;
                   a.downvote_manabar.current_mana = 0;
                   a.vesting_shares = asset( 0, VESTS_SYMBOL );
+                  //FC_ASSERT( a.delegated_vesting_shares == freed_delegations, "Inconsistent amount of delegations" );
                   a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
                   a.vesting_withdraw_rate.amount = 0;
                   a.next_vesting_withdrawal = fc::time_point_sec::maximum();
