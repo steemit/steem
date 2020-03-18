@@ -5429,28 +5429,41 @@ void database::apply_hardfork( uint32_t hardfork )
                auto& request = *request_itr;
                ++request_itr;
 
-               adjust_balance( account, request_itr->amount );
+               adjust_balance( account, request.amount );
                remove( request );
             }
 
-            // Remove ongoing saving withdrawals
-            const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
-            auto itr = to_complete_idx.lower_bound( account_name );
-            while( itr != to_complete_idx.end() && ( itr->to == account_name || itr->from == account_name ) ) {
-               if (itr->amount.symbol == SBD_SYMBOL)
-                  total_transferred_sbd += itr->amount;
-               else if (itr->amount.symbol == STEEM_SYMBOL) {
-                  total_transferred_steem += itr->amount;
-               }
+            // Remove ongoing saving withdrawals (return/pass balance to account)
+            const auto& withdraw_from_idx = get_index< savings_withdraw_index, by_from_rid >();
+            auto withdraw_from_itr = withdraw_from_idx.lower_bound( account_name );
+            while( withdraw_from_itr != withdraw_from_idx.end() && withdraw_from_itr->from == account_name )
+            {
+               auto& withdrawal = *withdraw_from_itr;
+               ++withdraw_from_itr;
 
-               adjust_balance( treasury_account, itr->amount );
-               modify( get_account( itr->from ), [&]( account_object& a )
+               adjust_balance( account, withdrawal.amount );
+               modify( account, [&]( account_object& a )
                {
                   a.savings_withdraw_requests--;
                } );
 
-               remove( *itr );
-               itr = to_complete_idx.lower_bound( account_name );
+               remove( withdrawal );
+            }
+
+            const auto& withdraw_to_idx = get_index< savings_withdraw_index, by_to_complete >();
+            auto withdraw_to_itr = withdraw_to_idx.lower_bound( account_name );
+            while ( withdraw_to_itr != withdraw_to_idx.end() && withdraw_to_itr->to == account_name )
+            {
+               auto& withdrawal = *withdraw_to_itr;
+               ++withdraw_to_itr;
+
+               adjust_balance( account, withdrawal.amount );
+               modify( get_account( withdrawal.from ), [&]( account_object& a )
+               {
+                  a.savings_withdraw_requests--;
+               } );
+
+               remove( withdrawal );
             }
 
             // Remove remaining savings balances
