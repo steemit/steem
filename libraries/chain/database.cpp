@@ -5432,6 +5432,18 @@ void database::apply_hardfork( uint32_t hardfork )
                cancel_order( order );
             }
 
+            // Remove pending convert requests (return balance to account)
+            const auto& request_idx = get_index< chain::convert_request_index, chain::by_owner >();
+            auto request_itr = request_idx.lower_bound( account_name );
+            while( request_itr != request_idx.end() && request_itr->owner == account_name )
+            {
+               auto& request = *request_itr;
+               ++request_itr;
+
+               adjust_balance( account, request_itr->amount );
+               remove( request );
+            }
+
             // Remove ongoing saving withdrawals
             const auto& to_complete_idx = get_index< savings_withdraw_index, by_to_complete >();
             auto itr = to_complete_idx.lower_bound( account_name );
