@@ -40,10 +40,14 @@ BOOST_AUTO_TEST_CASE( basic_test_01 )
       ACTORS( (alice) )
       generate_block();
 
-      auto _alice = db->get_account( "alice" );
+      auto& _alice = db->get_account( "alice" );
       db->clear_account( _alice );
 
-      validate_database();
+      /*
+         Original `clean_database_fixture::validate_database` checks `rc_plugin` as well.
+         Is it needed?
+      */
+      database_fixture::validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
