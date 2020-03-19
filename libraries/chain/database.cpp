@@ -53,7 +53,7 @@
 
 long hf23_time()
   {
-  long hf23Time = 1586304180; // TBD, 2020-04-08T00:03:00.000Z for now
+  long hf23Time = 1584712800; // Friday, 20 March 2020 14:00:00 GMT
   const char* value = getenv("STEEM_HF23_TIME");
   if(value != nullptr)
     {
