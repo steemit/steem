@@ -268,22 +268,24 @@ void update_witness_schedule4( database& db )
       int witnesses_on_version = 0;
       auto ver_itr = witness_versions.begin();
 
-      const hardfork_versions& hfVersions = db.get_hardfork_versions();
       const auto& hpo = db.get_hardfork_property_object();
 
-      if(hfVersions.times[STEEM_HARDFORK_0_23] < db.head_block_time() && hpo.current_hardfork_version == STEEM_HARDFORK_0_22_VERSION)
-        {
-        ilog("Forcing HF23 without need to have witness majority version");
+      if( hpo.current_hardfork_version == STEEM_HARDFORK_0_22_VERSION )
+      {
+         if( hpo.next_hardfork != STEEM_HARDFORK_0_23_VERSION )
+         {
+            ilog("Forcing HF23 without need to have witness majority version");
 
-        /// Force HF23 even no witness majority.
-        db.modify(hpo, [&](hardfork_property_object& _hpo)
-          {
-          _hpo.next_hardfork = STEEM_HARDFORK_0_23_VERSION;
-          _hpo.next_hardfork_time = fc::time_point_sec(STEEM_HARDFORK_0_23_TIME);
-          });
-        }
+            /// Force HF23 even no witness majority.
+            db.modify(hpo, [&](hardfork_property_object& _hpo)
+            {
+               _hpo.next_hardfork = STEEM_HARDFORK_0_23_VERSION;
+               _hpo.next_hardfork_time = fc::time_point_sec(STEEM_HARDFORK_0_23_TIME);
+            });
+         }
+      }
       else
-        {
+      {
         // The map should be sorted highest version to smallest, so we iterate until we hit the majority of witnesses on at least this version
         while( ver_itr != witness_versions.end() )
         {
