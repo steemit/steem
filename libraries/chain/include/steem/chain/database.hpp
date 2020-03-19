@@ -518,6 +518,11 @@ namespace steem { namespace chain {
          ///@}
 #endif
 
+         //Clears all pending operations on account that involve balance, moves tokens to STEEM_TREASURY_ACCOUNT
+         void clear_account( const account_object& account,
+            asset* transferred_sbd_ptr = nullptr, asset* transferred_steem_ptr = nullptr,
+            asset* converted_vests_ptr = nullptr, asset* steem_from_vests_ptr = nullptr );
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          //void pop_undo() { object_database::pop_undo(); }
