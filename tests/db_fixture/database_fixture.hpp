@@ -367,6 +367,14 @@ struct sps_proposal_database_fixture_performance : public sps_proposal_database_
    }
 };
 
+struct hf23_database_fixture : public clean_database_fixture
+{
+   hf23_database_fixture( uint16_t shared_file_size_in_mb = 8 )
+                           : clean_database_fixture( shared_file_size_in_mb ){}
+   virtual ~hf23_database_fixture(){}
+
+};
+
 struct json_rpc_database_fixture : public database_fixture
 {
    private:
