@@ -31,6 +31,179 @@ using fc::string;
 
 BOOST_FIXTURE_TEST_SUITE( hf23_tests, hf23_database_fixture )
 
+
+BOOST_AUTO_TEST_CASE( basic_test_04 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "VEST delegations" );
+
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      auto _10 = ASSET( "10.000 TESTS" );
+      auto _20 = ASSET( "20.000 TESTS" );
+      auto _1v = ASSET( "1.000000 VESTS" );
+      auto _2v = ASSET( "2.000000 VESTS" );
+      auto _1000 = ASSET( "1000.000 TESTS" );
+
+      FUND( "alice", _1000 );
+      FUND( "bob", _1000 );
+      FUND( "carol", _1000 );
+
+      {
+         vest( "alice", "alice", _10, alice_private_key );
+         vest( "alice", "alice", _20, alice_private_key );
+
+         delegate_vest( "alice", "bob", _1v, alice_private_key );
+         BOOST_REQUIRE( db->get_account( "alice" ).delegated_vesting_shares.amount.value != 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).delegated_vesting_shares.amount.value == 0l );
+
+         BOOST_REQUIRE( db->get_account( "alice" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).received_vesting_shares.amount.value != 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).received_vesting_shares.amount.value == 0l );
+
+         auto previous = db->get_account( "alice" ).delegated_vesting_shares.amount.value;
+
+         delegate_vest( "alice", "carol", _2v, alice_private_key );
+
+         auto next = db->get_account( "alice" ).delegated_vesting_shares.amount.value;
+         BOOST_REQUIRE( next > previous );
+
+         BOOST_REQUIRE( db->get_account( "alice" ).delegated_vesting_shares.amount.value != 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).delegated_vesting_shares.amount.value == 0l );
+
+         BOOST_REQUIRE( db->get_account( "alice" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).received_vesting_shares.amount.value != 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).received_vesting_shares.amount.value != 0l );
+      }
+      {
+         db->clear_account( db->get_account( "alice" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).delegated_vesting_shares.amount.value == 0l );
+
+         BOOST_REQUIRE( db->get_account( "alice" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).received_vesting_shares.amount.value == 0l );
+
+         db->clear_account( db->get_account( "bob" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).delegated_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).delegated_vesting_shares.amount.value == 0l );
+
+         BOOST_REQUIRE( db->get_account( "alice" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).received_vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).received_vesting_shares.amount.value == 0l );
+      }
+
+      database_fixture::validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( basic_test_03 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Vesting every account to anothers accounts" );
+
+      ACTORS( (alice)(bob)(carol) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      auto _1 = ASSET( "1.000 TESTS" );
+      auto _2 = ASSET( "2.000 TESTS" );
+      auto _3 = ASSET( "3.000 TESTS" );
+      auto _1000 = ASSET( "1000.000 TESTS" );
+
+      FUND( "alice", _1000 );
+      FUND( "bob", _1000 );
+      FUND( "carol", _1000 );
+
+      BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares == db->get_account( "bob" ).vesting_shares );
+      BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares == db->get_account( "carol" ).vesting_shares );
+
+      {
+         vest( "alice", "bob", _1, alice_private_key );
+         vest( "bob", "carol", _2, bob_private_key );
+         vest( "carol", "alice", _3, carol_private_key );
+         BOOST_REQUIRE_GT( db->get_account( "alice" ).vesting_shares.amount.value, db->get_account( "carol" ).vesting_shares.amount.value );
+         BOOST_REQUIRE_GT( db->get_account( "carol" ).vesting_shares.amount.value, db->get_account( "bob" ).vesting_shares.amount.value );
+      }
+      {
+         auto vest_bob = db->get_account( "bob" ).vesting_shares.amount.value;
+         auto vest_carol = db->get_account( "carol" ).vesting_shares.amount.value;
+
+         db->clear_account( db->get_account( "alice" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares.amount.value == vest_bob );
+         BOOST_REQUIRE( db->get_account( "carol" ).vesting_shares.amount.value == vest_carol );
+
+         db->clear_account( db->get_account( "bob" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).vesting_shares.amount.value == vest_carol );
+
+         db->clear_account( db->get_account( "carol" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "carol" ).vesting_shares.amount.value == 0l );
+      }
+
+      database_fixture::validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( basic_test_02 )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Vesting" );
+
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+
+      auto _1 = ASSET( "1.000 TESTS" );
+      auto _1000 = ASSET( "1000.000 TESTS" );
+
+      FUND( "alice", _1000 );
+      FUND( "bob", _1000 );
+
+      BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares == db->get_account( "bob" ).vesting_shares );
+
+      {
+         vest( "alice", "alice", _1, alice_private_key );
+         BOOST_REQUIRE_GT( db->get_account( "alice" ).vesting_shares.amount.value, db->get_account( "bob" ).vesting_shares.amount.value );
+      }
+      {
+         auto vest_bob = db->get_account( "bob" ).vesting_shares.amount.value;
+
+         db->clear_account( db->get_account( "alice" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares.amount.value == vest_bob );
+
+         db->clear_account( db->get_account( "bob" ) );
+         BOOST_REQUIRE( db->get_account( "alice" ).vesting_shares.amount.value == 0l );
+         BOOST_REQUIRE( db->get_account( "bob" ).vesting_shares.amount.value == 0l );
+      }
+
+      database_fixture::validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( basic_test_01 )
 {
    try
