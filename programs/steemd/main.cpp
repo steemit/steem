@@ -55,8 +55,23 @@ void info()
       std::cerr << "blockchain version: " << fc::string( STEEM_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #else
-      std::cerr << "------------------------------------------------------\n\n";
-      std::cerr << "            STARTING STEEM NETWORK\n\n";
+      std::cerr << "------------------------------------------------------\n\n";      
+      std::cerr << "                @     @@@@@@    ,@@@@@%               \n";
+      std::cerr << "               @@@@    (@@@@@*    @@@@@@              \n";
+      std::cerr << "             %@@@@@@     @@@@@@    %@@@@@,            \n";
+      std::cerr << "            @@@@@@@@@@    @@@@@@     @@@@@@           \n";
+      std::cerr << "          ,@@@@@@@@@@@@     @@@@@@    @@@@@@          \n";
+      std::cerr << "         @@@@@@@@@@@@@@@&    @@@@@@     @@@@@@        \n";
+      std::cerr << "        @@@@@@@@@@@@@@@@@@    .@@@@@%    @@@@@@       \n";
+      std::cerr << "      @@@@@@@@@@@@@@@@@@@@@(              .@@@@@%     \n";
+      std::cerr << "       @@@@@@@@@@@@@@@@@@@@               @@@@@@      \n";
+      std::cerr << "        *@@@@@@@@@@@@@@@@     @@@@@@    @@@@@@.       \n";
+      std::cerr << "          @@@@@@@@@@@@@@    &@@@@@.    @@@@@@         \n";
+      std::cerr << "           #@@@@@@@@@@     @@@@@@    #@@@@@/          \n";
+      std::cerr << "             @@@@@@@@    /@@@@@/    @@@@@@            \n";
+      std::cerr << "              @@@@@(    @@@@@@    .@@@@@&             \n";
+      std::cerr << "                @@     @@@@@&    @@@@@@               \n\n";
+      std::cerr << "                STARTING HIVE NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
       std::cerr << "initminer public key: " << STEEM_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "chain id: " << std::string( STEEM_CHAIN_ID ) << "\n";
