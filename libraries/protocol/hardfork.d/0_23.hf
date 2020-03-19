@@ -3,11 +3,7 @@
 
 long hf23_time();
 
-#ifdef IS_TEST_NET
-    #define STEEM_HARDFORK_0_23_TIME        hf23_time() //1583705529 // 2020-03-05T01:03:00.000Z
-#else
-    #define STEEM_HARDFORK_0_23_TIME        1586304180 // TBD, 2020-04-08T00:03:00.000Z for now
-#endif
+#define STEEM_HARDFORK_0_23_TIME        hf23_time()
 
 #define STEEM_HARDFORK_0_23_VERSION hardfork_version( 0, 23 )
 
