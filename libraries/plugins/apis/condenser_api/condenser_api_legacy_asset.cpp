@@ -42,12 +42,18 @@ uint32_t string_to_asset_num( const char* p, uint8_t decimals )
          }
          switch( name_u64 )
          {
-            case STEEM_SYMBOL_U64:
+#ifndef IS_TEST_NET
+           /// Has same value as HIVE_SYMBOL_U64
+           case STEEM_SYMBOL_U64:
+#endif /// IS_TEST_NET
             case HIVE_SYMBOL_U64:
                FC_ASSERT( decimals == 3, "Incorrect decimal places" );
                asset_num = STEEM_ASSET_NUM_STEEM;
                break;
+#ifndef IS_TEST_NET
+            /// Has same value as HBD_SYMBOL_U64
             case SBD_SYMBOL_U64:
+#endif ///IS_TEST_NET
             case HBD_SYMBOL_U64:
                FC_ASSERT( decimals == 3, "Incorrect decimal places" );
                asset_num = STEEM_ASSET_NUM_SBD;
