@@ -8,3 +8,31 @@
 #define STEEM_HARDFORK_0_22_VERSION hardfork_version( 0, 22 )
 
 #endif
+
+namespace hardforkprotect
+{
+
+inline static const std::set< std::string >& get_steemit_accounts()
+{
+   static const std::set< std::string > steemit_accounts
+   {
+    "ben",
+    "bitdev100",
+    "geos",
+    "goku1",
+    "hkdev404",
+    "imadev",
+    "joe767676",
+    "misterdelegation",
+    "pacemaker",
+    "steem",
+    "steemit",
+    "steemit2",
+    "steemitadmin",
+    "timothy2020"
+   };
+
+   return steemit_accounts;
+}
+
+}

@@ -1008,7 +1008,7 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       _db.get_account(o.to);
       _db.get_account(o.agent);
 
-      FC_ASSERT( o.ratification_deadline > _db.head_block_time(), "The escorw ratification deadline must be after head block time." );
+      FC_ASSERT( o.ratification_deadline > _db.head_block_time(), "The escrow ratification deadline must be after head block time." );
       FC_ASSERT( o.escrow_expiration > _db.head_block_time(), "The escrow expiration must be after head block time." );
 
       asset steem_spent = o.steem_amount;
