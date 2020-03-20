@@ -16,6 +16,7 @@ inline static const std::set< std::string >& get_steemit_accounts()
 {
    static const std::set< std::string > steemit_accounts
    {
+    // steemit accounts
     "ben",
     "bitdev100",
     "geos",
@@ -24,13 +25,32 @@ inline static const std::set< std::string >& get_steemit_accounts()
     "imadev",
     "joe767676",
     "misterdelegation",
-    "pacemaker",
     "steem",
     "steemit",
     "steemit2",
     "steemitadmin",
     "timothy2020",
     "steemitblog",
+    // tron puppets
+    "goodguy24",
+    "aheadofslow",
+    "night11pm",
+    "hunger365",
+    "waitforyou1",
+    "cloudysun",
+    "jumphigh",
+    "coronashallgo",
+    "paintingclub",
+    "bostonawesome",
+    "toke2049",
+    "flyingfly1",
+    "agirl10000",
+    "eastooowest",
+    "car2001",
+    "nicetry001",
+    "high46",
+    "respect888",
+    // Accounts excluded who voted a minimum of two sockpuppets or proxied someone who voted a minimum of two and who didn't unvote before the hive announcement with more than 1k sp
     "poloniex",
     "cjsdns",
     "sigizzang",
