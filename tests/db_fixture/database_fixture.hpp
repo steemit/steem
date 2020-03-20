@@ -367,6 +367,22 @@ struct sps_proposal_database_fixture_performance : public sps_proposal_database_
    }
 };
 
+struct hf23_database_fixture : public clean_database_fixture
+{
+   private:
+
+      void push_transaction( const operation& op, const fc::ecc::private_key& key );
+
+   public:
+
+      hf23_database_fixture( uint16_t shared_file_size_in_mb = 8 )
+                              : clean_database_fixture( shared_file_size_in_mb ){}
+      virtual ~hf23_database_fixture(){}
+
+      void vest( const string& from, const string& to, const asset& amount, const fc::ecc::private_key& key );
+      void delegate_vest( const string& delegator, const string& delegatee, const asset& amount, const fc::ecc::private_key& key );
+};
+
 struct json_rpc_database_fixture : public database_fixture
 {
    private:

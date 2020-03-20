@@ -429,7 +429,7 @@ namespace steem { namespace chain {
 
          /**
           * Helper method to return the current sbd value of a given amount of
-          * STEEM.  Return 0 SBD if there isn't a current_median_history
+          * STEEM.  Return 0 HBD if there isn't a current_median_history
           */
          asset to_sbd( const asset& steem )const;
          asset to_steem( const asset& sbd )const;
@@ -517,6 +517,11 @@ namespace steem { namespace chain {
          void validate_smt_invariants()const;
          ///@}
 #endif
+
+         //Clears all pending operations on account that involve balance, moves tokens to STEEM_TREASURY_ACCOUNT
+         void clear_account( const account_object& account,
+            asset* transferred_sbd_ptr = nullptr, asset* transferred_steem_ptr = nullptr,
+            asset* converted_vests_ptr = nullptr, asset* steem_from_vests_ptr = nullptr );
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead

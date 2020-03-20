@@ -1022,6 +1022,37 @@ void sps_proposal_database_fixture::post_comment( std::string _authro, std::stri
    trx.operations.clear();
 }
 
+void hf23_database_fixture::push_transaction( const operation& op, const fc::ecc::private_key& key )
+{
+   signed_transaction tx;
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.operations.push_back( op );
+   sign( tx, key );
+   db->push_transaction( tx, 0 );
+}
+
+void hf23_database_fixture::vest( const string& from, const string& to, const asset& amount, const fc::ecc::private_key& key )
+{
+   FC_ASSERT( amount.symbol == STEEM_SYMBOL, "Can only vest TESTS" );
+
+   transfer_to_vesting_operation op;
+   op.from = from;
+   op.to = to;
+   op.amount = amount;
+
+   push_transaction( op, key );
+}
+
+void hf23_database_fixture::delegate_vest( const string& delegator, const string& delegatee, const asset& amount, const fc::ecc::private_key& key )
+{
+   delegate_vesting_shares_operation op;
+   op.vesting_shares = amount;
+   op.delegator = delegator;
+   op.delegatee = delegatee;
+
+   push_transaction( op, key );
+}
+
 json_rpc_database_fixture::json_rpc_database_fixture()
 {
    try {

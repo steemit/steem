@@ -834,13 +834,13 @@ public:
 
          ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
             << ' '
-            << setw( spacing + 3 ) << "Sum(SBD)"
-            << setw( spacing + 1) << "SBD"
-            << setw( spacing + 1 ) << "STEEM"
+            << setw( spacing + 3 ) << "Sum(HBD)"
+            << setw( spacing + 1) << "HBD"
+            << setw( spacing + 1 ) << "HIVE"
             << setw( spacing + 1 ) << "Price"
             << setw( spacing + 1 ) << "Price"
-            << setw( spacing + 1 ) << "STEEM "
-            << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
+            << setw( spacing + 1 ) << "HIVE "
+            << setw( spacing + 1 ) << "HBD " << "Sum(HBD)"
             << "\n====================================================================================================="
             << "|=====================================================================================================\n";
 

@@ -31,7 +31,7 @@ struct legacy_steem_asset
       {
          if( force_canon )
          {
-            FC_ASSERT( symbol.is_canon(), "Must use canonical STEEM symbol serialization" );
+            FC_ASSERT( symbol.is_canon(), "Must use canonical HIVE symbol serialization" );
          }
          return asset( amount, STEEM_SYMBOL );
       }
@@ -79,11 +79,11 @@ inline void pack( Stream& s, const steem::protocol::legacy_steem_asset_symbol_ty
 template< typename Stream >
 inline void unpack( Stream& s, steem::protocol::legacy_steem_asset_symbol_type& sym, uint32_t depth )
 {
-   //  994240:        "account_creation_fee": "0.1 STEEM"
-   // 1021529:        "account_creation_fee": "10.0 STEEM"
-   // 3143833:        "account_creation_fee": "3.00000 STEEM"
-   // 3208405:        "account_creation_fee": "2.00000 STEEM"
-   // 3695672:        "account_creation_fee": "3.00 STEEM"
+   //  994240:        "account_creation_fee": "0.1 HIVE"
+   // 1021529:        "account_creation_fee": "10.0 HIVE"
+   // 3143833:        "account_creation_fee": "3.00000 HIVE"
+   // 3208405:        "account_creation_fee": "2.00000 HIVE"
+   // 3695672:        "account_creation_fee": "3.00 HIVE"
    // 4338089:        "account_creation_fee": "0.001 0.001"
    // 4626205:        "account_creation_fee": "6.000 6.000"
    // 4632595:        "account_creation_fee": "6.000 6.000"

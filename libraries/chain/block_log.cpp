@@ -184,6 +184,60 @@ namespace steem { namespace chain {
       }
    }
 
+   void block_log::rewrite(const fc::path& inputFile, const fc::path& outputFile, uint32_t maxBlockNo)
+     {
+     if(my->block_stream.is_open())
+       my->block_stream.close();
+     if(my->index_stream.is_open())
+       my->index_stream.close();
+     my->index_write = false;
+     my->block_file = inputFile;
+
+     my->block_stream.open(my->block_file.generic_string().c_str(), LOG_READ);
+     my->block_write = false;
+
+     std::fstream outFile;
+
+     outFile.exceptions(std::fstream::failbit | std::fstream::badbit);
+     outFile.open(outputFile.generic_string().c_str(), LOG_WRITE);
+
+     uint64_t pos = 0;
+     uint64_t end_pos = 0;
+
+     my->block_stream.seekg(-sizeof(uint64_t), std::ios::end);
+     my->block_stream.read((char*)&end_pos, sizeof(end_pos));
+     signed_block tmp;
+
+     my->block_stream.seekg(pos);
+
+     uint32_t blockNo = 0;
+
+     while(pos < end_pos)
+       {
+       fc::raw::unpack(my->block_stream, tmp);
+       my->block_stream.read((char*)&pos, sizeof(pos));
+
+       uint64_t outPos = outFile.tellp();
+
+       if(outPos != pos)
+         {
+         ilog("Block position mismatch");
+         }
+
+       auto data = fc::raw::pack_to_vector(tmp);
+       outFile.write(data.data(), data.size());
+       outFile.write((char*)&outPos, sizeof(outPos));
+
+       if(++blockNo >= maxBlockNo)
+         break;
+
+       if(blockNo % 1000 == 0)
+         printf("Rewritten block: %u\r", blockNo);
+       }
+
+     outFile.close();
+     }
+
    void block_log::close()
    {
       my.reset( new detail::block_log_impl() );
@@ -374,6 +428,12 @@ namespace steem { namespace chain {
             my->block_stream.read( (char*)&pos, sizeof( pos ) );
             my->index_stream.write( (char*)&pos, sizeof( pos ) );
          }
+
+         /// Flush and reopen to be sure that given index file has been saved.
+         /// Otherwise just executed replay, next stopped by ctrl+C can again corrupt this file. 
+         my->index_stream.flush();
+         my->index_stream.close();
+         my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
       }
       FC_LOG_AND_RETHROW()
    }

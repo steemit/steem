@@ -1,8 +1,9 @@
 #ifndef STEEM_HARDFORK_0_23
 #define STEEM_HARDFORK_0_23 23
-#define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_23
 
-#define STEEM_HARDFORK_0_23_TIME 1597970800 // Future 2020...
+long hf23_time();
+
+#define STEEM_HARDFORK_0_23_TIME        hf23_time()
 
 #define STEEM_HARDFORK_0_23_VERSION hardfork_version( 0, 23 )
 

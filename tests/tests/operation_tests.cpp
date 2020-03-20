@@ -1405,7 +1405,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test failure transfering STEEM to steem.dao" );
+      BOOST_TEST_MESSAGE( "--- Test failure transfering HIVE to steem.dao" );
       op.from = "bob";
       op.to = STEEM_TREASURY_ACCOUNT;
       op.amount = ASSET( "1.000 TESTS" );
@@ -1419,7 +1419,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       BOOST_REQUIRE( db->get_account( STEEM_TREASURY_ACCOUNT ).balance == ASSET( "0.000 TESTS" ) );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test transfering SBD to steem.dao" );
+      BOOST_TEST_MESSAGE( "--- Test transfering HBD to steem.dao" );
       auto treasury_sbd_balance = db->get_account( STEEM_TREASURY_ACCOUNT ).sbd_balance;
       op.amount = ASSET( "1.000 TBD" );
       tx.signatures.clear();
@@ -2558,7 +2558,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       BOOST_TEST_MESSAGE( "--- Test publishing price feed" );
       feed_publish_operation op;
       op.publisher = "alice";
-      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1000.000 TESTS" ) ); // 1000 STEEM : 1 SBD
+      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1000.000 TESTS" ) ); // 1000 HIVE : 1 SBD
 
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -2583,7 +2583,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test failure publishing with SBD base symbol" );
+      BOOST_TEST_MESSAGE( "--- Test failure publishing with HBD base symbol" );
 
       tx.operations.clear();
       tx.signatures.clear();
@@ -2728,7 +2728,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- Test success converting SBD to TESTS" );
+      BOOST_TEST_MESSAGE( "--- Test success converting HBD to TESTS" );
       op.owner = "bob";
       op.amount = ASSET( "3.000 TBD" );
       tx.operations.clear();
@@ -2975,7 +2975,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
 
       BOOST_TEST_MESSAGE( "--- Test having a partial match to limit order" );
       // Alice has order for 15 SBD at a price of 2:3
-      // Fill 5 STEEM for 7.5 SBD
+      // Fill 5 HIVE for 7.5 SBD
 
       op.owner = "bob";
       op.orderid = 1;
@@ -3340,7 +3340,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
 
       BOOST_TEST_MESSAGE( "--- Test having a partial match to limit order" );
       // Alice has order for 15 SBD at a price of 2:3
-      // Fill 5 STEEM for 7.5 SBD
+      // Fill 5 HIVE for 7.5 SBD
 
       op.owner = "bob";
       op.orderid = 1;
@@ -4105,16 +4105,16 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_validate )
       op.ratification_deadline = db->head_block_time() + 100;
       op.escrow_expiration = db->head_block_time() + 200;
 
-      BOOST_TEST_MESSAGE( "--- failure when sbd symbol != SBD" );
+      BOOST_TEST_MESSAGE( "--- failure when sbd symbol != HBD" );
       op.sbd_amount.symbol = STEEM_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when steem symbol != STEEM" );
+      BOOST_TEST_MESSAGE( "--- failure when steem symbol != HIVE" );
       op.sbd_amount.symbol = SBD_SYMBOL;
       op.steem_amount.symbol = SBD_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when fee symbol != SBD and fee symbol != STEEM" );
+      BOOST_TEST_MESSAGE( "--- failure when fee symbol != HBD and fee symbol != HIVE" );
       op.steem_amount.symbol = STEEM_SYMBOL;
       op.fee.symbol = VESTS_SYMBOL;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
@@ -5463,12 +5463,12 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "success when amount is SBD" );
+      BOOST_TEST_MESSAGE( "success when amount is HBD" );
       op.amount = ASSET( "1.000 TBD" );
       op.validate();
 
 
-      BOOST_TEST_MESSAGE( "success when amount is STEEM" );
+      BOOST_TEST_MESSAGE( "success when amount is HIVE" );
       op.amount = ASSET( "1.000 TESTS" );
       op.validate();
    }
@@ -5566,7 +5566,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring STEEM to self" );
+      BOOST_TEST_MESSAGE( "--- success transferring HIVE to self" );
       op.to = "alice";
       op.amount = ASSET( "1.000 TESTS" );
 
@@ -5580,7 +5580,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring SBD to self" );
+      BOOST_TEST_MESSAGE( "--- success transferring HBD to self" );
       op.amount = ASSET( "1.000 TBD" );
 
       tx.clear();
@@ -5593,7 +5593,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring STEEM to other" );
+      BOOST_TEST_MESSAGE( "--- success transferring HIVE to other" );
       op.to = "bob";
       op.amount = ASSET( "1.000 TESTS" );
 
@@ -5607,7 +5607,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success transferring SBD to other" );
+      BOOST_TEST_MESSAGE( "--- success transferring HBD to other" );
       op.amount = ASSET( "1.000 TBD" );
 
       tx.clear();
@@ -5657,7 +5657,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "success when amount is SBD" );
+      BOOST_TEST_MESSAGE( "success when amount is HBD" );
       op.amount = ASSET( "1.000 TBD" );
       op.validate();
 
@@ -5776,7 +5776,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       BOOST_REQUIRE( db->get_account( "alice" ).savings_sbd_balance == ASSET( "9.000 TBD" ) );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to self" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing HIVE to self" );
       op.to = "alice";
       op.amount = ASSET( "1.000 TESTS" );
       op.request_id++;
@@ -5798,7 +5798,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing SBD to self" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing HBD to self" );
       op.amount = ASSET( "1.000 TBD" );
       op.request_id++;
 
@@ -5828,7 +5828,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to other" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing HIVE to other" );
       op.to = "bob";
       op.amount = ASSET( "1.000 TESTS" );
       op.request_id = 3;
@@ -5850,7 +5850,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success withdrawing SBD to other" );
+      BOOST_TEST_MESSAGE( "--- success withdrawing HBD to other" );
       op.amount = ASSET( "1.000 TBD" );
       op.request_id = 4;
 
@@ -6244,12 +6244,12 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_validate )
       op.reward_vests.amount = 0;
 
 
-      BOOST_TEST_MESSAGE( "Testing wrong STEEM symbol" );
+      BOOST_TEST_MESSAGE( "Testing wrong HIVE symbol" );
       op.reward_steem = ASSET( "1.000 TBD" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
-      BOOST_TEST_MESSAGE( "Testing wrong SBD symbol" );
+      BOOST_TEST_MESSAGE( "Testing wrong HBD symbol" );
       op.reward_steem = ASSET( "1.000 TESTS" );
       op.reward_sbd = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
@@ -6329,7 +6329,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       BOOST_TEST_MESSAGE( "Testing: account_create_with_delegation_apply" );
       signed_transaction tx;
       ACTORS( (alice) );
-      // 150 * fee = ( 5 * STEEM ) + SP
+      // 150 * fee = ( 5 * HIVE ) + SP
       //auto gpo = db->get_dynamic_global_properties();
       generate_blocks(1);
       fund( "alice", ASSET("1510.000 TESTS") );
@@ -6408,7 +6408,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
       auto alice_vests = db->get_account( "alice" ).vesting_shares;
 
 
-      BOOST_TEST_MESSAGE( "--- Attempting to claim more STEEM than exists in the reward balance." );
+      BOOST_TEST_MESSAGE( "--- Attempting to claim more HIVE than exists in the reward balance." );
 
       claim_reward_balance_operation op;
       signed_transaction tx;
@@ -7194,7 +7194,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( STEEM_100_PERCENT + 1 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
-      BOOST_TEST_MESSAGE( "--- failure when setting new sbd_exchange_rate with SBD / STEEM" );
+      BOOST_TEST_MESSAGE( "--- failure when setting new sbd_exchange_rate with HBD / HIVE" );
       prop_op.props.erase( "sbd_interest_rate" );
       prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
@@ -8326,7 +8326,7 @@ BOOST_AUTO_TEST_CASE( account_update2_apply )
       BOOST_REQUIRE( acct_auth.active == authority( 2, new_private_key.get_public_key(), 2 ) );
       BOOST_REQUIRE( acct.memo_key == new_private_key.get_public_key() );
 
-#ifdef IS_LOW_MEM
+#ifndef IS_LOW_MEM
       const account_metadata_object& acct_metadata = db->get< account_metadata_object, by_account >( acct.id );
       BOOST_REQUIRE( acct_metadata.json_metadata == "{\"bar\":\"foo\"}" );
       BOOST_REQUIRE( acct_metadata.posting_json_metadata == "{\"success\":true}" );

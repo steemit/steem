@@ -34,6 +34,17 @@ namespace chainbase {
          return *this;
       }
 
+      std::string dump() const
+        {
+        std::string retVal("{'compiler':'");
+        retVal += compiler_version.data();
+        retVal += "', 'debug':" + std::to_string(debug);
+        retVal += ", 'apple':" + std::to_string(apple);
+        retVal += ", 'windows':" + std::to_string(windows) + "}";
+
+        return retVal;
+        }
+
       boost::array<char,256>  compiler_version;
       bool                    debug = false;
       bool                    apple = false;
@@ -82,9 +93,17 @@ namespace chainbase {
          }
          else
          {
-            if( !env.first || !( *env.first == environment_check()) ) {
-               BOOST_THROW_EXCEPTION( std::runtime_error( "database created by a different compiler, build, or operating system" ) );
+           environment_check eCheck;
+            if( !env.first || !( *env.first == eCheck) ) {
+               if(!env.first)
+                 BOOST_THROW_EXCEPTION( std::runtime_error( "Unable to find environment data saved in persistent storage. Probably database created by a different compiler, build, or operating system" ) );
+
+               std::string dp = env.first->dump();
+               std::string dr = eCheck.dump();
+               BOOST_THROW_EXCEPTION(std::runtime_error("Different persistent & runtime environments. Persistent: `" + dp + "'. Runtime: `"+ dr + "'.Probably database created by a different compiler, build, or operating system"));
             }
+
+          std::cout << "Compiler and build environment read from persistent stoage: `" << env.first->dump() << '\'' << std::endl;
          }
       } else {
          _file_size = shared_file_size;

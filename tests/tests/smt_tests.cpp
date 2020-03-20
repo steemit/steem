@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.symbol = get_new_smt_symbol( 3, db );
       op.precision = op.symbol.decimals();
 
-      BOOST_TEST_MESSAGE( " -- SMT create with insufficient SBD balance" );
+      BOOST_TEST_MESSAGE( " -- SMT create with insufficient HBD balance" );
       // Fund with STEEM, and set fee with SBD.
       FUND( "alice", test_amount );
       // Declare fee in SBD/TBD though alice has none.
@@ -584,7 +584,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       // Throw due to insufficient balance of SBD/TBD.
       FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
 
-      BOOST_TEST_MESSAGE( " -- SMT create with insufficient STEEM balance" );
+      BOOST_TEST_MESSAGE( " -- SMT create with insufficient HIVE balance" );
       // Now fund with SBD, and set fee with STEEM.
       convert( "alice", asset( test_amount, STEEM_SYMBOL ) );
       // Declare fee in STEEM though alice has none.
@@ -619,13 +619,13 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.symbol = bob_symbol;
       op.precision = op.symbol.decimals();
 
-      BOOST_TEST_MESSAGE( " -- Check that we cannot create an SMT with an insufficent STEEM creation fee" );
+      BOOST_TEST_MESSAGE( " -- Check that we cannot create an SMT with an insufficent HIVE creation fee" );
       // Check too low fee in STEEM.
       FUND( "bob", too_low_fee_amount );
       op.smt_creation_fee = asset( too_low_fee_amount, STEEM_SYMBOL );
       FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
 
-      BOOST_TEST_MESSAGE( " -- Check that we cannot create an SMT with an insufficent SBD creation fee" );
+      BOOST_TEST_MESSAGE( " -- Check that we cannot create an SMT with an insufficent HBD creation fee" );
       // Check too low fee in SBD.
       convert( "bob", asset( too_low_fee_amount, STEEM_SYMBOL ) );
       op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );

@@ -103,6 +103,7 @@ struct api_account_object
       posting( a.posting ),
       memo_key( a.memo_key ),
       json_metadata( a.json_metadata ),
+      posting_json_metadata( a.posting_json_metadata ),
       proxy( a.proxy ),
       last_owner_update( a.last_owner_update ),
       last_account_update( a.last_account_update ),
@@ -165,6 +166,7 @@ struct api_account_object
    authority         posting;
    public_key_type   memo_key;
    string            json_metadata;
+   string            posting_json_metadata;
    account_name_type proxy;
 
    time_point_sec    last_owner_update;
@@ -328,8 +330,8 @@ struct api_comment_object
 
    uint16_t          reward_weight = 0;
 
-   legacy_asset      total_payout_value;
-   legacy_asset      curator_payout_value;
+   legacy_asset      total_payout_value = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
+   legacy_asset      curator_payout_value = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
 
    share_type        author_rewards;
 
@@ -338,7 +340,7 @@ struct api_comment_object
    account_name_type root_author;
    string            root_permlink;
 
-   legacy_asset      max_accepted_payout;
+   legacy_asset      max_accepted_payout = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
    uint16_t          percent_steem_dollars = 0;
    bool              allow_replies = false;
    bool              allow_votes = false;
@@ -403,9 +405,9 @@ struct extended_dynamic_global_properties
    legacy_asset      virtual_supply;
    legacy_asset      current_supply;
    legacy_asset      confidential_supply;
-   legacy_asset      init_sbd_supply;
-   legacy_asset      current_sbd_supply;
-   legacy_asset      confidential_sbd_supply;
+   legacy_asset      init_sbd_supply = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
+   legacy_asset      current_sbd_supply = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
+   legacy_asset      confidential_sbd_supply = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
    legacy_asset      total_vesting_fund_steem;
    legacy_asset      total_vesting_shares;
    legacy_asset      total_reward_fund_steem;
@@ -441,7 +443,7 @@ struct extended_dynamic_global_properties
    uint16_t          vesting_reward_percent = STEEM_VESTING_FUND_PERCENT_HF16;
    uint16_t          sps_fund_percent = STEEM_PROPOSAL_FUND_PERCENT_HF0;
 
-   legacy_asset      sps_interval_ledger;
+   legacy_asset      sps_interval_ledger = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
 
    uint16_t          downvote_pool_percent = 0;
 };
@@ -750,12 +752,12 @@ struct discussion : public api_comment_object
 
    string                        url; /// /category/@rootauthor/root_permlink#author/permlink
    string                        root_title;
-   legacy_asset                  pending_payout_value; ///< sbd
-   legacy_asset                  total_pending_payout_value; ///< sbd including replies
+   legacy_asset                  pending_payout_value = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) ); ///< sbd
+   legacy_asset                  total_pending_payout_value = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) ); ///< sbd including replies
    vector< tags::vote_state >    active_votes;
    vector< string >              replies; ///< author/slug mapping
    share_type                    author_reputation = 0;
-   legacy_asset                  promoted;
+   legacy_asset                  promoted = legacy_asset::from_asset( asset( 0, SBD_SYMBOL ) );
    uint32_t                      body_length = 0;
    vector< account_name_type >   reblogged_by;
    optional< account_name_type > first_reblogged_by;
@@ -1196,7 +1198,8 @@ FC_REFLECT( steem::plugins::condenser_api::api_operation_object,
              (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
 
 FC_REFLECT( steem::plugins::condenser_api::api_account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(posting_json_metadata)
+             (proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_manabar)(downvote_manabar)(voting_power)
