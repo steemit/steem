@@ -36,7 +36,6 @@ inline static const std::set< std::string >& get_steemit_accounts()
     "sigizzang",
     "sct.wallet",
     "virus707",
-    "bitdev100",
     "pacemaker",
     "sct.voter",
     "sct.bank",
