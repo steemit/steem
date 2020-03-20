@@ -331,7 +331,7 @@ inline static const std::set< std::string >& get_steemit_accounts()
     "palja",
     "ksheva1",
     "fadetoblack",
-    "autoway",
+    "autoway"
    };
 
    return steemit_accounts;
