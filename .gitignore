@@ -11,6 +11,10 @@
 Debug/
 Release/
 
+# Clion project files
+.idea
+cmake-build-debug
+
 # Visual Studio Code files
 .vscode
 
