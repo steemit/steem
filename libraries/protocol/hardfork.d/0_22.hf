@@ -7,4 +7,32 @@
 
 #define STEEM_HARDFORK_0_22_VERSION hardfork_version( 0, 22 )
 
+#ifdef IS_TEST_NET
+#define STEEM_PROTECTION_HARDFORK_TIME        1585735200 // Wed, 1 April 2020 10:00:00 UTC (6:00:00 ET)
+#else
+#define STEEM_PROTECTION_HARDFORK_TIME        1586008800 // Sat, 4 April 2020 14:00:00 UTC (10:00:00 ET)
+#endif
+
+namespace hardforkprotect
+{
+
+inline static const std::set< std::string >& get_hive_accounts()
+{
+   static const std::set< std::string > hive_accounts
+   {
+    "freedom",
+    "pumpkin",
+    "blocktrades",
+    "gtg",
+    "good-karma",
+    "roelandp",
+    "steempress",
+    "darthknight",
+   };
+
+   return hive_accounts;
+}
+
+}
+
 #endif
