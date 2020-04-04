@@ -10,7 +10,7 @@
 #ifdef IS_TEST_NET
 #define STEEM_PROTECTION_HARDFORK_TIME        1585735200 // Wed, 1 April 2020 10:00:00 UTC (6:00:00 ET)
 #else
-#define STEEM_PROTECTION_HARDFORK_TIME        1586008800 // Sat, 4 April 2020 14:00:00 UTC (10:00:00 ET)
+#define STEEM_PROTECTION_HARDFORK_TIME        1585994400 // Sat, 4 April 2020 10:00:00 UTC (10:00:00 ET)
 #endif
 
 namespace hardforkprotect
@@ -28,9 +28,6 @@ inline static const std::set< std::string >& get_hive_accounts()
     "roelandp",
     "steempress",
     "darthknight",
-    "cleta",
-    "ashleigh",
-    "anastacia",
    };
 
    return hive_accounts;
