@@ -1599,6 +1599,218 @@ void database::clear_null_account_balance()
    post_push_virtual_operation( vop_op );
 }
 
+void database::clear_account( const account_object& account,
+   asset* transferred_sbd_ptr, asset* transferred_steem_ptr,
+   asset* converted_vests_ptr, asset* steem_from_vests_ptr )
+{
+   const auto& account_name = account.name;
+   FC_ASSERT( account_name != HIVE_TREASURY_ACCOUNT, "Can't clear treasury account" );
+
+   const auto& treasury_account = get_account( HIVE_TREASURY_ACCOUNT );
+   const auto& cprops = get_dynamic_global_properties();
+
+   asset total_transferred_steem = asset( 0, STEEM_SYMBOL );
+   asset total_transferred_sbd = asset( 0, SBD_SYMBOL );
+   asset total_converted_vests = asset( 0, VESTS_SYMBOL );
+   asset total_steem_from_vests = asset( 0, STEEM_SYMBOL );
+
+   if( account.vesting_shares.amount > 0 )
+   {
+      // Remove all delegations
+      asset freed_delegations = asset( 0, VESTS_SYMBOL );
+
+      const auto& delegation_idx = get_index< vesting_delegation_index, by_delegation >();
+      auto delegation_itr = delegation_idx.lower_bound( account_name );
+      while( delegation_itr != delegation_idx.end() && delegation_itr->delegator == account_name )
+      {
+         auto& delegation = *delegation_itr;
+         ++delegation_itr;
+
+         const auto& delegatee = get_account( delegation.delegatee );
+
+         modify( delegatee, [&]( account_object& a )
+         {
+            util::update_manabar( cprops, a, true, true );
+            a.received_vesting_shares -= delegation.vesting_shares;
+            freed_delegations += delegation.vesting_shares;
+
+            a.voting_manabar.use_mana( delegation.vesting_shares.amount.value );
+            if( a.voting_manabar.current_mana < 0 )
+               a.voting_manabar.current_mana = 0;
+
+            a.downvote_manabar.use_mana(
+               ((uint128_t(delegation.vesting_shares.amount.value) * cprops.downvote_pool_percent) /
+               STEEM_100_PERCENT).to_int64());
+            if( a.downvote_manabar.current_mana < 0 )
+               a.downvote_manabar.current_mana = 0;
+         } );
+
+         remove( delegation );
+      }
+
+      // Remove pending expired delegations
+      const auto& exp_delegation_idx = get_index< vesting_delegation_expiration_index, by_account_expiration >();
+      auto exp_delegation_itr = exp_delegation_idx.lower_bound( account_name );
+      while( exp_delegation_itr != exp_delegation_idx.end() && exp_delegation_itr->delegator == account_name )
+      {
+         auto& delegation = *exp_delegation_itr;
+         ++exp_delegation_itr;
+
+         freed_delegations += delegation.vesting_shares;
+         remove( delegation );
+      }
+
+      auto vests_to_convert = account.vesting_shares;
+      auto converted_steem = vests_to_convert * cprops.get_vesting_share_price();
+      total_converted_vests += account.vesting_shares;
+      total_steem_from_vests += asset( converted_steem, STEEM_SYMBOL );
+
+      adjust_proxied_witness_votes( account, -account.vesting_shares.amount );
+
+      modify( account, [&]( account_object& a )
+      {
+         util::update_manabar( cprops, a, true, true );
+         a.voting_manabar.current_mana = 0;
+         a.downvote_manabar.current_mana = 0;
+         a.vesting_shares = asset( 0, VESTS_SYMBOL );
+         //FC_ASSERT( a.delegated_vesting_shares == freed_delegations, "Inconsistent amount of delegations" );
+         a.delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
+         a.vesting_withdraw_rate.amount = 0;
+         a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+         a.to_withdraw = 0;
+         a.withdrawn = 0;
+      } );
+
+      adjust_balance( treasury_account, asset( converted_steem, STEEM_SYMBOL ) );
+      modify( cprops, [&]( dynamic_global_property_object& o )
+      {
+         o.total_vesting_fund_steem -= converted_steem;
+         o.total_vesting_shares -= vests_to_convert;
+      } );
+   }
+
+   // Remove pending escrows (return balance to account - compare with expire_escrow_ratification())
+   const auto& escrow_idx = get_index< chain::escrow_index, chain::by_from_id >();
+   auto escrow_itr = escrow_idx.lower_bound( account_name );
+   while( escrow_itr != escrow_idx.end() && escrow_itr->from == account_name )
+   {
+      auto& escrow = *escrow_itr;
+      ++escrow_itr;
+
+      adjust_balance( account, escrow.steem_balance );
+      adjust_balance( account, escrow.sbd_balance );
+      adjust_balance( account, escrow.pending_fee );
+
+      remove( escrow );
+   }
+
+   // Remove open limit orders (return balance to account - compare with clear_expired_orders())
+   const auto& order_idx = get_index< chain::limit_order_index, chain::by_account >();
+   auto order_itr = order_idx.lower_bound( account_name );
+   while( order_itr != order_idx.end() && order_itr->seller == account_name )
+   {
+      auto& order = *order_itr;
+      ++order_itr;
+
+      cancel_order( order );
+   }
+
+   // Remove pending convert requests (return balance to account)
+   const auto& request_idx = get_index< chain::convert_request_index, chain::by_owner >();
+   auto request_itr = request_idx.lower_bound( account_name );
+   while( request_itr != request_idx.end() && request_itr->owner == account_name )
+   {
+      auto& request = *request_itr;
+      ++request_itr;
+
+      adjust_balance( account, request.amount );
+      remove( request );
+   }
+
+   // Remove ongoing saving withdrawals (return/pass balance to account)
+   const auto& withdraw_from_idx = get_index< savings_withdraw_index, by_from_rid >();
+   auto withdraw_from_itr = withdraw_from_idx.lower_bound( account_name );
+   while( withdraw_from_itr != withdraw_from_idx.end() && withdraw_from_itr->from == account_name )
+   {
+      auto& withdrawal = *withdraw_from_itr;
+      ++withdraw_from_itr;
+
+      adjust_balance( account, withdrawal.amount );
+      modify( account, [&]( account_object& a )
+      {
+         a.savings_withdraw_requests--;
+      } );
+
+      remove( withdrawal );
+   }
+
+   const auto& withdraw_to_idx = get_index< savings_withdraw_index, by_to_complete >();
+   auto withdraw_to_itr = withdraw_to_idx.lower_bound( account_name );
+   while( withdraw_to_itr != withdraw_to_idx.end() && withdraw_to_itr->to == account_name )
+   {
+      auto& withdrawal = *withdraw_to_itr;
+      ++withdraw_to_itr;
+
+      adjust_balance( account, withdrawal.amount );
+      modify( get_account( withdrawal.from ), [&]( account_object& a )
+      {
+         a.savings_withdraw_requests--;
+      } );
+
+      remove( withdrawal );
+   }
+
+   // Remove remaining savings balances
+   total_transferred_steem += account.savings_balance;
+   total_transferred_sbd += account.savings_sbd_balance;
+   adjust_balance( treasury_account, account.savings_balance );
+   adjust_savings_balance( account, -account.savings_balance );
+   adjust_balance( treasury_account, account.savings_sbd_balance );
+   adjust_savings_balance( account, -account.savings_sbd_balance );
+
+   // Remove SBD and STEEM balances
+   total_transferred_steem += account.balance;
+   total_transferred_sbd += account.sbd_balance;
+   adjust_balance( treasury_account, account.balance );
+   adjust_balance( account, -account.balance );
+   adjust_balance( treasury_account, account.sbd_balance );
+   adjust_balance( account, -account.sbd_balance );
+
+   // Transfer reward balances
+   total_transferred_steem += account.reward_steem_balance;
+   total_transferred_sbd += account.reward_sbd_balance;
+   adjust_balance( treasury_account, account.reward_steem_balance );
+   adjust_reward_balance( account, -account.reward_steem_balance );
+   adjust_balance( treasury_account, account.reward_sbd_balance );
+   adjust_reward_balance( account, -account.reward_sbd_balance );
+
+   // Convert and transfer vesting rewards
+   adjust_balance( treasury_account, account.reward_vesting_steem );
+   total_converted_vests += account.reward_vesting_balance;
+   total_steem_from_vests += account.reward_vesting_steem;
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   {
+      gpo.pending_rewarded_vesting_shares -= account.reward_vesting_balance;
+      gpo.pending_rewarded_vesting_steem -= account.reward_vesting_steem;
+   } );
+
+   modify( account, [&]( account_object &a )
+   {
+      a.reward_vesting_balance = asset( 0, VESTS_SYMBOL );
+      a.reward_vesting_steem = asset( 0, STEEM_SYMBOL );
+   } );
+
+   if( transferred_sbd_ptr != nullptr )
+      *transferred_sbd_ptr = total_transferred_sbd;
+   if( transferred_steem_ptr != nullptr )
+      *transferred_steem_ptr = total_transferred_steem;
+   if( converted_vests_ptr != nullptr )
+      *converted_vests_ptr = total_converted_vests;
+   if( steem_from_vests_ptr != nullptr )
+      *steem_from_vests_ptr = total_steem_from_vests;
+}
+
 void database::process_proposals( const block_notification& note )
 {
    if( has_hardfork( STEEM_PROPOSALS_HARDFORK ) )
@@ -1694,7 +1906,6 @@ void database::process_vesting_withdrawals()
                {
                   a.vesting_shares.amount += to_deposit;
                });
-
                adjust_proxied_witness_votes( to_account, to_deposit );
 
                post_push_virtual_operation( vop );
@@ -1725,6 +1936,7 @@ void database::process_vesting_withdrawals()
                {
                   a.balance += converted_steem;
                });
+
 
                modify( cprops, [&]( dynamic_global_property_object& o )
                {
@@ -3299,11 +3511,13 @@ struct process_header_visitor
          });
    }
 
+#ifdef IS_TEST_NET
    void operator()( const required_automated_actions& req_actions ) const
    {
       FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "Automated actions are not enabled until SMT hardfork." );
       std::copy( req_actions.begin(), req_actions.end(), std::back_inserter( _req_actions ) );
    }
+#endif
 
 FC_TODO( "Remove when optional automated actions are created" )
 #ifdef IS_TEST_NET
@@ -3499,6 +3713,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
+
    if ( fc::time_point_sec( STEEM_PROTECTION_HARDFORK_TIME ) <= head_block_time() )
    {
       switch( op.which() )
@@ -4948,11 +5163,13 @@ void database::init_hardforks()
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
 #ifdef IS_TEST_NET
-   FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
+    FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
 #endif
-
+   FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
+   _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
+   _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEM_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );
@@ -5361,6 +5578,31 @@ void database::apply_hardfork( uint32_t hardfork )
       break;
       case STEEM_HARDFORK_0_22:
          break;
+      case STEEM_HARDFORK_0_23:
+      {
+         for( auto account_name : hardforkprotect23::get_hive_accounts23() )
+         {
+            const auto* account_ptr = find_account( account_name );
+            if( account_ptr == nullptr )
+               continue;
+
+            asset total_transferred_steem, total_transferred_sbd, total_converted_vests, total_steem_from_vests;
+            clear_account( *account_ptr, &total_transferred_steem, &total_transferred_sbd, &total_converted_vests, &total_steem_from_vests );
+
+            operation vop = hardfork23_operation( account_name, total_transferred_sbd, total_transferred_steem, total_converted_vests, total_steem_from_vests );
+            push_virtual_operation( vop );
+         }
+
+         // Reset TAPOS buffer to avoid replay attack
+         const auto& bs_idx = get_index< block_summary_index, by_id >();
+         for( auto itr = bs_idx.begin(); itr != bs_idx.end(); ++itr )
+         {
+            modify( *itr, [&](block_summary_object& p) {
+               p.block_id = block_id_type();
+            });
+         }
+         break;
+      }
       case STEEM_SMT_HARDFORK:
       {
 #ifdef STEEM_ENABLE_SMT
