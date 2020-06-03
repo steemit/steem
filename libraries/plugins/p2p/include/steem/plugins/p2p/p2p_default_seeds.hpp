@@ -21,9 +21,7 @@ const std::vector< std::string > default_seeds = {
    "steem-seed.urbanpedia.com:2001",      // @fuli               
    "steem-seed.61bts.com:2001",            // @ety001             
    "seed-1.blockbrothers.io:2001",        // @blockbrothers      
-   "5.189.136.20:2001",                   // @maiyude            
-   "steemseed-fin.privex.io:2001",        // privex (FI)         
-   "steemseed-se.privex.io:2001",         // privex (SE)         
+   "5.189.136.20:2001",                   // @maiyude                  
    "seed.steemhunt.com:2001",             // @steemhunt Location: South Korea
    "seed.steemzzang.com:2001",            // @zzan.witnesses / @indo.witness
    "seednode.dlike.io:2001",              // @Dlike Location Germany
