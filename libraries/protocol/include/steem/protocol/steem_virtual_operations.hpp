@@ -191,6 +191,19 @@ namespace steem { namespace protocol {
       asset additional_funds;
    };
 
+   struct hardfork23_operation : public virtual_operation
+   {
+      hardfork23_operation() {}
+      hardfork23_operation( const account_name_type& acc, const asset& s, const asset& st, const asset& v, const asset& cs )
+              : account( acc ), sbd_transferred( s ), steem_transferred( st ), vests_converted( v ), total_steem_from_vests(cs) {}
+
+      account_name_type account;
+      asset             sbd_transferred;
+      asset             steem_transferred;
+      asset             vests_converted; // Amount of converted vests
+      asset             total_steem_from_vests; // Resulting STEEM from conversion
+   };
+
 } } //steem::protocol
 
 FC_REFLECT( steem::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
@@ -210,3 +223,4 @@ FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(a
 FC_REFLECT( steem::protocol::producer_reward_operation, (producer)(vesting_shares) )
 FC_REFLECT( steem::protocol::clear_null_account_balance_operation, (total_cleared) )
 FC_REFLECT( steem::protocol::sps_fund_operation, (additional_funds) )
+FC_REFLECT( steem::protocol::hardfork23_operation, (account)(sbd_transferred)(steem_transferred)(vests_converted)(total_steem_from_vests) )

@@ -1245,7 +1245,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       auto balance = db->get_account( "alice" ).balance;
       auto old_next_vesting = db->get_account( "alice" ).next_vesting_withdrawal;
 
-      for( int i = 1; i < STEEM_VESTING_WITHDRAW_INTERVALS - 1; i++ )
+      for( int i = 1; i < STEEM_VESTING_WITHDRAW_INTERVALS_HF_23 - 1; i++ )
       {
          generate_blocks( db->head_block_time() + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS );
 
@@ -1261,7 +1261,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE( fill_op.withdrawn.amount.value == withdraw_rate.amount.value );
          BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
-         if ( i == STEEM_VESTING_WITHDRAW_INTERVALS - 1 )
+         if ( i == STEEM_VESTING_WITHDRAW_INTERVALS_HF_23 - 1 )
             BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
          else
             BOOST_REQUIRE( alice.next_vesting_withdrawal.sec_since_epoch() == ( old_next_vesting + STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );

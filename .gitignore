@@ -101,3 +101,7 @@ tests/performance_test
 build/
 build.*/
 build-*/
+
+# clion
+.idea
+cmake-build-debug
