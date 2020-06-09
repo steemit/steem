@@ -1,9 +1,90 @@
 #ifndef STEEM_HARDFORK_0_23
 #define STEEM_HARDFORK_0_23 23
-#define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_23
+// #define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_23
+#define STEEM_SMT_HARDFORK 24
 
-#define STEEM_HARDFORK_0_23_TIME 1597970800 // Future 2020...
+#define STEEM_HARDFORK_0_23_TIME 1589983200 // Wed, 20 May 2020 14:00:00 UTC (10:00:00 EDT)
 
 #define STEEM_HARDFORK_0_23_VERSION hardfork_version( 0, 23 )
+
+
+namespace hardforkprotect23
+{
+
+inline static const std::set< std::string >& get_hive_accounts23()
+{
+   static const std::set< std::string > hive_accounts23
+   {
+      "abusereports",
+      "berniesanders",
+      "kingdong",
+      "nextgencrypto",
+      "ngc",
+      "ozchartart",
+      "sirvotesalot",
+      "sockpuppet",
+      "thecyclist",
+      "xx0xx",
+      "xxxxxxxxxx",
+      "z8teyb289qav9z",
+      "agent14",
+      "curatorhulk",
+      "dhenz",
+      "drbanner",
+      "gokuisreal",
+      "johnmadden",
+      "realself",
+      "theycallmedan",
+      "arsahk",
+      "blocktrades",
+      "darthknight",
+      "kevtorin",
+      "kriborin",
+      "lessys",
+      "acidyo",
+      "ats-david",
+      "ausbitbank",
+      "bittrix",
+      "clappy",
+      "drakos",
+      "fefemz",
+      "freedom",
+      "gtg",
+      "howo",
+      "jawnz",
+      "klobu",
+      "likwid",
+      "liondani",
+      "neoxian",
+      "netuoso",
+      "ocd-witness",
+      "pfunk",
+      "pharesim",
+      "roelandp",
+      "roundbeargames",
+      "sooty",
+      "steempress",
+      "themarkymark",
+      "therealwolf",
+      "timetickertickin",
+      "transisto",
+      "znnuksfe",
+      "mottler",
+      "mottler-1",
+      "smooth",
+      "smooth.witness",
+      "smooth-a",
+      "smooth-b",
+      "smooth-c",
+      "smooth-d",
+      "smooth-e",
+      "smooth-f",
+      "safari"
+   };
+
+   return hive_accounts23;
+}
+
+}
 
 #endif

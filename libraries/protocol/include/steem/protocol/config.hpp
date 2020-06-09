@@ -44,7 +44,7 @@
 
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 22, 1) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 23, 0) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID fc::sha256()
@@ -109,6 +109,7 @@
 #define STEEM_MAX_PROXY_RECURSION_DEPTH       4
 #define STEEM_VESTING_WITHDRAW_INTERVALS_PRE_HF_16 104
 #define STEEM_VESTING_WITHDRAW_INTERVALS      13
+#define STEEM_VESTING_WITHDRAW_INTERVALS_HF_23      4
 #define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEM_MAX_WITHDRAW_ROUTES             10
 #define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
@@ -337,6 +338,7 @@
 #define STEEM_ROOT_POST_PARENT                (account_name_type())
 /// Represents the account with NO authority which holds resources for payouts according to given proposals
 #define STEEM_TREASURY_ACCOUNT                "steem.dao"
+#define HIVE_TREASURY_ACCOUNT                "community321"
 ///@}
 
 /// STEEM PROPOSAL SYSTEM support
