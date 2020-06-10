@@ -1,0 +1,13 @@
+#ifndef STEEM_HARDFORK_0_24
+#define STEEM_HARDFORK_0_24 24
+#define STEEM_SMT_HARDFORK STEEM_HARDFORK_0_24
+
+#ifdef IS_TEST_NET
+#define STEEM_HARDFORK_0_24_TIME 1571065200 // Mon, 14 October 2019 11:00:00 EDT
+#else
+#define STEEM_HARDFORK_0_24_TIME 1597970800 // Future 2020...
+#endif
+
+#define STEEM_HARDFORK_0_24_VERSION hardfork_version( 0, 24 )
+
+#endif
