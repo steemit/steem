@@ -5162,14 +5162,14 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_22 == 22, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_22 ] = fc::time_point_sec( STEEM_HARDFORK_0_22_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_22 ] = STEEM_HARDFORK_0_22_VERSION;
-#ifdef IS_TEST_NET
-    FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
-   _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
-   _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
-#endif
    FC_ASSERT( STEEM_HARDFORK_0_23 == 23, "Invalid hardfork configuration" );
    _hardfork_versions.times[ STEEM_HARDFORK_0_23 ] = fc::time_point_sec( STEEM_HARDFORK_0_23_TIME );
    _hardfork_versions.versions[ STEEM_HARDFORK_0_23 ] = STEEM_HARDFORK_0_23_VERSION;
+#ifdef IS_TEST_NET
+    FC_ASSERT( STEEM_HARDFORK_0_24 == 24, "Invalid hardfork configuration" );
+    _hardfork_versions.times[ STEEM_HARDFORK_0_24 ] = fc::time_point_sec( STEEM_HARDFORK_0_24_TIME );
+    _hardfork_versions.versions[ STEEM_HARDFORK_0_24 ] = STEEM_HARDFORK_0_24_VERSION;
+#endif
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEM_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEM_NUM_HARDFORKS",STEEM_NUM_HARDFORKS) );

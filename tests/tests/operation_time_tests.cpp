@@ -1296,6 +1296,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       vest( "alice", 1040000 );
 
       auto withdraw_amount = alice.vesting_shares - original_vesting;
+      withdraw_amount.amount /= 10;
 
       BOOST_TEST_MESSAGE( "Setup vesting withdraw" );
       withdraw_vesting_operation wv;
