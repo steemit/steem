@@ -19,7 +19,7 @@ const std::vector< std::string > default_seeds = {
    "sn6.steemit.com:2001",                // Steemit, Inc.       
    "seed.justyy.com:2001",                // @justyy             
    "steem-seed.urbanpedia.com:2001",      // @fuli               
-   "steem-seed.61bts.com:2001",            // @ety001             
+   "seed.steem.fans:2001",                // @ety001             
    "seed-1.blockbrothers.io:2001",        // @blockbrothers      
    "5.189.136.20:2001",                   // @maiyude            
    "steemseed-fin.privex.io:2001",        // privex (FI)         
