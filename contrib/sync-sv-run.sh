@@ -63,19 +63,25 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     else
       tar cf blockchain.tar.lz4 --use-compress-prog=lz4 -C $HOME blockchain
     fi
+    CHECKSUM=`sha256sum blockchain.tar.lz4 | awk '{print $1}'`
+    CHECKSUM_FILE="checksum-latest"
+    echo $CHECKSUM > $CHECKSUM_FILE
+    echo The checksum is: $CHECKSUM
     if [[ ! $? -eq 0 ]]; then
       echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.
       exit 1
     fi
     if [[ "$IS_BROADCAST_NODE" ]]; then
-      FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.lz4
+      FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM.tar.lz4
     elif [[ "$IS_AH_NODE" ]]; then
-      FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.lz4
+      FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM.tar.lz4
     else
-      FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.lz4
+      FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM.tar.lz4
     fi
     echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
     aws s3 cp blockchain.tar.lz4 s3://$S3_BUCKET/$FILE_NAME
+    aws s3 cp $CHECKSUM_FILE s3://$S3_BUCKET/$CHECKSUM_FILE
+    aws s3api put-object-acl --bucket $S3_BUCKET --key $CHECKSUM_FILE --acl public-read
     if [[ ! $? -eq 0 ]]; then
       echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_BUCKET
       exit 1
