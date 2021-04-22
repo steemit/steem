@@ -78,10 +78,13 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
         fi
         if [[ "$IS_BROADCAST_NODE" ]]; then
           FILE_NAME=broadcast-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM_BLOCKCHAIN_TAR.tar.lz4
+          CHECKSUM_FILE_NAME=broadcast-$CHECKSUM_BLOCKCHAIN_TAR_FILE
         elif [[ "$IS_AH_NODE" ]]; then
           FILE_NAME=ahnode-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM_BLOCKCHAIN_TAR.tar.lz4
+          CHECKSUM_FILE_NAME=ahnode-$CHECKSUM_BLOCKCHAIN_TAR_FILE
         else
           FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`-$CHECKSUM_BLOCKCHAIN_TAR.tar.lz4
+          CHECKSUM_FILE_NAME=blockchain-$CHECKSUM_BLOCKCHAIN_TAR_FILE
         fi
         echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
         aws s3 cp blockchain.tar.lz4 s3://$S3_BUCKET/$FILE_NAME
@@ -105,8 +108,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
           exit 1
         fi
         # Upload checksum after files uploaded
-        aws s3 cp $CHECKSUM_BLOCKCHAIN_TAR_FILE s3://$S3_BUCKET/$CHECKSUM_BLOCKCHAIN_TAR_FILE
-        aws s3api put-object-acl --bucket $S3_BUCKET --key $CHECKSUM_BLOCKCHAIN_TAR_FILE --acl public-read
+        aws s3 cp $CHECKSUM_FILE_NAME s3://$S3_BUCKET/$CHECKSUM_FILE_NAME
+        aws s3api put-object-acl --bucket $S3_BUCKET --key $CHECKSUM_FILE_NAME --acl public-read
         # upload a current block_log
         cd $HOME
         if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
