@@ -31,6 +31,15 @@ BLOCKCHAIN_TIME=$(
         localhost:8090 | jq -r .result.time
 )
 
+if [[ "$IS_BROADCAST_NODE" ]]; then
+  FILE_TYPE=broadcast
+elif [[ "$IS_AH_NODE" ]]; then
+  FILE_TYPE=ahnode
+else
+  FILE_TYPE=blockchain
+fi
+CHECKSUM_BLOCKCHAIN_TAR_FILE="checksum-tar-latest"
+
 if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
   BLOCKCHAIN_SECS=`date -d $BLOCKCHAIN_TIME +%s`
   CURRENT_SECS=`date +%s`
@@ -38,10 +47,11 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
   # if we're within 10 seconds of current time, call it synced and begin the upload
   BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
   if [[ ${BLOCK_AGE} -le 10 ]]; then
-    LAST_BACKUP_TIME=`aws s3 ls s3://steemit-dev-blockchainstate/checksum-latest | awk '{print $1}'`
+    LAST_BACKUP_TIME=`aws s3 ls s3://steemit-dev-blockchainstate/${FILE_TYPE}-${CHECKSUM_BLOCKCHAIN_TAR_FILE} | awk '{print $1}'`
     if [[ ! -z $LAST_BACKUP_TIME ]]; then
       LAST_BACKUP_TIMESTAMP=`date -d $LAST_BACKUP_TIME +%s`
       BACKUP_INTERVAL=$((${CURRENT_SECS} - ${LAST_BACKUP_TIMESTAMP}))
+      # backup each 22 hours
       if [[ ${BACKUP_INTERVAL} -ge 79200 ]]; then
         STEEMD_PID=`pgrep -f p2p-endpoint`
         kill -SIGINT $STEEMD_PID
@@ -69,8 +79,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
           tar cf blockchain.tar.lz4 --use-compress-prog=lz4 -C $HOME blockchain
         fi
         CHECKSUM_BLOCKCHAIN_TAR=`sha256sum blockchain.tar.lz4 | awk '{print $1}'`
-        echo The blockchain.tar.lz4 checksum is: $CHECKSUM_BLOCKCHAIN_TAR
-        CHECKSUM_BLOCKCHAIN_TAR_FILE="checksum-tar-latest"
+        echo The tar file checksum is: $CHECKSUM_BLOCKCHAIN_TAR
         echo $CHECKSUM_BLOCKCHAIN_TAR > $CHECKSUM_BLOCKCHAIN_TAR_FILE
         if [[ ! $? -eq 0 ]]; then
           echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.
@@ -105,8 +114,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
           exit 1
         fi
         # Upload checksum after files uploaded
-        aws s3 cp $CHECKSUM_BLOCKCHAIN_TAR_FILE s3://$S3_BUCKET/$CHECKSUM_BLOCKCHAIN_TAR_FILE
-        aws s3api put-object-acl --bucket $S3_BUCKET --key $CHECKSUM_BLOCKCHAIN_TAR_FILE --acl public-read
+        aws s3 cp $CHECKSUM_BLOCKCHAIN_TAR_FILE s3://$S3_BUCKET/$FILE_TYPE-$CHECKSUM_BLOCKCHAIN_TAR_FILE
+        aws s3api put-object-acl --bucket $S3_BUCKET --key $FILE_TYPE-$CHECKSUM_BLOCKCHAIN_TAR_FILE --acl public-read
         # upload a current block_log
         cd $HOME
         if [[ ! "$IS_BROADCAST_NODE" ]] && [[ ! "$IS_AH_NODE" ]]; then
