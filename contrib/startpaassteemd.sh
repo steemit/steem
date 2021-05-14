@@ -56,7 +56,6 @@ mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
-echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-latest.tar.lz4
 finished=0
 count=1
 if [[ "$USE_RAMDISK" ]]; then
@@ -69,10 +68,13 @@ if [[ "$USE_RAMDISK" ]]; then
     rm -rf $HOME/blockchain/*
     rm -rf /mnt/ramdisk/blockchain/*
     if [[ "$IS_BROADCAST_NODE" ]]; then
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/broadcast-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/broadcast-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
     elif [[ "$IS_AH_NODE" ]]; then
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/ahnode-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/ahnode-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' 'blockchain/*rocksdb-storage*' -C /mnt/ramdisk 'blockchain/shared*'
     else
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/blockchain-latest.tar.lz4 - | lz4 -d | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
     fi
     if [[ $? -ne 0 ]]; then
@@ -89,10 +91,13 @@ else
   do
     rm -rf $HOME/blockchain/*
     if [[ "$IS_BROADCAST_NODE" ]]; then
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/broadcast-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/broadcast-latest.tar.lz4 - | lz4 -d | tar x
     elif [[ "$IS_AH_NODE" ]]; then
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/ahnode-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/ahnode-latest.tar.lz4 - | lz4 -d | tar x
     else
+      echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-latest.tar.lz4
       aws s3 cp s3://$S3_BUCKET/blockchain-latest.tar.lz4 - | lz4 -d | tar x
     fi
     if [[ $? -ne 0 ]]; then
