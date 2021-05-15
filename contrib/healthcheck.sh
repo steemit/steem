@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# because the max rolling update timeout is 1 hour,
+# but the download process is longer than 1 hour.
+if [[ -e /tmp/isdownloading ]]; then
+  echo Status: 200
+  echo Content-type:text/plain
+  echo
+  echo The blockchain data is downloading.
+  exit 0
+fi
+
 # if this is a syncing node, it will regularly be down
 # so all we need to know is that this healthcheck script is up and responding
 if [[ -e /tmp/issyncnode ]]; then
