@@ -138,6 +138,10 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
       else
         echo warning: last backup file is later less than 22 hours.
       fi
+    else
+      # if checksum file does not exist, create an empty one.
+      touch "${CHECKSUM_BLOCKCHAIN_TAR_FILE}"
+      aws s3 cp $CHECKSUM_BLOCKCHAIN_TAR_FILE s3://$S3_BUCKET/$FILE_TYPE-$CHECKSUM_BLOCKCHAIN_TAR_FILE
     fi
   fi
 fi
