@@ -10,6 +10,29 @@ else
   STEEMD="/usr/local/steemd-full/bin/steemd"
 fi
 
+if [[ "$SYNC_TO_S3" ]]; then
+  echo "[info] create issyncnode file."
+  touch /tmp/issyncnode
+  chown www-data:www-data /tmp/issyncnode
+fi
+
+# add a tag file to help check if download process has been done.
+echo "[info] create downloading tag file."
+touch /tmp/isdownloading
+
+# start nginx before downloading backup file.
+# because the max rolling update timeout is 1 hour,
+# but the download process is longer than 1 hour.
+cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
+# suppose we have healthy nodes in the auto scaling group
+echo server ahnode.steemit.com\; >> /etc/nginx/healthcheck.conf
+echo } >> /etc/nginx/healthcheck.conf
+rm /etc/nginx/sites-enabled/default
+cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
+/etc/init.d/fcgiwrap restart
+service nginx restart
+echo "[info] nginx started."
+
 chown -R steemd:steemd $HOME
 
 # clean out data dir since it may be semi-persistent block storage on the ec2 with stale data
@@ -109,6 +132,11 @@ else
     fi
   done
 fi
+
+# remove download file tag
+rm /tmp/isdownloading
+echo "[info] remove /tmp/isdownloading."
+
 if [[ $finished == 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
     echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
@@ -136,21 +164,9 @@ ARGS+=" --tags-skip-startup-update"
 
 cd $HOME
 
-if [[ "$SYNC_TO_S3" ]]; then
-  touch /tmp/issyncnode
-  chown www-data:www-data /tmp/issyncnode
-fi
-
 chown -R steemd:steemd $HOME/*
 
 # let's get going
-cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
-echo } >> /etc/nginx/healthcheck.conf
-rm /etc/nginx/sites-enabled/default
-cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
-/etc/init.d/fcgiwrap restart
-service nginx restart
 exec chpst -usteemd \
     $STEEMD \
         --webserver-ws-endpoint=127.0.0.1:8091 \
@@ -160,6 +176,8 @@ exec chpst -usteemd \
         $ARGS \
         $STEEMD_EXTRA_OPTS \
         2>&1&
+sed -i 's/ahnode.steemit.com/127.0.0.1:8091/' /etc/nginx/healthcheck.conf
+service nginx restart
 SAVED_PID=`pgrep -f p2p-endpoint`
 echo $SAVED_PID >> /tmp/steemdpid
 mkdir -p /etc/service/steemd
