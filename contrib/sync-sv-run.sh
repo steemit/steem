@@ -30,6 +30,7 @@ BLOCKCHAIN_TIME=$(
         --data '{"jsonrpc":"2.0","id":39,"method":"database_api.get_dynamic_global_properties"}' \
         localhost:8090 | jq -r .result.time
 )
+echo "[info] BLOCKCHAIN_TIME=$BLOCKCHAIN_TIME"
 
 if [[ "$IS_BROADCAST_NODE" ]]; then
   FILE_TYPE=broadcast
@@ -46,8 +47,10 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
 
   # if we're within 10 seconds of current time, call it synced and begin the upload
   BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
+  echo "[info] BLOCK_AGE=$BLOCK_AGE"
   if [[ ${BLOCK_AGE} -le 10 ]]; then
     LAST_BACKUP_TIME=`aws s3 ls s3://steemit-dev-blockchainstate/${FILE_TYPE}-${CHECKSUM_BLOCKCHAIN_TAR_FILE} | awk '{print $1}'`
+    echo "[info] LAST_BACKUP_TIME=$LAST_BACKUP_TIME"
     if [[ ! -z $LAST_BACKUP_TIME ]]; then
       LAST_BACKUP_TIMESTAMP=`date -d $LAST_BACKUP_TIME +%s`
       BACKUP_INTERVAL=$((${CURRENT_SECS} - ${LAST_BACKUP_TIMESTAMP}))
@@ -140,6 +143,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
       fi
     else
       # if checksum file does not exist, create an empty one.
+      echo "[info] Create empty checksum file, $CHECKSUM_BLOCKCHAIN_TAR_FILE"
       touch "${CHECKSUM_BLOCKCHAIN_TAR_FILE}"
       aws s3 cp $CHECKSUM_BLOCKCHAIN_TAR_FILE s3://$S3_BUCKET/$FILE_TYPE-$CHECKSUM_BLOCKCHAIN_TAR_FILE
     fi
