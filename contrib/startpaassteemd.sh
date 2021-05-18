@@ -25,7 +25,7 @@ touch /tmp/isdownloading
 # but the download process is longer than 1 hour.
 cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
 # suppose we have healthy nodes in the auto scaling group
-echo server ahnode.steemit.com\; >> /etc/nginx/healthcheck.conf
+echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
 echo } >> /etc/nginx/healthcheck.conf
 rm /etc/nginx/sites-enabled/default
 cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
@@ -176,8 +176,8 @@ exec chpst -usteemd \
         $ARGS \
         $STEEMD_EXTRA_OPTS \
         2>&1&
-sed -i 's/ahnode.steemit.com/127.0.0.1:8091/' /etc/nginx/healthcheck.conf
-service nginx restart
+#sed -i 's/ahnode.steemit.com/127.0.0.1:8091/' /etc/nginx/healthcheck.conf
+#service nginx restart
 SAVED_PID=`pgrep -f p2p-endpoint`
 echo $SAVED_PID >> /tmp/steemdpid
 mkdir -p /etc/service/steemd
