@@ -49,7 +49,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
   BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
   echo "[info] BLOCK_AGE=$BLOCK_AGE"
   if [[ ${BLOCK_AGE} -le 10 ]]; then
-    LAST_BACKUP_TIME=`aws s3 ls s3://steemit-dev-blockchainstate/${FILE_TYPE}-${CHECKSUM_BLOCKCHAIN_TAR_FILE} | awk '{print $1}'`
+    LAST_BACKUP_TIME=`aws s3 ls s3://$S3_BUCKET/${FILE_TYPE}-${CHECKSUM_BLOCKCHAIN_TAR_FILE} | awk '{print $1}'`
     echo "[info] LAST_BACKUP_TIME=$LAST_BACKUP_TIME"
     if [[ ! -z $LAST_BACKUP_TIME ]]; then
       LAST_BACKUP_TIMESTAMP=`date -d $LAST_BACKUP_TIME +%s`
