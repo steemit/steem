@@ -54,8 +54,7 @@ RUN \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
  #更换源  
-RUN pip3 install cryptography -i http://mirrors.aliyun.com/simple/ --trusted-host=mirrors.aliyun.com
-RUN pip3 install gcovr
+RUN pip3 install -i https://pypi.doubanio.com/simple/ gcovr
 ADD . /usr/local/src/steem
 RUN echo '第二个RUN'
 RUN \
