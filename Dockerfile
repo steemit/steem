@@ -10,7 +10,7 @@ ARG CI_BUILD
 ENV CI_BUILD ${CI_BUILD}
 
 ENV LANG=en_US.UTF-8
-
+RUN echo '第一个RUN'
 RUN \
     apt-get update && \
     apt-get install -y \
@@ -54,13 +54,13 @@ RUN \
     pip3 install gcovr
 
 ADD . /usr/local/src/steem
-
+RUN echo '第二个RUN'
 RUN \
     if [ "$CI_BUILD" ] ; then \
         pip3 install awscli --user && \
         aws s3 cp s3://steemit-dev-ci/steemd-CTestCostData.txt /usr/local/src/steem/CTestCostData.txt ; \
     fi
-
+RUN echo '第三个RUN'
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
@@ -93,7 +93,7 @@ RUN \
     programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build ; \
     fi
-
+RUN echo '第四个RUN'
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
@@ -132,7 +132,7 @@ RUN \
     fi && \
     rm -rf /usr/local/src/steem/build ; \
     fi
-
+RUN echo '第五个RUN'
 RUN \
     if [ "$BUILD_STEP" = "1" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
@@ -162,7 +162,7 @@ RUN \
     cd /usr/local/src/steem && \
     rm -rf /usr/local/src/steem/build ; \
     fi
-
+RUN echo '第六个RUN'
 RUN \
     if [ "$BUILD_STEP" = "2" ] || [ ! "$BUILD_STEP" ] ; then \
     cd /usr/local/src/steem && \
@@ -208,7 +208,7 @@ RUN \
     make install && \
     rm -rf /usr/local/src/steem ; \
     fi
-
+RUN echo '第七个RUN'
 RUN \
     apt-get remove -y \
         automake \
@@ -283,6 +283,8 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/fullnode.opswhitelist.config.ini /etc/steemd/fullnode.opswhitelist.config.ini
 ADD contrib/config-for-broadcaster.ini /etc/steemd/config-for-broadcaster.ini
 ADD contrib/config-for-ahnode.ini /etc/steemd/config-for-ahnode.ini
+
+VOLUME ["/etc/steemd"]
 
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
