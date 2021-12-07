@@ -8,6 +8,7 @@ ARG BUILD_STEP
 ENV BUILD_STEP ${BUILD_STEP}
 ARG CI_BUILD
 ENV CI_BUILD ${CI_BUILD}
+ARG BUILD_TAG=0.23.x
 
 ENV LANG=en_US.UTF-8
 
@@ -53,7 +54,9 @@ RUN \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     pip3 install gcovr
 
-ADD . /usr/local/src/steem
+RUN git clone https://github.com/steemit/steem.git /usr/local/src/steem && \
+    cd /usr/local/src/steem && \
+    git checkout $BUILD_TAG
 
 RUN \
     if [ "$CI_BUILD" ] ; then \
