@@ -15,6 +15,7 @@ ENV LANG=en_US.UTF-8
 RUN \
     apt-get update && \
     apt-get install -y \
+        binutils \
         autoconf \
         automake \
         autotools-dev \
