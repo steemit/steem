@@ -149,7 +149,15 @@ if [[ $finished == 0 ]]; then
     else
       mkdir blockchain
     fi
+
+    # add a tag file to help check if download process has been done.
+    echo "[info] create downloading tag file."
+    touch /tmp/isdownloading
     aws s3 cp s3://$S3_BUCKET/block_log-latest blockchain/block_log
+    # remove download file tag
+    rm /tmp/isdownloading
+    echo "[info] remove /tmp/isdownloading."
+
     if [[ $? -ne 0 ]]; then
       echo notifysteemdsync steemdsync: unable to pull latest block_log from S3, will sync from scratch.
     else
