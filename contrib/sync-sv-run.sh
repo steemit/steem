@@ -54,8 +54,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     if [[ ! -z $LAST_BACKUP_TIME ]]; then
       LAST_BACKUP_TIMESTAMP=`date -d $LAST_BACKUP_TIME +%s`
       BACKUP_INTERVAL=$((${CURRENT_SECS} - ${LAST_BACKUP_TIMESTAMP}))
-      # backup each 22 hours
-      if [[ ${BACKUP_INTERVAL} -ge 79200 ]]; then
+      # backup each 24 hours
+      if [[ ${BACKUP_INTERVAL} -ge 86400 ]]; then
         STEEMD_PID=`pgrep -f p2p-endpoint`
         kill -SIGINT $STEEMD_PID
         echo steemdsync: waiting for steemd to exit cleanly
