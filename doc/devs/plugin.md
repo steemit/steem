@@ -29,10 +29,10 @@ Startup/Shutdown of Plugins
 
 - Plugins can specify dependencies with the `APPBASE_PLUGIN_REQUIRES` macro, which takes a bubble list of dependencies.
 - There is undefined behavior if there are circular dependencies. Be careful how you design the data flow between plugins to eliminate circular dependencies.
-- `plugin_initialze` and `plugin_startup` both guarantee that any dependencies are already initialized or started before the dependent plugin is called.
+- `plugin_initialize` and `plugin_startup` both guarantee that any dependencies are already initialized or started before the dependent plugin is called.
 - `plugin_shutdown` is called in the reverse order from startup. Any dependencies will still be running when shutdown is called.
-- You can get a reference to a plugin with `appbase::app().get_plugin< PLUIGN >()` or a pointer with `appbase::app().find_plugin< PLUGIN >()`. get_plugin will fail and find_plugin will return a nullptr if the plugin is not registered or has not been initialized. These methods guarantee you are accessing initialized date.
-- Because of the inialization order, it is safe to call get/find_plugin on dependencies in initialization, startup, and shutdown.
+- You can get a reference to a plugin with `appbase::app().get_plugin< PLUGIN >()` or a pointer with `appbase::app().find_plugin< PLUGIN >()`. `get_plugin` will fail and `find_plugin` will return a nullptr if the plugin is not registered or has not been initialized. These methods guarantee you are accessing initialized date.
+- Because of the initialization order, it is safe to call `get/find_plugin` on dependencies in initialization, startup, and shutdown.
 - It is only safe to call get/find_plugin on an optional dependency in startup. An optional dependency is not explicitly specified. It is simply some optional behavior if a plugin is enabled. See `condenser_api` for an example of optional dependencies.
 
 Asynchronous APIs
