@@ -34,6 +34,11 @@ optional< condenser_api::legacy_signed_block > remote_node_api::get_block( uint3
    FC_ASSERT( false );
 }
 
+vector< condenser_api::legacy_signed_block > remote_node_api::get_blocks_in_range( uint32_t, uint32_t )
+{
+   FC_ASSERT( false );
+}
+
 vector< condenser_api::api_operation_object > remote_node_api::get_ops_in_block( uint32_t, bool only_virtual )
 {
    FC_ASSERT( false );

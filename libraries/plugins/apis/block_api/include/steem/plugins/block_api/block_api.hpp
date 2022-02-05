@@ -4,16 +4,16 @@
 
 #include <steem/plugins/block_api/block_api_args.hpp>
 
-#define BLOCK_API_SINGLE_QUERY_LIMIT 1000
-
 namespace steem { namespace plugins { namespace block_api {
+
+#define BLOCK_API_DEFAULT_QUERY_LIMIT 250
 
 class block_api_impl;
 
 class block_api
 {
    public:
-      block_api();
+      block_api( uint32_t query_limit );
       ~block_api();
 
       DECLARE_API(
@@ -35,6 +35,14 @@ class block_api
          * @return the referenced block, or null if no matching block was found
          */
          (get_block)
+
+         /**
+         * @brief Retrieve a range of full, signed blocks
+         * @param from_num Height of the first block to be returned
+         * @param to_num   Height of the last block to be returned
+         * @return a sequence of referenced blocks (item is null if no matching block was found)
+         */
+         (get_blocks_in_range)
       )
 
    private:
@@ -42,4 +50,3 @@ class block_api
 };
 
 } } } //steem::plugins::block_api
-

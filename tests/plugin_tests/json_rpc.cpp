@@ -287,6 +287,12 @@ BOOST_AUTO_TEST_CASE( positive_validation )
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"block_api.get_block\", \"params\": {\"block_num\":0}, \"id\": 11}";
       make_positive_request( request );
+
+      request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [\"block_api\",\"get_blocks_in_range\", {\"from_num\":1, \"to_num\":10} ], \"id\": 12}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\": \"2.0\", \"method\": \"block_api.get_blocks_in_range\", \"params\": {\"from_num\":1, \"to_num\":10}, \"id\": 13}";
+      make_positive_request( request );
    }
    FC_LOG_AND_RETHROW()
 }
