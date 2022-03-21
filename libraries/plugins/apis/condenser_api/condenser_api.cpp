@@ -54,6 +54,7 @@ namespace detail
             (get_active_witnesses)
             (get_block_header)
             (get_block)
+            (get_blocks_in_range)
             (get_ops_in_block)
             (get_config)
             (get_dynamic_global_properties)
@@ -741,6 +742,8 @@ namespace detail
       if( b )
       {
          result = legacy_signed_block( *b );
+
+         /* moved to `legacy_signed_block` constructor
          uint32_t n = uint32_t( b->transactions.size() );
          uint32_t block_num = block_header::num_from_id( b->block_id );
          for( uint32_t i=0; i<n; i++ )
@@ -748,8 +751,27 @@ namespace detail
             result->transactions[i].transaction_id = b->transactions[i].id();
             result->transactions[i].block_num = block_num;
             result->transactions[i].transaction_num = i;
-         }
+         }*/
       }
+
+      return result;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_blocks_in_range )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _block_api, "block_api_plugin not enabled." );
+
+      uint32_t from_num = args[ 0 ].as< uint32_t >();
+      uint32_t to_num   = args[ 1 ].as< uint32_t >();
+
+      auto blocks = _block_api->get_blocks_in_range( { from_num, to_num } ).blocks;
+      get_blocks_in_range_return result;
+
+      for ( auto& block : blocks )
+         result.push_back(
+            legacy_signed_block( block )
+         );
 
       return result;
    }
@@ -2232,6 +2254,7 @@ DEFINE_READ_APIS( condenser_api,
    (get_active_witnesses)
    (get_block_header)
    (get_block)
+   (get_blocks_in_range)
    (get_ops_in_block)
    (get_dynamic_global_properties)
    (get_chain_properties)

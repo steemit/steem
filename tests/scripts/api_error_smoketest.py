@@ -34,6 +34,10 @@ tests = [
       "params": [10000]
    },
    {
+      "method": "condenser_api.get_blocks_in_range",
+      "params": [10000, 10010]
+   },
+   {
       "method": "condenser_api.get_ops_in_block",
       "params": [10000]
    },
@@ -355,6 +359,10 @@ tests = [
    {
       "method": "block_api.get_block",
       "params": {"block_num":10000}
+   },
+   {
+      "method": "block_api.get_blocks_in_range",
+      "params": {"from_num":10000, "to_num":10010}
    },
    {
       "method": "follow_api.get_followers",
