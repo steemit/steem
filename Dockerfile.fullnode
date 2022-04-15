@@ -1,0 +1,62 @@
+FROM ubuntu:18.04 as builder
+
+ARG BUILD_TAG=master
+
+RUN apt-get update && \
+    apt-get install -y \
+        git \
+        build-essential \
+        libboost-all-dev \
+        cmake \
+        libssl-dev \
+        libsnappy-dev \
+        python3-jinja2 \
+        doxygen \
+        autoconf \
+        automake \
+        autotools-dev \
+        bsdmainutils \
+        libyajl-dev \
+        libreadline-dev \
+        libssl-dev \
+        libtool \
+        liblz4-tool \
+        ncurses-dev \
+        libgflags-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        liblz4-dev \
+        libzstd-dev
+
+WORKDIR /usr/local/src
+RUN git clone https://github.com/steemit/steem.git /usr/local/src && \
+    git fetch origin ${BUILD_TAG} && \
+    git checkout ${BUILD_TAG} && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=OFF \
+        -DSKIP_BY_TX_ID=ON \
+        -DBUILD_STEEM_TESTNET=OFF \
+        -DENABLE_MIRA=OFF \
+        -DSTEEM_STATIC_BUILD=ON \
+        .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && rm -rf build
+
+
+FROM ubuntu:18.04 as final
+
+WORKDIR /var/steem
+COPY --from=builder /usr/local/steemd /usr/local/steemd
+RUN apt-get update && \
+    apt-get install -y libsnappy-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists
+
+CMD ["/usr/local/steemd/bin/steemd", "--version"]
