@@ -1,0 +1,93 @@
+FROM ubuntu:18.04 as builder
+
+ARG STEEM_STATIC_BUILD=ON
+ARG MIRA=ON
+ARG BUILD_TAG=master
+# default | fullnode
+ARG NODE_TYPE=fullnode
+
+RUN apt-get update && \
+    apt-get install -y \
+        git \
+        build-essential \
+        libboost-all-dev \
+        cmake \
+        libssl-dev \
+        libsnappy-dev \
+        python3-jinja2 \
+        doxygen \
+        autoconf \
+        automake \
+        autotools-dev \
+        bsdmainutils \
+        libyajl-dev \
+        libreadline-dev \
+        libssl-dev \
+        libtool \
+        liblz4-tool \
+        ncurses-dev \
+        libgflags-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        liblz4-dev \
+        libzstd-dev
+
+WORKDIR /usr/local/src
+ADD . /usr/local/src
+
+RUN pwd && \
+    git fetch origin ${BUILD_TAG} && \
+    git checkout ${BUILD_TAG} && \
+    git submodule update --init --recursive
+
+RUN if [ "$NODE_TYPE" = "default" ] ; then \
+        echo "FULLNODE: ${FULLNODE}" && \
+        mkdir build && \
+        cd build && \
+        cmake \
+            -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLOW_MEMORY_NODE=ON \
+            -DCLEAR_VOTES=ON \
+            -DSKIP_BY_TX_ID=OFF \
+            -DBUILD_STEEM_TESTNET=OFF \
+            -DENABLE_MIRA=${MIRA} \
+            -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+            .. && \
+        make -j$(nproc) && \
+        make install && \
+        cd .. && rm -rf build; \
+    fi
+
+RUN if [ "$NODE_TYPE" = "fullnode" ] ; then \
+        echo "FULLNODE: ${FULLNODE}" && \
+        mkdir build && \
+        cd build && \
+        cmake \
+            -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLOW_MEMORY_NODE=OFF \
+            -DCLEAR_VOTES=OFF \
+            -DSKIP_BY_TX_ID=ON \
+            -DBUILD_STEEM_TESTNET=OFF \
+            -DENABLE_MIRA=${MIRA}} \
+            -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+            .. && \
+        make -j$(nproc) && \
+        make install && \
+        cd .. && rm -rf build; \
+    fi
+
+
+FROM ubuntu:18.04 as final
+
+ARG MIRA=ON
+ARG BUILD_TAG=master
+# default | fullnode
+ARG NODE_TYPE=fullnode
+
+RUN echo "${NODE_TYPE}_MIRA_${MIRA}_${BUILD_TAG}}" > /etc/steemversion
+
+COPY --from=builder /usr/local/steemd /usr/local/steemd
+
+CMD ["/usr/local/steemd/bin/steemd", "--version"]
