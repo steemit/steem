@@ -67,7 +67,6 @@ rpc-endpoint = 127.0.0.1:8090
 ```
 docker run -itd \
     --name steem-fullnode \
-    --restart always \
     -p 8090:8090 \
     -v /data:/var/steem steem \
     /usr/local/steemd/bin/steemd --data-dir /var/steem --replay-blockchain
