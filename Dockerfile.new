@@ -89,5 +89,10 @@ ARG NODE_TYPE=fullnode
 RUN echo "${NODE_TYPE}_MIRA_${MIRA}_${BUILD_TAG}}" > /etc/steemversion
 
 COPY --from=builder /usr/local/steemd /usr/local/steemd
+WORKDIR /var/steem
+RUN apt-get update && \
+    apt-get install -y libsnappy-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists
 
 CMD ["/usr/local/steemd/bin/steemd", "--version"]
