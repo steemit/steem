@@ -7,6 +7,7 @@ docker pull steemit/steem-fullnode-shared-memory:0.23.0
 docker tag steemit/steem-fullnode-shared-memory:0.23.0 steem
 ```
 > If you want to build your own Docker image, the Dockerfile is in this repo's root folder and names [Dockerfile.fullnode](https://github.com/steemit/steem/blob/exchange_node_build_doc/Dockerfile.fullnode).
+> Build command: `docker build -t steem -f Dockerfile.fullnode --build-arg BUILD_TAG=0.23.x .`
 
 2. Create the block data folder
 ```
