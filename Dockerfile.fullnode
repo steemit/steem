@@ -30,6 +30,7 @@ RUN apt-get update && \
 
 WORKDIR /usr/local/src
 RUN git clone https://github.com/steemit/steem.git /usr/local/src && \
+    cd /usr/local/src && \
     git fetch origin ${BUILD_TAG} && \
     git checkout ${BUILD_TAG} && \
     git submodule update --init --recursive && \
