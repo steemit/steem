@@ -110,7 +110,7 @@ COPY --from=builder /usr/local/steemd /usr/local/steemd
 WORKDIR /var/steem
 VOLUME [ "/var/steem" ]
 RUN apt-get update && \
-    apt-get install -y libsnappy-dev && \
+    apt-get install -y libsnappy-dev libreadline-dev && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists
 
