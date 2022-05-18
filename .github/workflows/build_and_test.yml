@@ -208,18 +208,18 @@ jobs:
           context: .
           file: Dockerfile.new
           build-args: |
-              CMAKE_BUILD_TYPE: ${{ matrix.cmake_build_type }}
-              BUILD_TAG: ${{ github.event.inputs.build_tag }}
-              STEEM_STATIC_BUILD: 'ON'
-              ENABLE_MIRA: 'ON'
-              LOW_MEMORY_MODE: ${{ matrix.low_memory_mode }}
-              CLEAR_VOTES: ${{ matrix.clear_votes }}
-              SKIP_BY_TX_ID: ${{ matrix.skip_by_tx_id }}
-              BUILD_STEEM_TESTNET: ${{ matrix.build_steem_testnet }}
-              ENABLE_COVERAGE_TESTING: ${{ matrix.enable_coverage_testing }}
-              CHAINBASE_CHECK_LOCKING: ${{ matrix.chainbase_check_locking }}
-              UNIT_TEST: ${{ matrix.unit_test }}
-              DOXYGEN: 'OFF'
+              CMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }}
+              BUILD_TAG=${{ github.event.inputs.build_tag }}
+              STEEM_STATIC_BUILD=ON
+              ENABLE_MIRA=ON
+              LOW_MEMORY_MODE=${{ matrix.low_memory_mode }}
+              CLEAR_VOTES=${{ matrix.clear_votes }}
+              SKIP_BY_TX_ID=${{ matrix.skip_by_tx_id }}
+              BUILD_STEEM_TESTNET=${{ matrix.build_steem_testnet }}
+              ENABLE_COVERAGE_TESTING=${{ matrix.enable_coverage_testing }}
+              CHAINBASE_CHECK_LOCKING=${{ matrix.chainbase_check_locking }}
+              UNIT_TEST=${{ matrix.unit_test }}
+              DOXYGEN=OFF
           push: ${{ matrix.unit_test == 'OFF' }}
           tags: ${{ steps.docker_image_name.outputs.image_name }}
       -
