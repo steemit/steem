@@ -219,7 +219,6 @@ jobs:
               ENABLE_COVERAGE_TESTING=${{ matrix.enable_coverage_testing }}
               CHAINBASE_CHECK_LOCKING=${{ matrix.chainbase_check_locking }}
               UNIT_TEST=${{ matrix.unit_test }}
-              DOXYGEN=OFF
           push: ${{ matrix.unit_test == 'OFF' }}
           tags: ${{ steps.docker_image_name.outputs.image_name }}
       -

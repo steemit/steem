@@ -13,7 +13,6 @@ ARG BUILD_STEEM_TESTNET=OFF
 ARG ENABLE_COVERAGE_TESTING=OFF
 ARG CHAINBASE_CHECK_LOCKING=OFF
 ARG UNIT_TEST=OFF
-ARG DOXYGEN=OFF
 
 RUN apt-get update && \
     apt-get install -y \
@@ -49,6 +48,37 @@ RUN pwd && \
     git checkout ${BUILD_TAG} && \
     git submodule update --init --recursive
 
+RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
+        mkdir build && \
+        cd build && \
+        cmake \
+            -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+            -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
+            -DCLEAR_VOTES=${CLEAR_VOTES} \
+            -DSKIP_BY_TX_ID=${SKIP_BY_TX_ID} \
+            -DBUILD_STEEM_TESTNET=${BUILD_STEEM_TESTNET} \
+            -DENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING} \
+            -DCHAINBASE_CHECK_LOCKING=${CHAINBASE_CHECK_LOCKING} \
+            -DENABLE_MIRA=${ENABLE_MIRA} \
+            -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+            .. ; \
+        [ "${ENABLE_MIRA}" = "ON" ] && make -j$(nproc) chain_test mira_test test_fixed_string plugin_test ; \
+        [ "${ENABLE_MIRA}" = "OFF" ] && make -j$(nproc) chain_test test_fixed_string plugin_test ; \
+        cd tests && \
+        ctest -j$(nproc) --output-on-failure && \
+        ./chain_test -t basic_tests/curation_weight_test && \
+        cd .. && \
+        [ "${ENABLE_MIRA}" = "ON" ] && ./libraries/mira/test/mira_test && \
+        ./programs/util/test_fixed_string && \
+        doxygen && \
+        PYTHONPATH=programs/build_helpers \
+        python3 -m steem_build_helpers.check_reflect && \
+        programs/build_helpers/get_config_check.sh && \
+        cd /usr/local/src && \
+        rm -rf build; \
+    fi
+
 RUN mkdir build && \
     cd build && \
     cmake \
@@ -66,20 +96,6 @@ RUN mkdir build && \
     make -j$(nproc) && \
     make install
 
-RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
-        cd tests && \
-        ctest -j$(nproc) --output-on-failure && \
-        ./chain_test -t basic_tests/curation_weight_test && \
-        cd .. && \
-        ./programs/util/test_fixed_string; \
-    fi
-
-RUN if [ "${DOXYGEN}" = "ON" ] ; then \
-        doxygen && \
-        PYTHONPATH=programs/build_helpers \
-        python3 -m steem_build_helpers.check_reflect && \
-        programs/build_helpers/get_config_check.sh; \
-    fi
 
 FROM ubuntu:18.04 as final
 
@@ -93,7 +109,6 @@ ARG SKIP_BY_TX_ID=ON
 ARG BUILD_STEEM_TESTNET=OFF
 ARG ENABLE_COVERAGE_TESTING=OFF
 ARG CHAINBASE_CHECK_LOCKING=OFF
-ARG DOXYGEN=OFF
 
 RUN echo "BUILD_TAG: ${BUILD_TAG}" >> /etc/build_info&& \
     echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
@@ -103,8 +118,7 @@ RUN echo "BUILD_TAG: ${BUILD_TAG}" >> /etc/build_info&& \
     echo "CLEAR_VOTES: ${CLEAR_VOTES}" >> /etc/build_info && \
     echo "SKIP_BY_TX_ID: ${SKIP_BY_TX_ID}" >> /etc/build_info && \
     echo "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" >> /etc/build_info && \
-    echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
-    echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info
+    echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info
 
 COPY --from=builder /usr/local/steemd /usr/local/steemd
 WORKDIR /var/steem
