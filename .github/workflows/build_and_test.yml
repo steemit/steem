@@ -19,8 +19,8 @@ jobs:
       ec2-instance-id-02: ${{ steps.start-ec2-runner-02.outputs.ec2-instance-id }}
       label-03: ${{ steps.start-ec2-runner-03.outputs.label }}
       ec2-instance-id-03: ${{ steps.start-ec2-runner-03.outputs.ec2-instance-id }}
-      label-04: ${{ steps.start-ec2-runner-04.outputs.label }}
-      ec2-instance-id-04: ${{ steps.start-ec2-runner-04.outputs.ec2-instance-id }}
+      #label-04: ${{ steps.start-ec2-runner-04.outputs.label }}
+      #ec2-instance-id-04: ${{ steps.start-ec2-runner-04.outputs.ec2-instance-id }}
       #label-05: ${{ steps.start-ec2-runner-05.outputs.label }}
       #ec2-instance-id-05: ${{ steps.start-ec2-runner-05.outputs.ec2-instance-id }}
     steps:
@@ -75,21 +75,21 @@ jobs:
               {"Key": "Name", "Value": "ec2-github-runner-03"},
               {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
             ]
-      - name: Start EC2 runner 04
-        id: start-ec2-runner-04
-        uses: ety001/ec2-github-runner@v2
-        with:
-          mode: start
-          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          ec2-image-id: ${{ secrets.AWS_AMI_ID }}
-          ec2-instance-type: ${{ secrets.AWS_INSTANCE_TYPE }}
-          subnet-id: ${{ secrets.AWS_SUBNET_ID }}
-          security-group-id: ${{ secrets.AWS_SG_ID }}
-          aws-resource-tags: > # optional, requires additional permissions
-            [
-              {"Key": "Name", "Value": "ec2-github-runner-04"},
-              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
-            ]
+      #- name: Start EC2 runner 04
+      #  id: start-ec2-runner-04
+      #  uses: ety001/ec2-github-runner@v2
+      #  with:
+      #    mode: start
+      #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      #    ec2-image-id: ${{ secrets.AWS_AMI_ID }}
+      #    ec2-instance-type: ${{ secrets.AWS_INSTANCE_TYPE }}
+      #    subnet-id: ${{ secrets.AWS_SUBNET_ID }}
+      #    security-group-id: ${{ secrets.AWS_SG_ID }}
+      #    aws-resource-tags: > # optional, requires additional permissions
+      #      [
+      #        {"Key": "Name", "Value": "ec2-github-runner-04"},
+      #        {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+      #      ]
       #- name: Start EC2 runner 05
       #  id: start-ec2-runner-05
       #  uses: ety001/ec2-github-runner@v2
@@ -111,8 +111,8 @@ jobs:
     strategy:
       matrix:
         include:
-          # [unit test] low memory node and mira on (for witness node)
           # Temporary comment this matrix setting because of chain_test failed on branch 0.23.x
+          # [unit test] low memory node and mira on (for witness node)
           #- cmake_build_type: Release
           #  low_memory_mode: 'ON'
           #  clear_votes: 'ON'
@@ -122,14 +122,14 @@ jobs:
           #  chainbase_check_locking: 'OFF'
           #  unit_test: 'ON'
           # [unit test] fullnode and mira on (for api node)
-          - cmake_build_type: Release
-            low_memory_mode: 'OFF'
-            clear_votes: 'OFF'
-            skip_by_tx_id: 'ON'
-            build_steem_testnet: 'OFF'
-            enable_coverage_testing: 'OFF'
-            chainbase_check_locking: 'OFF'
-            unit_test: 'ON'
+          #- cmake_build_type: Release
+          #  low_memory_mode: 'OFF'
+          #  clear_votes: 'OFF'
+          #  skip_by_tx_id: 'ON'
+          #  build_steem_testnet: 'OFF'
+          #  enable_coverage_testing: 'OFF'
+          #  chainbase_check_locking: 'OFF'
+          #  unit_test: 'ON'
           # low memory node and mira on (for witness node)
           - cmake_build_type: Release
             low_memory_mode: 'ON'
@@ -260,13 +260,13 @@ jobs:
           github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           label: ${{ needs.start-runner.outputs.label-03 }}
           ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-03 }}
-      - name: Stop EC2 runner 04
-        uses: ety001/ec2-github-runner@v2
-        with:
-          mode: stop
-          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          label: ${{ needs.start-runner.outputs.label-04 }}
-          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-04 }}
+      #- name: Stop EC2 runner 04
+      #  uses: ety001/ec2-github-runner@v2
+      #  with:
+      #    mode: stop
+      #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      #    label: ${{ needs.start-runner.outputs.label-04 }}
+      #    ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-04 }}
       #- name: Stop EC2 runner 05
       #  uses: ety001/ec2-github-runner@v2
       #  with:
