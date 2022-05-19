@@ -79,23 +79,24 @@ RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
         rm -rf build; \
     fi
 
-RUN mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-        -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
-        -DCLEAR_VOTES=${CLEAR_VOTES} \
-        -DSKIP_BY_TX_ID=${SKIP_BY_TX_ID} \
-        -DBUILD_STEEM_TESTNET=${BUILD_STEEM_TESTNET} \
-        -DENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING} \
-        -DCHAINBASE_CHECK_LOCKING=${CHAINBASE_CHECK_LOCKING} \
-        -DENABLE_MIRA=${ENABLE_MIRA} \
-        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
-        .. && \
-    make -j$(nproc) && \
-    make install
-
+RUN if [ "${UNIT_TEST}" = "OFF" ] ; then \
+        mkdir build && \
+        cd build && \
+        cmake \
+            -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+            -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
+            -DCLEAR_VOTES=${CLEAR_VOTES} \
+            -DSKIP_BY_TX_ID=${SKIP_BY_TX_ID} \
+            -DBUILD_STEEM_TESTNET=${BUILD_STEEM_TESTNET} \
+            -DENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING} \
+            -DCHAINBASE_CHECK_LOCKING=${CHAINBASE_CHECK_LOCKING} \
+            -DENABLE_MIRA=${ENABLE_MIRA} \
+            -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+            .. && \
+        make -j$(nproc) && \
+        make install; \
+    fi
 
 FROM ubuntu:18.04 as final
 
