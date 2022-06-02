@@ -1,12 +1,16 @@
   server {
     listen 0.0.0.0:8090;
 
+    limit_conn perip 10;
+    limit_conn perserver 100;
+
     location /health {
       fastcgi_pass unix:/var/run/fcgiwrap.socket;
       fastcgi_param SCRIPT_FILENAME /usr/local/bin/healthcheck.sh;
     }
 
     location / {
+      limit_req zone=SteemdRateLimit burst=20 nodelay;
       access_log off;
       proxy_pass http://ws;
       proxy_set_header X-Real-IP $remote_addr;
