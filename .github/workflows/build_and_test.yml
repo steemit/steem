@@ -23,6 +23,8 @@ jobs:
       #ec2-instance-id-04: ${{ steps.start-ec2-runner-04.outputs.ec2-instance-id }}
       #label-05: ${{ steps.start-ec2-runner-05.outputs.label }}
       #ec2-instance-id-05: ${{ steps.start-ec2-runner-05.outputs.ec2-instance-id }}
+      #label-06: ${{ steps.start-ec2-runner-06.outputs.label }}
+      #ec2-instance-id-06: ${{ steps.start-ec2-runner-06.outputs.ec2-instance-id }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -105,6 +107,21 @@ jobs:
       #        {"Key": "Name", "Value": "ec2-github-runner-05"},
       #        {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
       #      ]
+      #- name: Start EC2 runner 06
+      #  id: start-ec2-runner-06
+      #  uses: ety001/ec2-github-runner@v2
+      #  with:
+      #    mode: start
+      #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      #    ec2-image-id: ${{ secrets.AWS_AMI_ID }}
+      #    ec2-instance-type: ${{ secrets.AWS_INSTANCE_TYPE }}
+      #    subnet-id: ${{ secrets.AWS_SUBNET_ID }}
+      #    security-group-id: ${{ secrets.AWS_SG_ID }}
+      #    aws-resource-tags: > # optional, requires additional permissions
+      #      [
+      #        {"Key": "Name", "Value": "ec2-github-runner-06"},
+      #        {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+      #      ]
   build:
     needs: start-runner # required to start the main job when the runner is ready
     runs-on: self-hosted
@@ -121,6 +138,7 @@ jobs:
           #  enable_coverage_testing: 'OFF'
           #  chainbase_check_locking: 'OFF'
           #  unit_test: 'ON'
+          #  is_ahnode: 'OFF'
           # [unit test] fullnode and mira on (for api node)
           #- cmake_build_type: Release
           #  low_memory_mode: 'OFF'
@@ -130,6 +148,7 @@ jobs:
           #  enable_coverage_testing: 'OFF'
           #  chainbase_check_locking: 'OFF'
           #  unit_test: 'ON'
+          #  is_ahnode: 'OFF'
           # low memory node and mira on (for witness node)
           - cmake_build_type: Release
             low_memory_mode: 'ON'
@@ -139,6 +158,7 @@ jobs:
             enable_coverage_testing: 'OFF'
             chainbase_check_locking: 'OFF'
             unit_test: 'OFF'
+            is_ahnode: 'OFF'
           # fullnode and mira on (for api node)
           - cmake_build_type: Release
             low_memory_mode: 'OFF'
@@ -148,6 +168,17 @@ jobs:
             enable_coverage_testing: 'OFF'
             chainbase_check_locking: 'OFF'
             unit_test: 'OFF'
+            is_ahnode: 'OFF'
+          # ahnode and mira on (for ah node)
+          - cmake_build_type: Release
+            low_memory_mode: 'OFF'
+            clear_votes: 'ON'
+            skip_by_tx_id: 'OFF'
+            build_steem_testnet: 'OFF'
+            enable_coverage_testing: 'OFF'
+            chainbase_check_locking: 'OFF'
+            unit_test: 'OFF'
+            is_ahnode: 'ON'
           # testnet node and mira on
           #- cmake_build_type: Debug
           #  low_memory_mode: 'OFF'
@@ -157,6 +188,7 @@ jobs:
           #  enable_coverage_testing: 'ON'
           #  chainbase_check_locking: 'OFF'
           #  unit_test: 'OFF'
+          #  is_ahnode: 'OFF'
     steps:
       -
         name: Checkout
@@ -181,6 +213,7 @@ jobs:
           MIRA: 'ON'
           LOW_MEMORY_MODE: ${{ matrix.low_memory_mode }}
           BUILD_STEEM_TESTNET: ${{ matrix.build_steem_testnet }}
+          IS_AHNODE: ${{ matrix.is_ahnode }}
         run: |
           set -x
           if [ "${MIRA}" = "ON" ]; then
@@ -198,7 +231,11 @@ jobs:
           if [ "${LOW_MEMORY_MODE}" = "ON" ]; then
             low_memory_tag="";
           else
-            low_memory_tag="-full";
+            if [ "${IS_AHNODE}" = "ON" ]; then
+              low_memory_tag="-ah";
+            else
+              low_memory_tag="-full";
+            fi
           fi
           echo "::set-output name=image_name::steemit/steem:${BUILD_TAG}${mira_tag}${low_memory_tag}${testnet_tag}"
       -
@@ -253,13 +290,13 @@ jobs:
           github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           label: ${{ needs.start-runner.outputs.label-02 }}
           ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-02 }}
-      #- name: Stop EC2 runner 03
-      #  uses: ety001/ec2-github-runner@v2
-      #  with:
-      #    mode: stop
-      #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-      #    label: ${{ needs.start-runner.outputs.label-03 }}
-      #    ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-03 }}
+      - name: Stop EC2 runner 03
+        uses: ety001/ec2-github-runner@v2
+        with:
+          mode: stop
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label-03 }}
+          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-03 }}
       #- name: Stop EC2 runner 04
       #  uses: ety001/ec2-github-runner@v2
       #  with:
@@ -274,3 +311,10 @@ jobs:
       #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
       #    label: ${{ needs.start-runner.outputs.label-05 }}
       #    ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-05 }}
+      #- name: Stop EC2 runner 06
+      #  uses: ety001/ec2-github-runner@v2
+      #  with:
+      #    mode: stop
+      #    github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      #    label: ${{ needs.start-runner.outputs.label-06 }}
+      #    ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id-06 }}
