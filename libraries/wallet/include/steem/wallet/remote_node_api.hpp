@@ -111,6 +111,12 @@ struct remote_node_api
    vector< database_api::api_proposal_vote_object > list_proposal_votes( fc::variant, uint32_t, database_api::sort_order_type, database_api::order_direction_type, database_api::proposal_status );
    vector< asset_symbol_type > get_nai_pool(void);
    vector< database_api::api_smt_account_balance_object > get_smt_balances( vector< std::pair < string, string > > );
+   vector< rc::rc_account_api_object > find_rc_accounts( vector< account_name_type >);
+   vector< rc::rc_account_api_object > list_rc_accounts( account_name_type, uint32_t, rc::sort_order_type );
+   vector< rc::rc_delegation_pool_api_object > find_rc_delegation_pools( vector< account_name_type > );
+   vector< rc::rc_delegation_pool_api_object > list_rc_delegation_pools( account_name_type, uint32_t, rc::sort_order_type );
+   vector< rc::rc_indel_edge_api_object > find_rc_delegations( account_name_type );
+   vector< rc::rc_indel_edge_api_object > list_rc_delegations( vector< account_name_type >, uint32_t, rc::sort_order_type );
 };
 
 } }
@@ -206,4 +212,10 @@ FC_API( steem::wallet::remote_node_api,
         (list_proposal_votes)
         (get_nai_pool)
         (get_smt_balances)
+        (find_rc_accounts)
+        (list_rc_accounts)
+        (find_rc_delegation_pools)
+        (list_rc_delegation_pools)
+        (find_rc_delegations)
+        (list_rc_delegations)
       )

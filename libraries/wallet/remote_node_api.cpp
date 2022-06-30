@@ -449,4 +449,35 @@ vector< asset_symbol_type > remote_node_api::get_nai_pool()
    FC_ASSERT( false );
 }
 
+vector< rc::rc_account_api_object > remote_node_api::find_rc_accounts( vector< account_name_type >)
+{
+   FC_ASSERT( false );
+}
+
+vector< rc::rc_account_api_object > remote_node_api::list_rc_accounts( account_name_type, uint32_t, rc::sort_order_type )
+{
+   FC_ASSERT( false );
+}
+
+vector< rc::rc_delegation_pool_api_object > remote_node_api::find_rc_delegation_pools( vector< account_name_type > )
+{
+   FC_ASSERT( false );
+}
+
+vector< rc::rc_delegation_pool_api_object > remote_node_api::list_rc_delegation_pools( account_name_type, uint32_t, rc::sort_order_type )
+{
+   FC_ASSERT( false );
+}
+
+vector< rc::rc_indel_edge_api_object > remote_node_api::find_rc_delegations( account_name_type )
+{
+   FC_ASSERT( false );
+}
+
+vector< rc::rc_indel_edge_api_object > remote_node_api::list_rc_delegations( vector< account_name_type >, uint32_t, rc::sort_order_type )
+{
+   FC_ASSERT( false );
+}
+
+
 } }

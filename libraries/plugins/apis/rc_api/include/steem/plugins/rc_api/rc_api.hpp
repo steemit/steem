@@ -62,6 +62,8 @@ struct pool_delegation
 
 struct rc_account_api_object
 {
+   rc_account_api_object(){}
+
    rc_account_api_object( const rc_account_object& rca, const database& db ) :
       account( rca.account ),
       creator( rca.creator ),
@@ -73,15 +75,11 @@ struct rc_account_api_object
    {
       max_rc = get_maximum_rc( db.get_account( account ), rca );
 
-      db.get_index< chain::comment_index, chain::by_permlink >(); // works
-      db.get_index< rc_outdel_drc_edge_index, by_edge >(); // does not work
-      db.get_index< rc_outdel_drc_edge_index >().indices().get< by_edge >(); // works
-      for( const account_name_type& pool : delegation_slots )
+      for ( const account_name_type& pool : delegation_slots )
       {
          pool_delegation del;
 
-         db.get< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) ); // does not work
-         auto indel_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) ); // does not work
+         auto indel_edge = db.find< rc_outdel_drc_edge_object, by_edge >( boost::make_tuple( pool, account, VESTS_SYMBOL ) );
          if( indel_edge != nullptr )
          {
             del.rc_manabar = indel_edge->drc_manabar;
