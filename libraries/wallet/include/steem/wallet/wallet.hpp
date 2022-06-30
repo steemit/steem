@@ -116,6 +116,13 @@ class wallet_api
        */
       optional< condenser_api::legacy_signed_block > get_block( uint32_t num );
 
+      /** Returns a sequence of blocks in a specified range
+       *
+       * @param from_num Block height of the first block
+       * @param to_num Block height of the last block
+       */
+      vector< condenser_api::legacy_signed_block > get_blocks_in_range( uint32_t from_num, uint32_t to_num );
+
       /** Returns sequence of operations included/generated in a specified block
        *
        * @param block_num Block height of specified block
@@ -1181,6 +1188,7 @@ FC_API( steem::wallet::wallet_api,
         (get_witness)
         (get_account)
         (get_block)
+        (get_blocks_in_range)
         (get_ops_in_block)
         (get_feed_history)
         (get_conversion_requests)

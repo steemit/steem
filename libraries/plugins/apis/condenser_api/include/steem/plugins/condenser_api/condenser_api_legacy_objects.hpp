@@ -95,6 +95,7 @@ struct legacy_signed_transaction
 struct legacy_signed_block
 {
    legacy_signed_block() {}
+
    legacy_signed_block( const block_api::api_signed_block_object& b ) :
       previous( b.previous ),
       timestamp( b.timestamp ),
@@ -111,9 +112,17 @@ struct legacy_signed_block
          extensions.push_back( ext );
       }
 
+      // moved here from `condenser_api.get_block` implementation
+      uint32_t block_num = block_header::num_from_id( b.block_id );
+      uint32_t trans_num = 0;
+
       for( const auto& t : b.transactions )
       {
-         transactions.push_back( legacy_signed_transaction( t ) );
+         legacy_signed_transaction trans = legacy_signed_transaction( t );
+         trans.transaction_id  = t.id();
+         trans.block_num       = block_num;
+         trans.transaction_num = trans_num++;
+         transactions.push_back( trans );
       }
 
       transaction_ids.insert( transaction_ids.end(), b.transaction_ids.begin(), b.transaction_ids.end() );

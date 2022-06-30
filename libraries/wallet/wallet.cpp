@@ -954,6 +954,11 @@ optional< condenser_api::legacy_signed_block > wallet_api::get_block(uint32_t nu
    return my->_remote_api->get_block( num );
 }
 
+vector< condenser_api::legacy_signed_block > wallet_api::get_blocks_in_range( uint32_t from_num, uint32_t to_num )
+{
+   return my->_remote_api->get_blocks_in_range( from_num, to_num );
+}
+
 vector< condenser_api::api_operation_object > wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual)
 {
    return my->_remote_api->get_ops_in_block( block_num, only_virtual );
