@@ -19,7 +19,7 @@
 #define STEEM_PRECISION_VESTS (6)
 
 // One's place is used for check digit, which means NAI 0-9 all have NAI data of 0 which is invalid
-// This space is safe to use because it would alwasys result in failure to convert from NAI
+// This space is safe to use because it would always result in failure to convert from NAI
 #define STEEM_NAI_SBD   (1)
 #define STEEM_NAI_STEEM (2)
 #define STEEM_NAI_VESTS (3)
