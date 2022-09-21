@@ -55,9 +55,8 @@ RUN \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     pip3 install gcovr
 
-RUN git clone https://github.com/steemit/steem.git /usr/local/src/steem && \
-    cd /usr/local/src/steem && \
-    git checkout $BUILD_TAG
+ADD . /usr/local/src/steem
+RUN cd /usr/local/src/steem
 
 RUN \
     if [ "$CI_BUILD" ] ; then \
