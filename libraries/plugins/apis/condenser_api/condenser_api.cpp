@@ -252,7 +252,7 @@ namespace detail
                {
                   legacy_operation l_op;
                   legacy_operation_conversion_visitor visitor( l_op );
-                  auto history = _account_history_api->get_account_history( { acnt, uint64_t(-1), 10 } ).history;
+                  auto history = _account_history_api->get_account_history( { acnt, uint64_t(-1), 100 } ).history;
                   for( auto& item : history )
                   {
                      switch( item.second.op.which() ) {
