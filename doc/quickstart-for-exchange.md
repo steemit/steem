@@ -121,13 +121,6 @@ Or remove all files in `/steem/data/blockchain` and re-download the latest snaps
 
 ## I. Cli Wallet
 
-```
-docker run -itd --name cli-wallet \
-    -v /steem/data:/var/steem \
-    steemit/steem:0.23.x-mira-ah \
-    /usr/local/steemd/bin/cli_wallet -s ws://127.0.0.1:8090 -w /var/steem/wallet.json -H 127.0.0.1:8093
-```
-
 ### 1. Get in container
 
 ```
