@@ -67,9 +67,9 @@ WORKDIR /usr/local/src
 ADD . /usr/local/src
 
 RUN pwd && \
-    git submodule update --init --recursive
-    # cd libraries/fc/vendor/websocketpp && \
-    # git apply /usr/local/src/patches/websocketpp-patch-ini-asio.patch
+    git submodule update --init --recursive && \
+    cd libraries/fc/vendor/websocketpp && \
+    (git apply /usr/local/src/patches/websocketpp-patch-ini-asio.patch || echo "Patch already applied or failed")
 
 RUN mkdir -p build && \
     cd build && \
@@ -86,56 +86,56 @@ RUN mkdir -p build && \
         -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
         ..
 
-# RUN cd build && \
-#     make -j2
+RUN cd build && \
+    make -j2
     
-# RUN cd build && \
-#     make install
+RUN cd build && \
+    make install
 
-# RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
-#         cd tests && \
-#         ctest -j4 --output-on-failure && \
-#         ./chain_test -t basic_tests/curation_weight_test && \
-#         cd .. && \
-#         ./programs/util/test_fixed_string; \
-#     fi
+RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
+        cd tests && \
+        ctest -j4 --output-on-failure && \
+        ./chain_test -t basic_tests/curation_weight_test && \
+        cd .. && \
+        ./programs/util/test_fixed_string; \
+    fi
 
-# RUN if [ "${DOXYGEN}" = "ON" ] ; then \
-#         doxygen && \
-#         PYTHONPATH=programs/build_helpers \
-#         python3 -m steem_build_helpers.check_reflect && \
-#         programs/build_helpers/get_config_check.sh; \
-#     fi
+RUN if [ "${DOXYGEN}" = "ON" ] ; then \
+        doxygen && \
+        PYTHONPATH=programs/build_helpers \
+        python3 -m steem_build_helpers.check_reflect && \
+        programs/build_helpers/get_config_check.sh; \
+    fi
 
-# FROM ubuntu:22.04 AS final
+FROM ubuntu:22.04 AS final
 
-# ARG CMAKE_BUILD_TYPE=Release
-# ARG STEEM_STATIC_BUILD=ON
-# ARG ENABLE_MIRA=ON
-# ARG LOW_MEMORY_MODE=ON
-# ARG CLEAR_VOTES=ON
-# ARG SKIP_BY_TX_ID=ON
-# ARG BUILD_STEEM_TESTNET=OFF
-# ARG ENABLE_COVERAGE_TESTING=OFF
-# ARG CHAINBASE_CHECK_LOCKING=OFF
-# ARG DOXYGEN=OFF
+ARG CMAKE_BUILD_TYPE=Release
+ARG STEEM_STATIC_BUILD=ON
+ARG ENABLE_MIRA=ON
+ARG LOW_MEMORY_MODE=ON
+ARG CLEAR_VOTES=ON
+ARG SKIP_BY_TX_ID=ON
+ARG BUILD_STEEM_TESTNET=OFF
+ARG ENABLE_COVERAGE_TESTING=OFF
+ARG CHAINBASE_CHECK_LOCKING=OFF
+ARG DOXYGEN=OFF
 
-# RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
-#     echo "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" >> /etc/build_info && \
-#     echo "ENABLE_MIRA: ${ENABLE_MIRA}" >> /etc/build_info && \
-#     echo "LOW_MEMORY_MODE: ${LOW_MEMORY_MODE}" >> /etc/build_info && \
-#     echo "CLEAR_VOTES: ${CLEAR_VOTES}" >> /etc/build_info && \
-#     echo "SKIP_BY_TX_ID: ${SKIP_BY_TX_ID}" >> /etc/build_info && \
-#     echo "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" >> /etc/build_info && \
-#     echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
-#     echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info
+RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
+    echo "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" >> /etc/build_info && \
+    echo "ENABLE_MIRA: ${ENABLE_MIRA}" >> /etc/build_info && \
+    echo "LOW_MEMORY_MODE: ${LOW_MEMORY_MODE}" >> /etc/build_info && \
+    echo "CLEAR_VOTES: ${CLEAR_VOTES}" >> /etc/build_info && \
+    echo "SKIP_BY_TX_ID: ${SKIP_BY_TX_ID}" >> /etc/build_info && \
+    echo "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" >> /etc/build_info && \
+    echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
+    echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info
 
-# COPY --from=builder /usr/local/steemd /usr/local/steemd
-# WORKDIR /var/steem
-# VOLUME [ "/var/steem" ]
-# RUN apt-get update && \
-#     apt-get install -y libsnappy-dev libreadline-dev && \
-#     apt-get autoremove -y && \
-#     rm -rf /var/lib/apt/lists
+COPY --from=builder /usr/local/steemd /usr/local/steemd
+WORKDIR /var/steem
+VOLUME [ "/var/steem" ]
+RUN apt-get update && \
+    apt-get install -y libsnappy-dev libreadline-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists
 
 CMD ["cat", "/etc/build_info"]
