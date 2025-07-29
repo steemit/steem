@@ -994,9 +994,6 @@ namespace chainbase {
             _index_types.back()->add_index( *this );
          }
 
-#ifndef ENABLE_MIRA
-         auto get_segment_manager() -> decltype(std::declval<bip::managed_mapped_file>().get_segment_manager());
-#endif
          unsigned long long get_total_system_memory() const
          {
 #if !defined( __APPLE__ ) // OS X does not support _SC_AVPHYS_PAGES
