@@ -1086,9 +1086,9 @@ namespace steem { namespace plugins { namespace condenser_api {
       total_steem_from_vests( legacy_asset::from_asset( op.total_steem_from_vests ) )
             {}
 
-            operator hardfork23_operation()const
+            operator hardfork23_operation() const
             {
-               legacy_hardfork23_operation op;
+               hardfork23_operation op;
                op.account = account;
                op.sbd_transferred = sbd_transferred;
                op.steem_transferred = steem_transferred;
