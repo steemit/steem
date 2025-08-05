@@ -239,7 +239,10 @@ namespace fc { namespace ecc {
        }
 
        fc::sha256 sec;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"       
        const BIGNUM* bn = EC_KEY_get0_private_key(k);
+#pragma GCC diagnostic pop
        if( bn == NULL )
        {
          FC_THROW_EXCEPTION( exception, "get private key failed" );
@@ -251,14 +254,19 @@ namespace fc { namespace ecc {
 
     private_key private_key::generate()
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"        
        EC_KEY* k = EC_KEY_new_by_curve_name( NID_secp256k1 );
+#pragma GCC diagnostic pop
        if( !k ) FC_THROW_EXCEPTION( exception, "Unable to generate EC key" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"       
        if( !EC_KEY_generate_key( k ) )
        {
           FC_THROW_EXCEPTION( exception, "ecc key generation error" );
 
        }
-
+#pragma GCC diagnostic pop
        return private_key( k );
     }
 

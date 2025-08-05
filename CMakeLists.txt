@@ -4,6 +4,7 @@ cmake_minimum_required( VERSION 3.2 )
 
 set( BLOCKCHAIN_NAME "Steem" )
 set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 add_compile_options(-Wno-error=sign-compare)
 
@@ -155,11 +156,15 @@ IF( WIN32 )
 ENDIF(WIN32)
 
 FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+find_package(Threads REQUIRED)
 
 if( NOT( Boost_VERSION LESS 106900 ) )
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
 endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
 if( WIN32 )
 

@@ -14,10 +14,10 @@
 #ifndef __BLAKE2B_ROUND_H__
 #define __BLAKE2B_ROUND_H__
 
-#define LOAD(p)  _mm_load_si128( (const __m128i *)(p) )
+#define LOAD(p)  _mm_load_si128( (__m128i *)(p) )
 #define STORE(p,r) _mm_store_si128((__m128i *)(p), r)
 
-#define LOADU(p)  _mm_loadu_si128( (const __m128i *)(p) )
+#define LOADU(p)  _mm_loadu_si128( (__m128i *)(p) )
 #define STOREU(p,r) _mm_storeu_si128((__m128i *)(p), r)
 
 #define TOF(reg) _mm_castsi128_ps((reg))
@@ -36,7 +36,7 @@
     : (-(c) == 63) ? _mm_xor_si128(_mm_srli_epi64((x), -(c)), _mm_add_epi64((x), (x)))  \
     : _mm_xor_si128(_mm_srli_epi64((x), -(c)), _mm_slli_epi64((x), 64-(-(c))))
 #else
-#define _mm_roti_epi64(r, c) _mm_xor_si128(_mm_srli_epi64( (r), -(c) ),_mm_slli_epi64( (r), 64-(-c) ))
+#define _mm_roti_epi64(r, c) _mm_xor_si128(_mm_srli_epi64( (r), -(c) ),_mm_slli_epi64( (r), 64-(-(c)) ))
 #endif
 #else
 /* ... */
@@ -138,10 +138,10 @@
 
 #endif
 
-#if defined(HAVE_SSE41)
-#include <equihash/blake2b-load-sse41.h>
+#if defined(HAVE_SSE4_1)
+#include "blake2b-load-sse41.h"
 #else
-#include <equihash/blake2b-load-sse2.h>
+#include "blake2b-load-sse2.h"
 #endif
 
 #define ROUND(r) \
@@ -157,14 +157,3 @@
   UNDIAGONALIZE(row1l,row2l,row3l,row4l,row1h,row2h,row3h,row4h);
 
 #endif
-
-#define BLAKE2_ROUND(row1l,row1h,row2l,row2h,row3l,row3h,row4l,row4h) \
-	G1(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h); \
-	G2(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h); \
-	\
-	DIAGONALIZE(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h); \
-	\
-	G1(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h); \
-	G2(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h); \
-	\
-	UNDIAGONALIZE(row1l, row2l, row3l, row4l, row1h, row2h, row3h, row4h);

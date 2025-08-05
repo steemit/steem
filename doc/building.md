@@ -6,6 +6,7 @@ Building Steeem requires 8GB of RAM.
 Currently, steemd can be built on the following operating systems. To build it locally, please install the dependencies listed in the corresponding Dockerfiles.
 
 - [ubuntu20.04](../deploy/Dockerfile.ubuntu20.04)
+- [ubuntu22.04](../deploy/Dockerfile.ubuntu22.04)
 
 ## Compile-Time Options (cmake)
 

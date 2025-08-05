@@ -42,15 +42,24 @@ sha1 sha1::hash( const string& s ) {
 }
 
 void sha1::encoder::write( const char* d, uint32_t dlen ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"  
   SHA1_Update( &my->ctx, d, dlen); 
+#pragma GCC diagnostic pop
 }
 sha1 sha1::encoder::result() {
   sha1 h;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"  
   SHA1_Final((uint8_t*)h.data(), &my->ctx );
+#pragma GCC diagnostic pop
   return h;
 }
 void sha1::encoder::reset() {
-  SHA1_Init( &my->ctx);  
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"  
+  SHA1_Init( &my->ctx);
+#pragma GCC diagnostic pop
 }
 
 sha1 operator << ( const sha1& h1, uint32_t i ) {

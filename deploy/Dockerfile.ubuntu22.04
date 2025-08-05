@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 AS builder
+FROM ubuntu:22.04 AS builder
 
 # The default build params are for low memory mira version.
 # This usually are used as a witness node.
@@ -54,7 +54,7 @@ RUN apt-get update && \
         libzstd-dev \
         wget
 
-## default version at ubuntu20.04 is boost 1.71
+## default version at ubuntu22.04 is boost 1.74
 ## upgrade to boost 1.78
 RUN wget https://archives.boost.io/release/1.78.0/source/boost_1_78_0.tar.gz && \
     tar -xvzf boost_1_78_0.tar.gz && \
@@ -107,7 +107,7 @@ RUN if [ "${DOXYGEN}" = "ON" ] ; then \
         programs/build_helpers/get_config_check.sh; \
     fi
 
-FROM ubuntu:20.04 AS final
+FROM ubuntu:22.04 AS final
 
 ARG CMAKE_BUILD_TYPE=Release
 ARG STEEM_STATIC_BUILD=ON
