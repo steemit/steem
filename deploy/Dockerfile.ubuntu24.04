@@ -47,6 +47,7 @@ RUN apt-get update && \
         libssl-dev \
         libtool \
         liblz4-tool \
+        liblzma-dev \
         ncurses-dev \
         libgflags-dev \
         zlib1g-dev \
