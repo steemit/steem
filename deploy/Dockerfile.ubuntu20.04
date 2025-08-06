@@ -54,6 +54,8 @@ RUN apt-get update && \
         libzstd-dev \
         wget
 
+RUN ln -s /usr/bin/make /usr/bin/gmake
+
 ## default version at ubuntu20.04 is boost 1.71
 ## upgrade to boost 1.78
 RUN wget https://archives.boost.io/release/1.78.0/source/boost_1_78_0.tar.gz && \
