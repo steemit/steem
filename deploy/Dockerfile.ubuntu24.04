@@ -83,7 +83,7 @@ RUN mkdir -p build && \
         ..
 
 RUN cd build && \
-    make -j2
+    make -j3
     
 RUN cd build && \
     make install
