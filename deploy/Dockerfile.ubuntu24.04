@@ -56,14 +56,6 @@ RUN apt-get update && \
         libzstd-dev \
         wget
 
-# ## default version at ubuntu24.04 is boost 1.83
-# RUN wget https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz && \
-#     tar -xvzf boost_1_83_0.tar.gz && \
-#     cd boost_1_83_0 && \
-#     ./bootstrap.sh && \
-#     ./b2 && \
-#     ./b2 install
-
 WORKDIR /usr/local/src
 ADD . /usr/local/src
 
@@ -72,8 +64,8 @@ RUN pwd && \
     cd libraries/fc/vendor/websocketpp && \
     (git apply /usr/local/src/patches/websocketpp-patch-ini-asio.patch || echo "Patch already applied or failed") 
 
-RUN cd libraries/vendor/rocksdb/table && \
-    git apply /usr/local/src/patches/rocksdb.patch || echo "Patch already applied or failed"
+RUN cd libraries/vendor/rocksdb && \
+    (git apply /usr/local/src/patches/rocksdb-cmake.patch || echo "Patch already applied or cannot apply")
 
 RUN mkdir -p build && \
     cd build && \
