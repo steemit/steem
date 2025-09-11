@@ -8,9 +8,6 @@ namespace steem{ namespace plugins { namespace p2p {
 const std::vector< std::string > default_seeds;
 #else
 const std::vector< std::string > default_seeds = {
-   "seed-east.steemit.com:2001",          // steemit
-   "seed-central.steemit.com:2001",       // steemit
-   "seed-west.steemit.com:2001",          // steemit
    "sn1.steemit.com:2001",                // Steemit, Inc.
    "sn2.steemit.com:2001",                // Steemit, Inc.
    "sn3.steemit.com:2001",                // Steemit, Inc.
@@ -18,18 +15,34 @@ const std::vector< std::string > default_seeds = {
    "sn5.steemit.com:2001",                // Steemit, Inc.
    "sn6.steemit.com:2001",                // Steemit, Inc.
    "seed.justyy.com:2001",                // @justyy
-   "steem-seed.urbanpedia.com:2001",      // @fuli
+   "seed.justyy.com:2001",                // @justyy
+   "seed2.justyy.com:2001",               // @justyy
    "seed.steem.fans:2001",                // @ety001
-   "seed-1.blockbrothers.io:2001",        // @blockbrothers
-   "seed.steems.top:2001",                // @maiyude
-   "steemseed-fin.privex.io:2001",        // privex (FI)
-   "steemseed-se.privex.io:2001",         // privex (SE)
-   "seed.steemhunt.com:2001",             // @steemhunt Location: South Korea
-   "seed.steemzzang.com:2001",            // @zzan.witnesses / @indo.witness
-   "seednode.dlike.io:2001",              // @Dlike Location Germany
-   "seed.steemer.app:2001",               // @Bukio
+   "seednode.dlike.io:2001",              // @dlike
    "seed.supporter.dev:2001",             // @dev.supporters
-   "seed.goodhello.net:2001"              // @helloworld.wit
+   "seed.steemworld.org:2001",            // @steemchiller
+   "seed.steemchat.org:2001",             // @stmpak.wit
+   "seed.moecki.online:2001",             // @moecki
+   "seed.dhakawitness.com:2001",          // @dhaka.witness
+   "seednode.dlike.io:2001",              // @dlike
+   "seed.steem-market.com:2001",          // @steemit-market
+   "seed.pennsif.net:2001",               // @pennsif.witness
+   "seed.etain.club:2001",                // @etainclub
+   "seed.steemcryptic.me:2001",           // @starlord28
+   "seed.justyy.com:2001",                // @justyy
+   "seed2.justyy.com:2001",               // @justyy
+   "seed.amarbangla.net:2001",            // @bangla.witness
+   "seed.supporter.dev:2001",             // @dev.supporters
+   "seed.campingclub.me:2001",            // @visionaer3003
+   "seed.cotina.org:2001",                // @cotina
+   "seed.steem.fans:2001",                // @ety001
+   "seed.boylikegirl.club:2001",          // @boylikegirl.wit
+   "seed.symbionts.io:2001",              // @symbionts
+   "seed.steems.top:2001"                 // @maiyude
+   // "seed.futureshock.world:2001",         // @future.witness
+   // "seed.steemzzang.com:2001",            // @zzan.witnesses
+   // "seed.goodhello.net:2001",             // @helloworld.wit
+   // "seed.blokfield.io:2001",              // @blokfield
 };
 #endif
 

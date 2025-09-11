@@ -1,4 +1,5 @@
 //#define BOOST_NO_SCOPED_ENUMS
+#include <boost/version.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/fwd_impl.hpp>
@@ -201,7 +202,13 @@ namespace fc {
       recursive_directory_iterator& recursive_directory_iterator::operator++()     { (*_p)++; return *this; }
 
       void recursive_directory_iterator::pop() { (*_p).pop(); }
-      int recursive_directory_iterator::level() { return _p->level(); }
+      int recursive_directory_iterator::level() {
+        #if BOOST_VERSION >= 107400  // Boost 1.74.0 and later
+            return _p->depth();
+        #else
+            return _p->level();
+        #endif
+      }
 
       bool operator==( const recursive_directory_iterator& r, const recursive_directory_iterator& l) {
         return *r._p == *l._p;
