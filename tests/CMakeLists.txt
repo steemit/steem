@@ -254,8 +254,10 @@ add_boost_test( chain_test
    undo_tests/undo_generate_blocks
 )
 
-add_executable( chain_test ${UNIT_TESTS} )
-target_link_libraries( chain_test db_fixture chainbase steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
+if (NOT TARGET chain_test)
+   add_executable( chain_test ${UNIT_TESTS} )
+   target_link_libraries( chain_test db_fixture chainbase steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
+endif()
 
 file(GLOB PLUGIN_TESTS "plugin_tests/*.cpp")
 
@@ -263,21 +265,23 @@ parse_unit_tests(TEST_CASES ${PLUGIN_TESTS})
 
 #message(STATUS "${TEST_CASES}")
 
-add_executable( plugin_test ${PLUGIN_TESTS} )
+if (NOT TARGET plugin_test)
+   add_executable( plugin_test ${PLUGIN_TESTS} )
 
-add_boost_test( plugin_test
-   SOURCES ${PLUGIN_TESTS}
-   TESTS
-    json_rpc/basic_validation
-    json_rpc/syntax_validation
-    json_rpc/misc_validation
-    json_rpc/positive_validation
-    json_rpc/semantics_validation
-    market_history/mh_test
-    transaction_status/transaction_status_test
-)
+   add_boost_test( plugin_test
+      SOURCES ${PLUGIN_TESTS}
+      TESTS
+      json_rpc/basic_validation
+      json_rpc/syntax_validation
+      json_rpc/misc_validation
+      json_rpc/positive_validation
+      json_rpc/semantics_validation
+      market_history/mh_test
+      transaction_status/transaction_status_test
+   )
 
-target_link_libraries( plugin_test db_fixture steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin transaction_status_plugin transaction_status_api_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
+   target_link_libraries( plugin_test db_fixture steem_chain steem_protocol account_history_plugin market_history_plugin rc_plugin witness_plugin debug_node_plugin transaction_status_plugin transaction_status_api_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
+endif()
 
 if(MSVC)
   set_source_files_properties( tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )

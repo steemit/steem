@@ -8,6 +8,10 @@ Currently, steemd can be built on the following operating systems. To build it l
 - [ubuntu20.04](../deploy/Dockerfile.ubuntu20.04)
 - [ubuntu22.04](../deploy/Dockerfile.ubuntu22.04)
 - [ubuntu24.04](../deploy/Dockerfile.ubuntu24.04)
+- [azurelinux3](../deploy/Dockerfile.azurelinux3.0)
+
+### Boost version
+The minimal Boost version required is [1.78](https://www.boost.org/releases/1.78.0/).
 
 ## Compile-Time Options (cmake)
 
