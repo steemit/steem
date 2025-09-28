@@ -160,7 +160,7 @@ COPY --from=builder /usr/local/steemd /usr/local/steemd
 WORKDIR /var/steem
 VOLUME [ "/var/steem" ]
 RUN tdnf update -y && \
-    tdnf install -y snappy-devel ncurses-compat && readline-devel && \
+    tdnf install -y snappy-devel ncurses-compat readline-devel && \
     tdnf autoremove -y && \
     tdnf clean all
 
