@@ -75,7 +75,7 @@ public:
       return count;
    }
 
-   rocksdb_iterator() {}
+   rocksdb_iterator(): _index(0) {}
 
    rocksdb_iterator( rocksdb_iterator& other ) :
       _handles( other._handles ),
@@ -430,7 +430,10 @@ public:
    rocksdb_iterator& operator=( rocksdb_iterator&& other )
    {
       _handles = other._handles;
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"   
       _index = other._index;
+      #pragma GCC diagnostic pop        
       _snapshot = other._snapshot;
       _db = other._db;
       _cache = other._cache;

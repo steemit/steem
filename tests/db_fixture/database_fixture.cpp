@@ -1,3 +1,7 @@
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
@@ -1224,3 +1228,7 @@ void _push_transaction( database& db, const signed_transaction& tx, uint32_t ski
 } // steem::chain::test
 
 } } // steem::chain
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif

@@ -67,6 +67,10 @@ RUN pwd && \
 RUN cd libraries/vendor/rocksdb && \
     (git apply /usr/local/src/patches/rocksdb-cmake.patch || echo "Patch already applied or cannot apply")
 
+RUN pwd && \
+    cd libraries/fc/vendor/websocketpp && \
+    (git apply /usr/local/src/patches/websocketpp-cx20-fix.patch || echo "Patch already applied or failed") 
+
 RUN mkdir -p build && \
     cd build && \
     cmake \
