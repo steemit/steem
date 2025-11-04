@@ -75,19 +75,24 @@ RUN tdnf update -y && \
 
 ## Build Boost 1.78 (required by Steem)
 ## Azure Linux 3.0 does not have a fixed default version of the Boost C++ Libraries.
-RUN wget https://archives.boost.io/release/1.78.0/source/boost_1_78_0.tar.gz && \
-    tar -xvzf boost_1_78_0.tar.gz && \
-    cd boost_1_78_0 && \
+RUN set -e && \
+    BOOST_VERSION_DOT=1.78.0 && \
+    BOOST_VERSION_UNDERSCORE=1_78_0 && \
+    BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" && \
+    BOOST_SHA256="94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7" && \
+    wget -q "${BOOST_URL}" -O boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    echo "${BOOST_SHA256}  boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" | sha256sum -c - && \
+    tar -xvzf boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    cd boost_${BOOST_VERSION_UNDERSCORE} && \
     ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc || { cat bootstrap.log; exit 1; } && \
-    ./b2 -j$(nproc) toolset=gcc install || { cat bootstrap.log; exit 1; } && \
-    cd .. && rm -rf boost_1_78_0 boost_1_78_0.tar.gz
+    ./b2 -j"$(nproc)" toolset=gcc install || { cat bootstrap.log; exit 1; } && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORE} boost_${BOOST_VERSION_UNDERSCORE}.tar.gz
 
 # Ensure make is available as gmake if needed
 RUN ln -s /usr/bin/make /usr/bin/gmake
 
 WORKDIR /usr/local/src
 ADD . /usr/local/src
-
 
 RUN pwd && \
     git submodule update --init --recursive && \
