@@ -138,4 +138,7 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists
 
+## make steemd available on $PATH
+ENV PATH="/usr/local/steemd/bin:${PATH}"
+    
 CMD ["cat", "/etc/build_info"]
