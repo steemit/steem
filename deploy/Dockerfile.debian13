@@ -30,6 +30,7 @@ RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
     echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info && \
     echo "NUMBER_BUILD_THREADS: ${THREADS}" >> /etc/build_info
 
+ENV THREADS=${NUMBER_BUILD_THREADS}
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \

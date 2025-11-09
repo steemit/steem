@@ -29,6 +29,8 @@ RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
     echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info && \
     echo "NUMBER_BUILD_THREADS: ${THREADS}" >> /etc/build_info
 
+ENV THREADS=${NUMBER_BUILD_THREADS}
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
@@ -57,7 +59,8 @@ RUN apt-get update && \
         libbz2-dev \
         liblz4-dev \
         libzstd-dev \
-        wget
+        wget \
+        librocksdb-dev
 
 WORKDIR /usr/local/src
 ADD . /usr/local/src
@@ -74,6 +77,7 @@ RUN mkdir -p build && \
     cd build && \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+        -DUSE_VENDORED_ROCKSDB=OFF \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
         -DCLEAR_VOTES=${CLEAR_VOTES} \
