@@ -13,6 +13,7 @@ ARG ENABLE_COVERAGE_TESTING=OFF
 ARG CHAINBASE_CHECK_LOCKING=OFF
 ARG UNIT_TEST=OFF
 ARG DOXYGEN=OFF
+ARG NUMBER_BUILD_THREADS
 
 RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
     echo "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" >> /etc/build_info && \
@@ -24,7 +25,8 @@ RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
     echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
     echo "CHAINBASE_CHECK_LOCKING: ${CHAINBASE_CHECK_LOCKING}" >> /etc/build_info && \
     echo "UNIT_TEST: ${UNIT_TEST}" >> /etc/build_info && \
-    echo "DOXYGEN: ${DOXYGEN}"
+    echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info && \
+    echo "NUMBER_BUILD_THREADS: ${THREADS}" >> /etc/build_info
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -56,12 +58,19 @@ RUN apt-get update && \
 
 ## default version at ubuntu22.04 is boost 1.74
 ## upgrade to boost 1.78
-RUN wget https://archives.boost.io/release/1.78.0/source/boost_1_78_0.tar.gz && \
-    tar -xvzf boost_1_78_0.tar.gz && \
-    cd boost_1_78_0 && \
-    ./bootstrap.sh && \
-    ./b2 && \
-    ./b2 install
+## Build Boost 1.78 (required by Steem)
+RUN set -e && \
+    BOOST_VERSION_DOT=1.78.0 && \
+    BOOST_VERSION_UNDERSCORE=1_78_0 && \
+    BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" && \
+    BOOST_SHA256="94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7" && \
+    wget -q "${BOOST_URL}" -O boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    echo "${BOOST_SHA256}  boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" | sha256sum -c - && \
+    tar -xvzf boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    cd boost_${BOOST_VERSION_UNDERSCORE} && \
+    ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc || { cat bootstrap.log; exit 1; } && \
+    ./b2 -j"$(nproc)" toolset=gcc install || { cat bootstrap.log; exit 1; } && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORE} boost_${BOOST_VERSION_UNDERSCORE}.tar.gz
 
 WORKDIR /usr/local/src
 ADD . /usr/local/src
@@ -87,7 +96,9 @@ RUN mkdir -p build && \
         ..
 
 RUN cd build && \
-    make -j2
+    make -j$( [ -n "$NUMBER_BUILD_THREADS" ] \
+        && echo "$NUMBER_BUILD_THREADS" \
+        || echo $(( $(nproc) > 1 ? $(nproc) - 1 : 1 )) )
     
 RUN cd build && \
     make install
@@ -137,5 +148,8 @@ RUN apt-get update && \
     apt-get install -y libsnappy-dev libreadline-dev && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists
+
+## make steemd available on $PATH
+ENV PATH="/usr/local/steemd/bin:${PATH}"
 
 CMD ["cat", "/etc/build_info"]

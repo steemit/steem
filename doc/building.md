@@ -16,6 +16,10 @@ The minimal Boost version required is [1.78](https://www.boost.org/releases/1.78
 
 ## Compile-Time Options (cmake)
 
+### NUMBER_BUILD_THREADS
+
+This specifies the number of threads to build steemd e.g. `make -j${NUMBER_BUILD_THREADS}`. By default it is equal to `$(nproc)-1`
+
 ### CMAKE_BUILD_TYPE=[Release/Debug]
 
 Specifies whether to build with or without optimization and without or with
