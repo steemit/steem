@@ -41,7 +41,7 @@ jobs:
 
           sudo -E docker build \
             --build-arg NUMBER_BUILD_THREADS=4 \
-            --build-arg UNIT_TESTS=ON \
+            --build-arg UNIT_TEST=ON \
             -t "$TAG" \
             -f "$FILE" \
             .
