@@ -15,7 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+<<<<<<< HEAD
       fail-fast: true
+=======
+      fail-fast: false
+>>>>>>> dev
       matrix:
         dockerfile:
           - Dockerfile.azurelinux3.0
