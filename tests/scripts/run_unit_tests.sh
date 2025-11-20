@@ -12,12 +12,12 @@ tests_to_run=(
     "size_checker"
     "schema_test"
     "js_operation_serializer"
-    "get_dev_key"
+    "get_dev_key "
 )
 
 for test in "${tests_to_run[@]}"; do
     echo "Running unit test: $test"
-    "${BIN_PATH}/${test}"
+    "${BIN_PATH}/${test} xyz wit-block-signing-0:101"
 done
 
 echo "Running additional unit tests with ctest..."
