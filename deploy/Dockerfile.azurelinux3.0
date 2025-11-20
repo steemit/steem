@@ -33,6 +33,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN tdnf update -y && \
     tdnf install -y \
         git \
+        jq \
         gcc \
         gcc-c++ \
         make \
