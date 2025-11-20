@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e  # exit on first failure
+set -ex  # exit on first failure
 
 ## default PATH is /usr/local/steemd/bin/
 BIN_PATH=${BIN_PATH:-/usr/local/steemd/bin}
@@ -18,11 +18,6 @@ for test in "${tests_to_run[@]}"; do
     echo "Running unit test: $test"
     "${BIN_PATH}/${test}"
 done
-
-cd tests
-ctest -j4 --output-on-failure
-./chain_test -t basic_tests/curation_weight_test
-cd ..
 
 # Test get_dev_key utility
 expected="test_data/get_dev_key_test.jsonl"
@@ -43,3 +38,7 @@ else
     diff -u expected.sorted actual.sorted
     exit 1
 fi
+
+cd build
+ctest -j4 --output-on-failure
+./chain_test -t basic_tests/curation_weight_test
