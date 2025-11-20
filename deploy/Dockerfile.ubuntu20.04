@@ -106,11 +106,7 @@ RUN cd build && \
     make install
 
 RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
-        cd tests && \
-        ctest -j4 --output-on-failure && \
-        ./chain_test -t basic_tests/curation_weight_test && \
-        cd .. && \
-        ./programs/util/test_fixed_string; \
+        ./tests/scripts/run_unit_tests.sh ; \
     fi
 
 RUN if [ "${DOXYGEN}" = "ON" ] ; then \
