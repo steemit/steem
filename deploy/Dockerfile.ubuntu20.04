@@ -107,6 +107,8 @@ RUN cd build && \
 
 RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
         ./tests/scripts/run_unit_tests.sh ; \
+    else \
+        echo "Skipping unit tests as UNIT_TEST is set to OFF" ; \
     fi
 
 RUN if [ "${DOXYGEN}" = "ON" ] ; then \

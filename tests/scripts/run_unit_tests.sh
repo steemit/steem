@@ -20,6 +20,7 @@ for test in "${tests_to_run[@]}"; do
 done
 
 # Test get_dev_key utility
+echo "Testing get_dev_key utility..."
 expected="test_data/get_dev_key_test.jsonl"
 actual_output="/tmp/get_dev_key_output.jsonl"
 
@@ -32,13 +33,16 @@ jq -S . "$actual_output" > actual.sorted
 
 # Compare
 if diff -u expected.sorted actual.sorted > /dev/null; then
-    echo "✓ get_dev_key output matches test.jsonl"
+    echo "✓ get_dev_key output matches get_dev_key_output.jsonl"
 else
-    echo "✗ get_dev_key output does NOT match test.jsonl"
+    echo "✗ get_dev_key output does NOT match get_dev_key_output.jsonl"
     diff -u expected.sorted actual.sorted
     exit 1
 fi
 
+echo "Running additional unit tests with ctest..."
 cd build
 ctest -j4 --output-on-failure
 ./chain_test -t basic_tests/curation_weight_test
+
+echo "All unit tests passed successfully."
