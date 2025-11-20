@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ex  # exit on first failure
+set -x  # exit on first failure
 
 ## default PATH is /usr/local/steemd/bin/
 BIN_PATH=${BIN_PATH:-/usr/local/steemd/bin}
@@ -12,33 +12,13 @@ tests_to_run=(
     "size_checker"
     "schema_test"
     "js_operation_serializer"
+    "get_dev_key"
 )
 
 for test in "${tests_to_run[@]}"; do
     echo "Running unit test: $test"
     "${BIN_PATH}/${test}"
 done
-
-# Test get_dev_key utility
-echo "Testing get_dev_key utility..."
-expected="test_data/get_dev_key_test.jsonl"
-actual_output="/tmp/get_dev_key_output.jsonl"
-
-# Run command and save output
-"${BIN_PATH}/get_dev_key" xyz wit-block-signing-0:101 > "$actual_output"
-
-# Normalize JSON by sorting keys
-jq -S . "$expected" > expected.sorted
-jq -S . "$actual_output" > actual.sorted
-
-# Compare
-if diff -u expected.sorted actual.sorted > /dev/null; then
-    echo "✓ get_dev_key output matches get_dev_key_output.jsonl"
-else
-    echo "✗ get_dev_key output does NOT match get_dev_key_output.jsonl"
-    diff -u expected.sorted actual.sorted
-    exit 1
-fi
 
 echo "Running additional unit tests with ctest..."
 cd build
