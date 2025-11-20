@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-matrix:
+  build-steemd:
     runs-on: ubuntu-latest
 
     strategy:

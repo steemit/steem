@@ -2,11 +2,11 @@
 set -e  # exit on first failure
 
 ## default PATH is /usr/local/steemd/bin/
-BIN_PATH=${BIN_PATH:-/usr/local/steemd/bin/}
+BIN_PATH=${BIN_PATH:-/usr/local/steemd/bin}
 echo "Running unit tests (BIN_PATH=${BIN_PATH})..."
 
 tests_to_run=(
-    "text_fixed_string"
+    "test_fixed_string"
     "test_block_log"
     "test_sqrt"
     "size_checker"
