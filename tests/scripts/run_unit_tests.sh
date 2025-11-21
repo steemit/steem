@@ -42,7 +42,7 @@ if ! ctest -j4 --output-on-failure; then
 fi
 
 if ! ./chain_test -t basic_tests/curation_weight_test; then
-    echo "chain_test curation_weight_test failed!"
+    echo "chain_test -t basic_tests/curation_weight_test failed!"
     exit 1
 fi
 
