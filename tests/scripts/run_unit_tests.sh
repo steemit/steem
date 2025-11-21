@@ -19,18 +19,32 @@ tests_to_run=(
 
 for test in "${tests_to_run[@]}"; do
     echo "Running unit test: $test"
-    "${BIN_PATH}/${test}"
+    if ! "${BIN_PATH}/${test}"; then
+        echo "Unit test $test failed!"
+        exit 1
+    fi
 done
 
 # run get_dev_key separately
 echo "Running unit test: get_dev_key"
-"${BIN_PATH}/get_dev_key" xyz "wit-block-signing-0:101"
+if ! "${BIN_PATH}/get_dev_key" xyz "wit-block-signing-0:101"; then
+    echo "Unit test get_dev_key failed!"
+    exit 1
+fi
 
 echo "Running additional unit tests with ctest..."
 cd "${BUILD_PATH}/tests"
 ls -lh ./
 
-ctest -j4 --output-on-failure
-./chain_test -t basic_tests/curation_weight_test
+if ! ctest -j4 --output-on-failure; then
+    echo "ctest unit tests failed!"
+    exit 1
+fi
+
+if ! ./chain_test -t basic_tests/curation_weight_test; then
+    echo "chain_test curation_weight_test failed!"
+    exit 1
+fi
 
 echo "All unit tests passed successfully."
+exit 0
