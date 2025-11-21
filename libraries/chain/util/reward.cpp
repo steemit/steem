@@ -100,10 +100,7 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const protocol::curve
       case protocol::convergent_square_root:
          {
             const uint128_t& s = var1;
-            uint64_t denom = approx_sqrt( rshares + 2 * s );
-            if (denom == 0)
-               return uint128_t(0);   // safe fallback; original curve returns 0 for denom==0
-            result = rshares / denom;
+            result = rshares / approx_sqrt( rshares + 2 * s );
          }
          break;
    }
