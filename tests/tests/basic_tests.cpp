@@ -40,7 +40,6 @@
 
 #include <algorithm>
 #include <random>
-#include <iostream>
 
 using namespace steem;
 using namespace steem::chain;
@@ -393,7 +392,6 @@ uint64_t approx_sqrt( const uint128_t& x )
 
 BOOST_AUTO_TEST_CASE( curation_weight_test )
 {
-   std::cout << "Testing approx_sqrt..." << std::endl;
    fc::uint128_t rshares = 856158;
    fc::uint128_t s = uint128_t( 0, 2000000000000ull );
    fc::uint128_t sqrt = approx_sqrt( rshares + 2 * s );
@@ -402,7 +400,6 @@ BOOST_AUTO_TEST_CASE( curation_weight_test )
    BOOST_REQUIRE( sqrt.to_uint64() == 2002250 );
    BOOST_REQUIRE( result == 0 );
 
-   std::cout << "Testing approx_sqrt with zero..." << std::endl;
    rshares = 0;
    sqrt = approx_sqrt( rshares + 2 * s );
    result = ( rshares / sqrt ).to_uint64();
@@ -415,9 +412,8 @@ BOOST_AUTO_TEST_CASE( curation_weight_test )
    BOOST_REQUIRE( result == 0 );
    rshares = uint128_t( 0, 3351842535167ull );
 
-   std::cout << "Testing curation curve monotonicity..." << std::endl;
    for( int64_t i = 856158; i >= 0; --i )
-   {      
+   {
       uint64_t old_weight = util::evaluate_reward_curve( rshares - i, protocol::convergent_square_root, s ).to_uint64();
       uint64_t new_weight = util::evaluate_reward_curve( rshares, protocol::convergent_square_root, s ).to_uint64();
 
