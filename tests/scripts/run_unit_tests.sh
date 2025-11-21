@@ -27,7 +27,7 @@ echo "Running unit test: get_dev_key"
 "${BIN_PATH}/get_dev_key" xyz "wit-block-signing-0:101"
 
 echo "Running additional unit tests with ctest..."
-cd "${BUILD_PATH}"
+cd "${BUILD_PATH}/tests"
 ls -lh ./
 
 ctest -j4 --output-on-failure
