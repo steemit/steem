@@ -71,7 +71,8 @@ clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb 
       steem::plugins::account_history::account_history_plugin,
       steem::plugins::debug_node::debug_node_plugin,
       steem::plugins::rc::rc_plugin,
-      steem::plugins::witness::witness_plugin
+      steem::plugins::witness::witness_plugin,
+      steem::plugins::chain::chain_plugin
       >( argc, argv );
 
    steem::plugins::rc::rc_plugin_skip_flags rc_skip;
@@ -192,8 +193,10 @@ live_database_fixture::live_database_fixture()
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
       appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+      appbase::app().register_plugin< steem::plugins::chain::chain_plugin >();
       appbase::app().initialize<
-         steem::plugins::account_history::account_history_plugin
+         steem::plugins::account_history::account_history_plugin,
+         steem::plugins::chain::chain_plugin
          >( argc, argv );
 
       db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
