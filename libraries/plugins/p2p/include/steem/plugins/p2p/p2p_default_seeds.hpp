@@ -35,14 +35,9 @@ const std::vector< std::string > default_seeds = {
    "seed.supporter.dev:2001",             // @dev.supporters
    "seed.campingclub.me:2001",            // @visionaer3003
    "seed.cotina.org:2001",                // @cotina
-   "seed.steem.fans:2001",                // @ety001
    "seed.boylikegirl.club:2001",          // @boylikegirl.wit
    "seed.symbionts.io:2001",              // @symbionts
    "seed.steems.top:2001"                 // @maiyude
-   // "seed.futureshock.world:2001",         // @future.witness
-   // "seed.steemzzang.com:2001",            // @zzan.witnesses
-   // "seed.goodhello.net:2001",             // @helloworld.wit
-   // "seed.blokfield.io:2001",              // @blokfield
 };
 #endif
 
