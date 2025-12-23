@@ -14,6 +14,7 @@ ARG ENABLE_COVERAGE_TESTING=OFF
 ARG CHAINBASE_CHECK_LOCKING=OFF
 ARG UNIT_TEST=OFF
 ARG DOXYGEN=OFF
+ARG BUILD_TESTING=ON
 ARG NUMBER_BUILD_THREADS
 
 RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
@@ -34,6 +35,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y \
         git \
+        jq \
         libboost-all-dev \
         build-essential \
         cmake \
@@ -77,6 +79,7 @@ RUN mkdir -p build && \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
+        -DBUILD_TESTING=${BUILD_TESTING} \
         -DCLEAR_VOTES=${CLEAR_VOTES} \
         -DSKIP_BY_TX_ID=${SKIP_BY_TX_ID} \
         -DBUILD_STEEM_TESTNET=${BUILD_STEEM_TESTNET} \
@@ -95,11 +98,9 @@ RUN cd build && \
     make install
 
 RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
-        cd tests && \
-        ctest -j4 --output-on-failure && \
-        ./chain_test -t basic_tests/curation_weight_test && \
-        cd .. && \
-        ./programs/util/test_fixed_string; \
+        ./tests/scripts/run_unit_tests.sh ; \
+    else \
+        echo "Skipping unit tests as UNIT_TEST is set to OFF" ; \
     fi
 
 RUN if [ "${DOXYGEN}" = "ON" ] ; then \

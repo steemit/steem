@@ -1,8 +1,7 @@
 # Steem - The Blockchain That Will Tokenize The Web
+[![Build All steemd Dockerfiles](https://github.com/steemit/steem/actions/workflows/build-steemd.yml/badge.svg?branch=dev)](https://github.com/steemit/steem/actions/workflows/build-steemd.yml)
 
 Welcome to the official repository for Steem, the blockchain that will revolutionize the web, and soon the blockchain for Smart Media Tokens!
-
-
 
 Steem is the first blockchain which introduced the "Proof of Brain" social consensus algorithm for token allocation.
 

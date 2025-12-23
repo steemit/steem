@@ -66,6 +66,7 @@ clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb 
    appbase::app().register_plugin< steem::plugins::chain::chain_plugin >();
 
    db_plugin->logging = false;
+   appbase::app().set_app_name("chain_test");
    appbase::app().initialize<
       steem::plugins::account_history::account_history_plugin,
       steem::plugins::debug_node::debug_node_plugin,

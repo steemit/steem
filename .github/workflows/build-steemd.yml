@@ -11,11 +11,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-matrix:
+  build-steemd:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         dockerfile:
           - Dockerfile.azurelinux3.0
@@ -40,7 +40,9 @@ jobs:
           echo "Tag: $TAG"
 
           sudo -E docker build \
-            --build-arg NUMBER_BUILD_THREADS=1 \
+            --no-cache \
+            --build-arg NUMBER_BUILD_THREADS=4 \
+            --build-arg UNIT_TEST=ON \
             -t "$TAG" \
             -f "$FILE" \
             .
