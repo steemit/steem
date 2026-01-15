@@ -20,6 +20,7 @@
 #include <boost/asio/ip/tcp.hpp>
 
 #include <queue>
+#include <vector>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -29,6 +30,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include <memory>
 #include <boost/filesystem.hpp>
 #include <appbase/application.hpp>
 
@@ -51,11 +53,19 @@ class ingest_plugin_impl
       ~ingest_plugin_impl();
 
       void on_post_apply_operation( const operation_notification& note );
+      void on_post_apply_block( const block_notification& note );
 
       // HTTP sending
       void send_operation_json( const fc::variant& json );
       void http_send_worker();
+      void http_retry_worker();
       void send_http_post( const std::string& json_body );
+      void send_http_batch( const std::vector< std::string >& batch );
+      void parse_endpoint_url( std::string& host, std::string& port, std::string& target );
+      
+      // Connection pool for HTTP connections
+      struct http_connection;
+      http_connection* get_or_create_connection();
 
       // File writing (for dry run)
       void write_operation_json( const std::string& json_str );
@@ -63,17 +73,25 @@ class ingest_plugin_impl
 
       // JSON building
       fc::variant build_operation_json( const operation_notification& note );
+      fc::variant build_block_only_json( const block_notification& note );
 
       ingest_plugin& _plugin;
       database& _db;
       
-      // Signal connection
+      // Signal connections
       boost::signals2::connection _post_apply_operation_conn;
+      boost::signals2::connection _post_apply_block_conn;
+      
+      // Track blocks that have operations
+      std::set< uint32_t > _blocks_with_ops;
+      std::mutex _blocks_mutex;
       
       // HTTP configuration
       std::string _ingest_endpoint;
       uint32_t _http_timeout_ms;
       uint32_t _max_queue_size;
+      uint32_t _batch_size;        // Batch size for sending multiple operations
+      uint32_t _batch_timeout_ms;  // Max wait time before sending a batch
       
       // Dry run configuration
       bool _dry_run;
@@ -84,9 +102,69 @@ class ingest_plugin_impl
       // Async send queue
       std::queue< std::string > _send_queue;
       std::mutex _queue_mutex;
-      std::condition_variable _queue_cv;
+      std::condition_variable _queue_cv;      // Notify worker thread when items available
+      std::condition_variable _space_cv;     // Notify replay thread when space available
       std::thread _http_thread;
+      std::thread _retry_thread;
       bool _shutdown;
+      
+      // Retry mechanism
+      struct retry_item
+      {
+         std::vector< std::string > batch;
+         uint32_t retry_count;
+         std::chrono::steady_clock::time_point retry_time;
+      };
+      std::queue< retry_item > _retry_queue;
+      std::mutex _retry_mutex;
+      std::condition_variable _retry_cv;
+      static constexpr uint32_t MAX_RETRY_COUNT = 5;  // Maximum retry attempts
+      static constexpr uint32_t RETRY_DELAY_MS = 3000; // 3 seconds delay between retries
+      
+      // Connection pool for HTTP connections
+      struct http_connection
+      {
+         net::io_context ioc;
+         tcp::resolver resolver;
+         tcp::socket socket;
+         std::string host;
+         std::string port;
+         std::string target;
+         bool connected;
+         
+         http_connection( const std::string& h, const std::string& p, const std::string& t ) :
+            resolver( ioc ), socket( ioc ), host( h ), port( p ), target( t ), connected( false )
+         {}
+         
+         void connect()
+         {
+            if( !connected )
+            {
+               auto const results = resolver.resolve( host, port );
+               net::connect( socket, results.begin(), results.end() );
+               connected = true;
+            }
+         }
+         
+         void disconnect()
+         {
+            if( connected )
+            {
+               beast::error_code ec;
+               socket.shutdown( tcp::socket::shutdown_both, ec );
+               socket.close( ec );
+               connected = false;
+            }
+         }
+         
+         ~http_connection()
+         {
+            disconnect();
+         }
+      };
+      
+      std::unique_ptr< http_connection > _http_conn;
+      std::mutex _conn_mutex;
 };
 
 ingest_plugin_impl::ingest_plugin_impl( ingest_plugin& _plugin ) :
@@ -95,6 +173,8 @@ ingest_plugin_impl::ingest_plugin_impl( ingest_plugin& _plugin ) :
    _ingest_endpoint( "http://localhost:8080/ingest/applied_op" ),
    _http_timeout_ms( 5000 ),
    _max_queue_size( 100000 ),
+   _batch_size( 100 ),           // Default: batch 100 operations
+   _batch_timeout_ms( 100 ),     // Default: wait max 100ms before sending
    _dry_run( false ),
    _shutdown( false )
 {
@@ -102,6 +182,18 @@ ingest_plugin_impl::ingest_plugin_impl( ingest_plugin& _plugin ) :
 
 ingest_plugin_impl::~ingest_plugin_impl()
 {
+   // Stop retry thread
+   if( _retry_thread.joinable() )
+   {
+      {
+         std::lock_guard< std::mutex > lock( _retry_mutex );
+         _shutdown = true;
+      }
+      _retry_cv.notify_one();
+      _retry_thread.join();
+   }
+   
+   // Stop HTTP thread
    if( _http_thread.joinable() )
    {
       {
@@ -123,6 +215,12 @@ void ingest_plugin_impl::on_post_apply_operation( const operation_notification& 
 {
    try
    {
+      // Mark this block as having operations
+      {
+         std::lock_guard< std::mutex > lock( _blocks_mutex );
+         _blocks_with_ops.insert( note.block );
+      }
+      
       // Build Operation JSON
       fc::variant json = build_operation_json( note );
       
@@ -136,6 +234,38 @@ void ingest_plugin_impl::on_post_apply_operation( const operation_notification& 
    catch( const std::exception& e )
    {
       elog( "Error processing operation: ${e}", ("e", e.what()) );
+   }
+}
+
+void ingest_plugin_impl::on_post_apply_block( const block_notification& note )
+{
+   try
+   {
+      uint32_t block_num = note.block.block_num();
+      
+      // Check if this block has any operations
+      bool has_ops = false;
+      {
+         std::lock_guard< std::mutex > lock( _blocks_mutex );
+         has_ops = ( _blocks_with_ops.find( block_num ) != _blocks_with_ops.end() );
+         // Remove from set to free memory (we only need to track until block is complete)
+         _blocks_with_ops.erase( block_num );
+      }
+      
+      // If block has no operations, send block-only record
+      if( !has_ops )
+      {
+         fc::variant json = build_block_only_json( note );
+         send_operation_json( json );
+      }
+   }
+   catch( const fc::exception& e )
+   {
+      elog( "Error processing block: ${e}", ("e", e.to_string()) );
+   }
+   catch( const std::exception& e )
+   {
+      elog( "Error processing block: ${e}", ("e", e.what()) );
    }
 }
 
@@ -237,6 +367,42 @@ fc::variant ingest_plugin_impl::build_operation_json( const operation_notificati
    return fc::variant( result );
 }
 
+fc::variant ingest_plugin_impl::build_block_only_json( const block_notification& note )
+{
+   fc::mutable_variant_object result;
+   
+   const signed_block& block = note.block;
+   uint32_t block_num = block.block_num();
+   
+   // 1. block object
+   fc::mutable_variant_object block_obj;
+   block_obj["num"] = block_num;
+   block_obj["id"] = block.id().str();
+   block_obj["timestamp"] = block.timestamp.to_iso_string();
+   result["block"] = block_obj;
+   
+   // 2. transaction object (null for block-only)
+   fc::mutable_variant_object trx_obj;
+   trx_obj["id"] = fc::variant();
+   trx_obj["index"] = -1;
+   result["transaction"] = trx_obj;
+   
+   // 3. operation object (null for block-only)
+   fc::mutable_variant_object op_obj;
+   op_obj["index"] = -1;
+   op_obj["type"] = "";
+   op_obj["value"] = fc::variant();
+   result["operation"] = op_obj;
+   
+   // 4. virtual marker (false for block-only)
+   result["virtual"] = false;
+   
+   // 5. block_only marker (indicates this is a block-only record)
+   result["block_only"] = true;
+   
+   return fc::variant( result );
+}
+
 void ingest_plugin_impl::send_operation_json( const fc::variant& json )
 {
    // Serialize JSON
@@ -250,17 +416,40 @@ void ingest_plugin_impl::send_operation_json( const fc::variant& json )
    else
    {
       // Normal mode: send via HTTP
-      // Check queue size
+      // Block until queue has space (protect API endpoint from overload)
       {
-         std::lock_guard< std::mutex > lock( _queue_mutex );
+         std::unique_lock< std::mutex > lock( _queue_mutex );
+         bool waited = false;
          if( _send_queue.size() >= _max_queue_size )
          {
-            wlog( "Ingest queue full, dropping operation" );
-            return;  // Drop if queue is full (avoid blocking steemd)
+            waited = true;
+            wlog( "Ingest queue full, waiting for space" );
          }
+         
+         // Wait until queue has space
+         _space_cv.wait( lock, [this] {
+            return _send_queue.size() < _max_queue_size || _shutdown;
+         } );
+         
+         if( _shutdown )
+         {
+            return;  // Plugin shutting down, skip
+         }
+         
+         if( waited )
+         {
+            ilog( "Ingest queue has space, resuming enqueue" );
+         }
+         
          _send_queue.push( json_str );
+         
+         // Minimal enqueue debug: log first item and periodic milestones
+         if( _send_queue.size() == 1 || ( _send_queue.size() % 10000 == 0 ) )
+         {
+            ilog( "Ingest queue size: ${size}", ("size", _send_queue.size()) );
+         }
       }
-      _queue_cv.notify_one();
+      _queue_cv.notify_one();  // Notify worker thread that new item is available
    }
 }
 
@@ -268,40 +457,217 @@ void ingest_plugin_impl::http_send_worker()
 {
    while( !_shutdown )
    {
-      std::string json_str;
+      std::vector< std::string > batch;
       
-      // Get data from queue
+      // Collect batch of operations
       {
          std::unique_lock< std::mutex > lock( _queue_mutex );
-         _queue_cv.wait( lock, [this] { return !_send_queue.empty() || _shutdown; } );
+         
+         // Wait for at least one item or timeout
+         if( _send_queue.empty() )
+         {
+            _queue_cv.wait_for( lock, std::chrono::milliseconds( _batch_timeout_ms ),
+                              [this] { return !_send_queue.empty() || _shutdown; } );
+         }
          
          if( _shutdown && _send_queue.empty() ) break;
          
-         json_str = _send_queue.front();
-         _send_queue.pop();
+         // Collect up to _batch_size items, or all available if less
+         // If batch_size is 1, disable batching (send immediately)
+         uint32_t effective_batch_size = ( _batch_size == 1 ) ? 1 : _batch_size;
+         auto start_time = std::chrono::steady_clock::now();
+         size_t queue_size_before = _send_queue.size();
+         
+         while( batch.size() < effective_batch_size && !_send_queue.empty() )
+         {
+            batch.push_back( _send_queue.front() );
+            _send_queue.pop();
+            
+            // If we have some items but not a full batch, wait a bit more
+            // Skip batching logic if batch_size is 1 (immediate send)
+            if( effective_batch_size > 1 && batch.size() < effective_batch_size && !_send_queue.empty() )
+            {
+               auto elapsed = std::chrono::steady_clock::now() - start_time;
+               auto elapsed_ms = std::chrono::duration_cast< std::chrono::milliseconds >( elapsed ).count();
+               
+               if( elapsed_ms < _batch_timeout_ms )
+               {
+                  // Wait for more items or timeout
+                  _queue_cv.wait_for( lock, std::chrono::milliseconds( _batch_timeout_ms - elapsed_ms ),
+                                    [this, effective_batch_size] { return _send_queue.size() >= effective_batch_size || _shutdown; } );
+               }
+               else
+               {
+                  // Timeout reached, send what we have
+                  break;
+               }
+            }
+            else if( effective_batch_size == 1 )
+            {
+               // Immediate send, no batching
+               break;
+            }
+         }
+         
+         // Notify waiting threads if queue now has space
+         // Only notify if we've freed up significant space (to avoid spurious wakeups)
+         size_t queue_size_after = _send_queue.size();
+         if( queue_size_before >= _max_queue_size && queue_size_after < _max_queue_size )
+         {
+            _space_cv.notify_all();  // Notify all waiting threads that space is available
+         }
       }
       
-      // Send HTTP POST
-      try
+      // Send batch (outside lock to avoid blocking queue operations)
+      if( !batch.empty() )
       {
-         send_http_post( json_str );
-      }
-      catch( const std::exception& e )
-      {
-         elog( "HTTP send error: ${e}", ("e", e.what()) );
-         // Don't retry, avoid blocking
+         try
+         {
+            ilog( "Ingest worker sending batch: ${count}", ("count", batch.size()) );
+            if( batch.size() == 1 )
+            {
+               // Single item: use old endpoint for backward compatibility
+               send_http_post( batch[0] );
+            }
+            else
+            {
+               // Multiple items: send as batch
+               send_http_batch( batch );
+            }
+            
+            // After successful send, notify waiting threads if queue has space
+            {
+               std::lock_guard< std::mutex > lock( _queue_mutex );
+               if( _send_queue.size() < _max_queue_size )
+               {
+                  _space_cv.notify_all();  // Notify replay thread that space is available
+               }
+            }
+         }
+         catch( const std::exception& e )
+         {
+            elog( "HTTP send error: ${e}, will retry", ("e", e.what()) );
+            
+            // Add to retry queue instead of dropping
+            {
+               std::lock_guard< std::mutex > retry_lock( _retry_mutex );
+               retry_item item;
+               item.batch = batch;
+               item.retry_count = 0;
+               item.retry_time = std::chrono::steady_clock::now() + std::chrono::milliseconds( RETRY_DELAY_MS );
+               _retry_queue.push( item );
+            }
+            _retry_cv.notify_one();
+            
+            // Even on error, notify waiting threads to avoid deadlock
+            {
+               std::lock_guard< std::mutex > lock( _queue_mutex );
+               _space_cv.notify_all();
+            }
+         }
       }
    }
 }
 
-void ingest_plugin_impl::send_http_post( const std::string& json_body )
+void ingest_plugin_impl::http_retry_worker()
 {
-   // Parse URL (simplified, assume format: http://host:port/path)
+   while( !_shutdown )
+   {
+      std::vector< retry_item > items_to_retry;
+      
+      // Collect items ready for retry
+      {
+         std::unique_lock< std::mutex > lock( _retry_mutex );
+         
+         auto now = std::chrono::steady_clock::now();
+         
+         // Wait for items or timeout
+         if( _retry_queue.empty() )
+         {
+            _retry_cv.wait_for( lock, std::chrono::milliseconds( 1000 ),
+                              [this] { return !_retry_queue.empty() || _shutdown; } );
+         }
+         
+         if( _shutdown && _retry_queue.empty() ) break;
+         
+         // Collect items that are ready for retry
+         while( !_retry_queue.empty() )
+         {
+            auto& item = _retry_queue.front();
+            if( now >= item.retry_time )
+            {
+               items_to_retry.push_back( item );
+               _retry_queue.pop();
+            }
+            else
+            {
+               // Wait for the earliest retry time
+               auto wait_time = std::chrono::duration_cast< std::chrono::milliseconds >(
+                  item.retry_time - now ).count();
+               if( wait_time > 0 )
+               {
+                  _retry_cv.wait_for( lock, std::chrono::milliseconds( wait_time ),
+                                    [this] { return _shutdown; } );
+               }
+               break;
+            }
+         }
+      }
+      
+      // Retry sending
+      for( auto& item : items_to_retry )
+      {
+         if( _shutdown ) break;
+         
+         try
+         {
+            ilog( "Retrying batch (attempt ${attempt}/${max}): ${count} items",
+                  ("attempt", item.retry_count + 1)("max", MAX_RETRY_COUNT)("count", item.batch.size()) );
+            
+            if( item.batch.size() == 1 )
+            {
+               send_http_post( item.batch[0] );
+            }
+            else
+            {
+               send_http_batch( item.batch );
+            }
+            
+            // Success: batch sent successfully
+            ilog( "Retry successful for batch of ${count} items", ("count", item.batch.size()) );
+         }
+         catch( const std::exception& e )
+         {
+            elog( "Retry failed: ${e}", ("e", e.what()) );
+            
+            // Increment retry count
+            item.retry_count++;
+            
+            if( item.retry_count < MAX_RETRY_COUNT )
+            {
+               // Schedule next retry
+               item.retry_time = std::chrono::steady_clock::now() + std::chrono::milliseconds( RETRY_DELAY_MS );
+               
+               {
+                  std::lock_guard< std::mutex > lock( _retry_mutex );
+                  _retry_queue.push( item );
+               }
+               _retry_cv.notify_one();
+            }
+            else
+            {
+               // Max retries reached, log error and drop
+               elog( "Max retries (${max}) reached for batch of ${count} items, dropping",
+                     ("max", MAX_RETRY_COUNT)("count", item.batch.size()) );
+            }
+         }
+      }
+   }
+}
+
+void ingest_plugin_impl::parse_endpoint_url( std::string& host, std::string& port, std::string& target )
+{
    std::string url = _ingest_endpoint;
-   std::string protocol = "http";
-   std::string host;
-   std::string port = "8080";
-   std::string target = "/ingest/applied_op";
    
    // Simple URL parsing
    if( url.find( "http://" ) == 0 )
@@ -310,7 +676,7 @@ void ingest_plugin_impl::send_http_post( const std::string& json_body )
    }
    else if( url.find( "https://" ) == 0 )
    {
-      protocol = "https";
+      // HTTPS not supported yet, but parse anyway
       url = url.substr( 8 );
    }
    
@@ -322,6 +688,10 @@ void ingest_plugin_impl::send_http_post( const std::string& json_body )
       target = url.substr( path_pos );
       url = url.substr( 0, path_pos );
    }
+   else
+   {
+      target = "/ingest/applied_op";
+   }
    
    if( port_pos != std::string::npos )
    {
@@ -331,44 +701,246 @@ void ingest_plugin_impl::send_http_post( const std::string& json_body )
    else
    {
       host = url;
+      port = "8080";
    }
+}
+
+ingest_plugin_impl::http_connection* ingest_plugin_impl::get_or_create_connection()
+{
+   std::lock_guard< std::mutex > lock( _conn_mutex );
    
-   // Create I/O context
-   net::io_context ioc;
-   tcp::resolver resolver( ioc );
-   tcp::socket socket( ioc );
-   
-   // Resolve address
-   auto const results = resolver.resolve( host, port );
-   net::connect( socket, results.begin(), results.end() );
-   
-   // Build HTTP request
-   http::request< http::string_body > req;
-   req.method( http::verb::post );
-   req.target( target );
-   req.set( http::field::host, host + ":" + port );
-   req.set( http::field::content_type, "application/json" );
-   req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
-   req.body() = json_body;
-   req.prepare_payload();
-   
-   // Send request
-   http::write( socket, req );
-   
-   // Read response (simplified handling)
-   beast::flat_buffer buffer;
-   http::response< http::string_body > res;
-   http::read( socket, buffer, res );
-   
-   // Check status code
-   if( res.result() != http::status::ok )
+   if( !_http_conn )
    {
-      elog( "HTTP error: ${code}", ("code", res.result_int()) );
+      std::string host, port, target;
+      parse_endpoint_url( host, port, target );
+      _http_conn = std::make_unique< http_connection >( host, port, target );
    }
    
-   // Close connection
-   beast::error_code ec;
-   socket.shutdown( tcp::socket::shutdown_both, ec );
+   // Reconnect if needed
+   if( !_http_conn->connected )
+   {
+      try
+      {
+         _http_conn->connect();
+      }
+      catch( const std::exception& e )
+      {
+         elog( "Failed to connect: ${e}", ("e", e.what()) );
+         _http_conn.reset();
+         return nullptr;
+      }
+   }
+   
+   return _http_conn.get();
+}
+
+void ingest_plugin_impl::send_http_post( const std::string& json_body )
+{
+   auto* conn = get_or_create_connection();
+   if( !conn )
+   {
+      // Fallback: create temporary connection
+      std::string host, port, target;
+      parse_endpoint_url( host, port, target );
+      ilog( "Ingest HTTP POST (fallback) -> ${host}:${port}${target} (bytes: ${bytes})",
+            ("host", host)("port", port)("target", target)("bytes", json_body.size()) );
+      
+      net::io_context ioc;
+      tcp::resolver resolver( ioc );
+      tcp::socket socket( ioc );
+      
+      auto const results = resolver.resolve( host, port );
+      net::connect( socket, results.begin(), results.end() );
+      
+      http::request< http::string_body > req;
+      req.method( http::verb::post );
+      req.target( target );
+      req.set( http::field::host, host + ":" + port );
+      req.set( http::field::content_type, "application/json" );
+      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
+      req.set( http::field::connection, "keep-alive" );
+      req.body() = json_body;
+      req.prepare_payload();
+      
+      http::write( socket, req );
+      
+      beast::flat_buffer buffer;
+      http::response< http::string_body > res;
+      http::read( socket, buffer, res );
+      
+      if( res.result() != http::status::ok )
+      {
+         elog( "HTTP error: ${code}", ("code", res.result_int()) );
+      }
+      else
+      {
+         ilog( "Ingest HTTP POST (fallback) success: ${code}", ("code", res.result_int()) );
+      }
+      
+      beast::error_code ec;
+      socket.shutdown( tcp::socket::shutdown_both, ec );
+      return;
+   }
+   
+   // Use connection pool
+   try
+   {
+      ilog( "Ingest HTTP POST -> ${host}:${port}${target} (bytes: ${bytes})",
+            ("host", conn->host)("port", conn->port)("target", conn->target)("bytes", json_body.size()) );
+      http::request< http::string_body > req;
+      req.method( http::verb::post );
+      req.target( conn->target );
+      req.set( http::field::host, conn->host + ":" + conn->port );
+      req.set( http::field::content_type, "application/json" );
+      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
+      req.set( http::field::connection, "keep-alive" );
+      req.body() = json_body;
+      req.prepare_payload();
+      
+      http::write( conn->socket, req );
+      
+      beast::flat_buffer buffer;
+      http::response< http::string_body > res;
+      http::read( conn->socket, buffer, res );
+      
+      if( res.result() != http::status::ok )
+      {
+         elog( "HTTP error: ${code}", ("code", res.result_int()) );
+         // Connection might be broken, reset it
+         std::lock_guard< std::mutex > lock( _conn_mutex );
+         _http_conn->disconnect();
+         _http_conn->connected = false;
+      }
+      else
+      {
+         ilog( "Ingest HTTP POST success: ${code}", ("code", res.result_int()) );
+      }
+   }
+   catch( const std::exception& e )
+   {
+      elog( "HTTP send error: ${e}", ("e", e.what()) );
+      // Connection broken, reset it
+      std::lock_guard< std::mutex > lock( _conn_mutex );
+      _http_conn->disconnect();
+      _http_conn->connected = false;
+      throw;
+   }
+}
+
+void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batch )
+{
+   // Build batch JSON array
+   std::string batch_json = "[";
+   for( size_t i = 0; i < batch.size(); ++i )
+   {
+      if( i > 0 ) batch_json += ",";
+      batch_json += batch[i];
+   }
+   batch_json += "]";
+   
+   auto* conn = get_or_create_connection();
+   if( !conn )
+   {
+      // Fallback: create temporary connection
+      std::string host, port, target;
+      parse_endpoint_url( host, port, target );
+      
+      // Use batch endpoint
+      if( target == "/ingest/applied_op" )
+      {
+         target = "/ingest/applied_ops";  // Batch endpoint
+      }
+      
+      ilog( "Ingest HTTP BATCH (fallback) -> ${host}:${port}${target} (ops: ${count}, bytes: ${bytes})",
+            ("host", host)("port", port)("target", target)("count", batch.size())("bytes", batch_json.size()) );
+      
+      net::io_context ioc;
+      tcp::resolver resolver( ioc );
+      tcp::socket socket( ioc );
+      
+      auto const results = resolver.resolve( host, port );
+      net::connect( socket, results.begin(), results.end() );
+      
+      http::request< http::string_body > req;
+      req.method( http::verb::post );
+      req.target( target );
+      req.set( http::field::host, host + ":" + port );
+      req.set( http::field::content_type, "application/json" );
+      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
+      req.set( http::field::connection, "keep-alive" );
+      req.body() = batch_json;
+      req.prepare_payload();
+      
+      http::write( socket, req );
+      
+      beast::flat_buffer buffer;
+      http::response< http::string_body > res;
+      http::read( socket, buffer, res );
+      
+      if( res.result() != http::status::ok )
+      {
+         elog( "HTTP batch error: ${code}", ("code", res.result_int()) );
+      }
+      else
+      {
+         ilog( "Ingest HTTP BATCH (fallback) success: ${code}", ("code", res.result_int()) );
+      }
+      
+      beast::error_code ec;
+      socket.shutdown( tcp::socket::shutdown_both, ec );
+      return;
+   }
+   
+   // Use connection pool
+   try
+   {
+      std::string target = conn->target;
+      if( target == "/ingest/applied_op" )
+      {
+         target = "/ingest/applied_ops";  // Batch endpoint
+      }
+      
+      ilog( "Ingest HTTP BATCH -> ${host}:${port}${target} (ops: ${count}, bytes: ${bytes})",
+            ("host", conn->host)("port", conn->port)("target", target)("count", batch.size())("bytes", batch_json.size()) );
+      
+      http::request< http::string_body > req;
+      req.method( http::verb::post );
+      req.target( target );
+      req.set( http::field::host, conn->host + ":" + conn->port );
+      req.set( http::field::content_type, "application/json" );
+      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
+      req.set( http::field::connection, "keep-alive" );
+      req.body() = batch_json;
+      req.prepare_payload();
+      
+      http::write( conn->socket, req );
+      
+      beast::flat_buffer buffer;
+      http::response< http::string_body > res;
+      http::read( conn->socket, buffer, res );
+      
+      if( res.result() != http::status::ok )
+      {
+         elog( "HTTP batch error: ${code}", ("code", res.result_int()) );
+         // Connection might be broken, reset it
+         std::lock_guard< std::mutex > lock( _conn_mutex );
+         _http_conn->disconnect();
+         _http_conn->connected = false;
+      }
+      else
+      {
+         ilog( "Ingest HTTP BATCH success: ${code}", ("code", res.result_int()) );
+      }
+   }
+   catch( const std::exception& e )
+   {
+      elog( "HTTP batch send error: ${e}", ("e", e.what()) );
+      // Connection broken, reset it
+      std::lock_guard< std::mutex > lock( _conn_mutex );
+      _http_conn->disconnect();
+      _http_conn->connected = false;
+      throw;
+   }
 }
 
 void ingest_plugin_impl::initialize_output_file()
@@ -466,6 +1038,12 @@ void ingest_plugin::set_program_options(
       ( "ingest-queue-size",
         boost::program_options::value< uint32_t >()->default_value( 100000 ),
         "Maximum queue size for pending operations" )
+      ( "ingest-batch-size",
+        boost::program_options::value< uint32_t >()->default_value( 100 ),
+        "Number of operations to batch together before sending (1 = disable batching)" )
+      ( "ingest-batch-timeout",
+        boost::program_options::value< uint32_t >()->default_value( 100 ),
+        "Maximum milliseconds to wait before sending a batch (even if not full)" )
       ( "ingest-dry-run",
         boost::program_options::value< bool >()->default_value( false ),
         "Dry run mode: write operations to file instead of sending HTTP" )
@@ -490,14 +1068,33 @@ void ingest_plugin::plugin_initialize( const boost::program_options::variables_m
       if( options.count( "ingest-queue-size" ) )
          my->_max_queue_size = options["ingest-queue-size"].as< uint32_t >();
       
+      if( options.count( "ingest-batch-size" ) )
+         my->_batch_size = options["ingest-batch-size"].as< uint32_t >();
+      
+      if( options.count( "ingest-batch-timeout" ) )
+         my->_batch_timeout_ms = options["ingest-batch-timeout"].as< uint32_t >();
+      
+      // Validate batch size
+      if( my->_batch_size == 0 )
+      {
+         my->_batch_size = 1;  // Disable batching by setting to 1
+      }
+      
       if( options.count( "ingest-dry-run" ) )
          my->_dry_run = options["ingest-dry-run"].as< bool >();
       
-      // Register signal handler
+      // Register signal handlers
       database& db = appbase::app().get_plugin< chain::chain_plugin >().db();
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler(
          [&]( const operation_notification& note ) {
             try { my->on_post_apply_operation( note ); } FC_LOG_AND_RETHROW()
+         },
+         *this,
+         0  // group
+      );
+      my->_post_apply_block_conn = db.add_post_apply_block_handler(
+         [&]( const block_notification& note ) {
+            try { my->on_post_apply_block( note ); } FC_LOG_AND_RETHROW()
          },
          *this,
          0  // group
@@ -512,6 +1109,15 @@ void ingest_plugin::plugin_initialize( const boost::program_options::variables_m
       else
       {
          ilog( "Ingest plugin initialized, endpoint: ${ep}", ("ep", my->_ingest_endpoint) );
+         // Start HTTP worker early to avoid blocking replay before plugin_startup
+         if( !my->_http_thread.joinable() )
+         {
+            my->_shutdown = false;
+            my->_http_thread = std::thread( [this]() {
+               my->http_send_worker();
+            } );
+            ilog( "Ingest plugin HTTP worker started (early)" );
+         }
       }
    }
    FC_CAPTURE_AND_RETHROW()
@@ -531,11 +1137,22 @@ void ingest_plugin::plugin_startup()
       }
       else
       {
-         // Normal mode: start HTTP worker thread
-         my->_shutdown = false;
-         my->_http_thread = std::thread( [this]() {
-            my->http_send_worker();
-         } );
+         // Normal mode: start HTTP worker thread and retry thread
+         if( !my->_http_thread.joinable() )
+         {
+            my->_shutdown = false;
+            my->_http_thread = std::thread( [this]() {
+               my->http_send_worker();
+            } );
+            ilog( "Ingest plugin HTTP worker started" );
+         }
+         if( !my->_retry_thread.joinable() )
+         {
+            my->_retry_thread = std::thread( [this]() {
+               my->http_retry_worker();
+            } );
+            ilog( "Ingest plugin retry worker started" );
+         }
          ilog( "Ingest plugin started" );
       }
    }
@@ -550,7 +1167,19 @@ void ingest_plugin::plugin_shutdown()
       
       if( !my->_dry_run )
       {
-         // Normal mode: stop HTTP worker thread
+         // Normal mode: stop retry thread
+         {
+            std::lock_guard< std::mutex > lock( my->_retry_mutex );
+            my->_shutdown = true;
+         }
+         my->_retry_cv.notify_one();
+         
+         if( my->_retry_thread.joinable() )
+         {
+            my->_retry_thread.join();
+         }
+         
+         // Stop HTTP worker thread
          {
             std::lock_guard< std::mutex > lock( my->_queue_mutex );
             my->_shutdown = true;
@@ -572,8 +1201,9 @@ void ingest_plugin::plugin_shutdown()
          }
       }
       
-      // Disconnect signal
+      // Disconnect signals
       util::disconnect_signal( my->_post_apply_operation_conn );
+      util::disconnect_signal( my->_post_apply_block_conn );
       
       ilog( "Ingest plugin shut down" );
    }
