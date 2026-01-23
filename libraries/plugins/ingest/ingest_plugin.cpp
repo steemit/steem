@@ -59,13 +59,15 @@ class ingest_plugin_impl
       void send_operation_json( const fc::variant& json );
       void http_send_worker();
       void http_retry_worker();
-      void send_http_post( const std::string& json_body );
       void send_http_batch( const std::vector< std::string >& batch );
       void parse_endpoint_url( std::string& host, std::string& port, std::string& target );
       
       // Connection pool for HTTP connections
       struct http_connection;
       http_connection* get_or_create_connection();
+      
+      // Service readiness check
+      bool wait_for_service_ready( uint32_t timeout_seconds );
 
       // File writing (for dry run)
       void write_operation_json( const std::string& json_str );
@@ -92,6 +94,8 @@ class ingest_plugin_impl
       uint32_t _max_queue_size;
       uint32_t _batch_size;        // Batch size for sending multiple operations
       uint32_t _batch_timeout_ms;  // Max wait time before sending a batch
+      uint32_t _shutdown_drain_timeout_seconds;  // Timeout for draining queue during shutdown
+      uint32_t _startup_wait_timeout_seconds;  // Timeout for waiting service to be ready during startup
       
       // Dry run configuration
       bool _dry_run;
@@ -170,11 +174,13 @@ class ingest_plugin_impl
 ingest_plugin_impl::ingest_plugin_impl( ingest_plugin& _plugin ) :
    _plugin( _plugin ),
    _db( appbase::app().get_plugin< chain::chain_plugin >().db() ),
-   _ingest_endpoint( "http://localhost:8080/ingest/applied_op" ),
+   _ingest_endpoint( "http://localhost:8080/ingest/applied_ops" ),
    _http_timeout_ms( 5000 ),
    _max_queue_size( 100000 ),
    _batch_size( 100 ),           // Default: batch 100 operations
    _batch_timeout_ms( 100 ),     // Default: wait max 100ms before sending
+   _shutdown_drain_timeout_seconds( 180 ),  // Default: 3 minutes timeout for draining queue during shutdown
+   _startup_wait_timeout_seconds( 30 ),  // Default: 30 seconds timeout for waiting service to be ready during startup
    _dry_run( false ),
    _shutdown( false )
 {
@@ -442,12 +448,6 @@ void ingest_plugin_impl::send_operation_json( const fc::variant& json )
          }
          
          _send_queue.push( json_str );
-         
-         // Minimal enqueue debug: log first item and periodic milestones
-         if( _send_queue.size() == 1 || ( _send_queue.size() % 10000 == 0 ) )
-         {
-            ilog( "Ingest queue size: ${size}", ("size", _send_queue.size()) );
-         }
       }
       _queue_cv.notify_one();  // Notify worker thread that new item is available
    }
@@ -524,23 +524,21 @@ void ingest_plugin_impl::http_send_worker()
          try
          {
             ilog( "Ingest worker sending batch: ${count}", ("count", batch.size()) );
-            if( batch.size() == 1 )
-            {
-               // Single item: use old endpoint for backward compatibility
-               send_http_post( batch[0] );
-            }
-            else
-            {
-               // Multiple items: send as batch
-               send_http_batch( batch );
-            }
+            // Always use batch endpoint, even for single item
+            send_http_batch( batch );
             
             // After successful send, notify waiting threads if queue has space
+            // Also notify if queue is empty (for shutdown waiting)
             {
                std::lock_guard< std::mutex > lock( _queue_mutex );
                if( _send_queue.size() < _max_queue_size )
                {
                   _space_cv.notify_all();  // Notify replay thread that space is available
+               }
+               // Also notify if queue is empty (helps with shutdown waiting)
+               if( _send_queue.empty() )
+               {
+                  _space_cv.notify_all();
                }
             }
          }
@@ -623,15 +621,8 @@ void ingest_plugin_impl::http_retry_worker()
          {
             ilog( "Retrying batch (attempt ${attempt}/${max}): ${count} items",
                   ("attempt", item.retry_count + 1)("max", MAX_RETRY_COUNT)("count", item.batch.size()) );
-            
-            if( item.batch.size() == 1 )
-            {
-               send_http_post( item.batch[0] );
-            }
-            else
-            {
-               send_http_batch( item.batch );
-            }
+            // Always use batch endpoint, even for single item
+            send_http_batch( item.batch );
             
             // Success: batch sent successfully
             ilog( "Retry successful for batch of ${count} items", ("count", item.batch.size()) );
@@ -690,7 +681,7 @@ void ingest_plugin_impl::parse_endpoint_url( std::string& host, std::string& por
    }
    else
    {
-      target = "/ingest/applied_op";
+      target = "/ingest/applied_ops";
    }
    
    if( port_pos != std::string::npos )
@@ -734,99 +725,6 @@ ingest_plugin_impl::http_connection* ingest_plugin_impl::get_or_create_connectio
    return _http_conn.get();
 }
 
-void ingest_plugin_impl::send_http_post( const std::string& json_body )
-{
-   auto* conn = get_or_create_connection();
-   if( !conn )
-   {
-      // Fallback: create temporary connection
-      std::string host, port, target;
-      parse_endpoint_url( host, port, target );
-      ilog( "Ingest HTTP POST (fallback) -> ${host}:${port}${target} (bytes: ${bytes})",
-            ("host", host)("port", port)("target", target)("bytes", json_body.size()) );
-      
-      net::io_context ioc;
-      tcp::resolver resolver( ioc );
-      tcp::socket socket( ioc );
-      
-      auto const results = resolver.resolve( host, port );
-      net::connect( socket, results.begin(), results.end() );
-      
-      http::request< http::string_body > req;
-      req.method( http::verb::post );
-      req.target( target );
-      req.set( http::field::host, host + ":" + port );
-      req.set( http::field::content_type, "application/json" );
-      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
-      req.set( http::field::connection, "keep-alive" );
-      req.body() = json_body;
-      req.prepare_payload();
-      
-      http::write( socket, req );
-      
-      beast::flat_buffer buffer;
-      http::response< http::string_body > res;
-      http::read( socket, buffer, res );
-      
-      if( res.result() != http::status::ok )
-      {
-         elog( "HTTP error: ${code}", ("code", res.result_int()) );
-      }
-      else
-      {
-         ilog( "Ingest HTTP POST (fallback) success: ${code}", ("code", res.result_int()) );
-      }
-      
-      beast::error_code ec;
-      socket.shutdown( tcp::socket::shutdown_both, ec );
-      return;
-   }
-   
-   // Use connection pool
-   try
-   {
-      ilog( "Ingest HTTP POST -> ${host}:${port}${target} (bytes: ${bytes})",
-            ("host", conn->host)("port", conn->port)("target", conn->target)("bytes", json_body.size()) );
-      http::request< http::string_body > req;
-      req.method( http::verb::post );
-      req.target( conn->target );
-      req.set( http::field::host, conn->host + ":" + conn->port );
-      req.set( http::field::content_type, "application/json" );
-      req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
-      req.set( http::field::connection, "keep-alive" );
-      req.body() = json_body;
-      req.prepare_payload();
-      
-      http::write( conn->socket, req );
-      
-      beast::flat_buffer buffer;
-      http::response< http::string_body > res;
-      http::read( conn->socket, buffer, res );
-      
-      if( res.result() != http::status::ok )
-      {
-         elog( "HTTP error: ${code}", ("code", res.result_int()) );
-         // Connection might be broken, reset it
-         std::lock_guard< std::mutex > lock( _conn_mutex );
-         _http_conn->disconnect();
-         _http_conn->connected = false;
-      }
-      else
-      {
-         ilog( "Ingest HTTP POST success: ${code}", ("code", res.result_int()) );
-      }
-   }
-   catch( const std::exception& e )
-   {
-      elog( "HTTP send error: ${e}", ("e", e.what()) );
-      // Connection broken, reset it
-      std::lock_guard< std::mutex > lock( _conn_mutex );
-      _http_conn->disconnect();
-      _http_conn->connected = false;
-      throw;
-   }
-}
-
 void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batch )
 {
    // Build batch JSON array
@@ -844,12 +742,6 @@ void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batc
       // Fallback: create temporary connection
       std::string host, port, target;
       parse_endpoint_url( host, port, target );
-      
-      // Use batch endpoint
-      if( target == "/ingest/applied_op" )
-      {
-         target = "/ingest/applied_ops";  // Batch endpoint
-      }
       
       ilog( "Ingest HTTP BATCH (fallback) -> ${host}:${port}${target} (ops: ${count}, bytes: ${bytes})",
             ("host", host)("port", port)("target", target)("count", batch.size())("bytes", batch_json.size()) );
@@ -879,7 +771,9 @@ void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batc
       
       if( res.result() != http::status::ok )
       {
-         elog( "HTTP batch error: ${code}", ("code", res.result_int()) );
+         elog( "HTTP batch error (fallback): ${code}, will retry", ("code", res.result_int()) );
+         // Throw exception to trigger retry mechanism
+         throw std::runtime_error( "HTTP batch error (fallback): " + std::to_string( res.result_int() ) );
       }
       else
       {
@@ -894,13 +788,8 @@ void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batc
    // Use connection pool
    try
    {
-      std::string target = conn->target;
-      if( target == "/ingest/applied_op" )
-      {
-         target = "/ingest/applied_ops";  // Batch endpoint
-      }
-      
       ilog( "Ingest HTTP BATCH -> ${host}:${port}${target} (ops: ${count}, bytes: ${bytes})",
+            ("host", conn->host)("port", conn->port)("target", conn->target)("count", batch.size())("bytes", batch_json.size()) );
             ("host", conn->host)("port", conn->port)("target", target)("count", batch.size())("bytes", batch_json.size()) );
       
       http::request< http::string_body > req;
@@ -921,11 +810,13 @@ void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batc
       
       if( res.result() != http::status::ok )
       {
-         elog( "HTTP batch error: ${code}", ("code", res.result_int()) );
+         elog( "HTTP batch error: ${code}, will retry", ("code", res.result_int()) );
          // Connection might be broken, reset it
          std::lock_guard< std::mutex > lock( _conn_mutex );
          _http_conn->disconnect();
          _http_conn->connected = false;
+         // Throw exception to trigger retry mechanism
+         throw std::runtime_error( "HTTP batch error: " + std::to_string( res.result_int() ) );
       }
       else
       {
@@ -1018,6 +909,78 @@ void ingest_plugin_impl::write_operation_json( const std::string& json_str )
    _output_file.flush();  // Ensure data is written immediately
 }
 
+bool ingest_plugin_impl::wait_for_service_ready( uint32_t timeout_seconds )
+{
+   if( _dry_run )
+   {
+      return true;  // Dry run mode: no service to wait for
+   }
+   
+   std::string host, port, target;
+   parse_endpoint_url( host, port, target );
+   
+   auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds( timeout_seconds );
+   uint32_t attempt = 0;
+   
+   while( std::chrono::steady_clock::now() < timeout )
+   {
+      attempt++;
+      try
+      {
+         // Try to create a connection and send a minimal test request
+         net::io_context ioc;
+         tcp::resolver resolver( ioc );
+         tcp::socket socket( ioc );
+         
+         auto const results = resolver.resolve( host, port );
+         net::connect( socket, results.begin(), results.end() );
+         
+         // Send a minimal POST request (empty array for batch endpoint)
+         http::request< http::string_body > req;
+         req.method( http::verb::post );
+         req.target( target );
+         req.set( http::field::host, host + ":" + port );
+         req.set( http::field::content_type, "application/json" );
+         req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
+         req.body() = "[]";  // Empty array for batch endpoint
+         req.prepare_payload();
+         
+         http::write( socket, req );
+         
+         beast::flat_buffer buffer;
+         http::response< http::string_body > res;
+         http::read( socket, buffer, res );
+         
+         beast::error_code ec;
+         socket.shutdown( tcp::socket::shutdown_both, ec );
+         
+         // 200 OK or 400 Bad Request (empty array) both mean service is ready
+         if( res.result() == http::status::ok || res.result() == http::status::bad_request )
+         {
+            if( attempt > 1 )
+            {
+               ilog( "Ingest service is ready (attempt ${attempt})", ("attempt", attempt) );
+            }
+            return true;
+         }
+      }
+      catch( const std::exception& e )
+      {
+         // Connection failed, wait and retry
+         if( attempt % 5 == 0 )  // Log every 5 attempts
+         {
+            ilog( "Waiting for ingest service (attempt ${attempt}): ${e}", ("attempt", attempt)("e", e.what()) );
+         }
+      }
+      
+      // Wait 500ms before next attempt
+      std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+   }
+   
+   wlog( "Ingest service not ready after ${timeout}s (${attempt} attempts)", ("timeout", timeout_seconds)("attempt", attempt) );
+   return false;
+}
+
 } // detail
 
 ingest_plugin::ingest_plugin() {}
@@ -1030,8 +993,8 @@ void ingest_plugin::set_program_options(
 {
    cfg.add_options()
       ( "ingest-endpoint",
-        boost::program_options::value< std::string >()->default_value( "http://localhost:8080/ingest/applied_op" ),
-        "Ingest service HTTP endpoint" )
+        boost::program_options::value< std::string >()->default_value( "http://localhost:8080/ingest/applied_ops" ),
+        "Ingest service HTTP endpoint (batch endpoint)" )
       ( "ingest-http-timeout",
         boost::program_options::value< uint32_t >()->default_value( 5000 ),
         "HTTP request timeout in milliseconds" )
@@ -1044,6 +1007,12 @@ void ingest_plugin::set_program_options(
       ( "ingest-batch-timeout",
         boost::program_options::value< uint32_t >()->default_value( 100 ),
         "Maximum milliseconds to wait before sending a batch (even if not full)" )
+      ( "ingest-shutdown-drain-timeout",
+        boost::program_options::value< uint32_t >()->default_value( 180 ),
+        "Timeout in seconds for draining queue during shutdown (default: 180 = 3 minutes)" )
+      ( "ingest-startup-wait-timeout",
+        boost::program_options::value< uint32_t >()->default_value( 30 ),
+        "Timeout in seconds for waiting service to be ready during startup (default: 30 seconds)" )
       ( "ingest-dry-run",
         boost::program_options::value< bool >()->default_value( false ),
         "Dry run mode: write operations to file instead of sending HTTP" )
@@ -1073,6 +1042,12 @@ void ingest_plugin::plugin_initialize( const boost::program_options::variables_m
       
       if( options.count( "ingest-batch-timeout" ) )
          my->_batch_timeout_ms = options["ingest-batch-timeout"].as< uint32_t >();
+      
+      if( options.count( "ingest-shutdown-drain-timeout" ) )
+         my->_shutdown_drain_timeout_seconds = options["ingest-shutdown-drain-timeout"].as< uint32_t >();
+      
+      if( options.count( "ingest-startup-wait-timeout" ) )
+         my->_startup_wait_timeout_seconds = options["ingest-startup-wait-timeout"].as< uint32_t >();
       
       // Validate batch size
       if( my->_batch_size == 0 )
@@ -1109,6 +1084,20 @@ void ingest_plugin::plugin_initialize( const boost::program_options::variables_m
       else
       {
          ilog( "Ingest plugin initialized, endpoint: ${ep}", ("ep", my->_ingest_endpoint) );
+         
+         // Wait for service to be ready BEFORE starting workers
+         // This ensures service is ready before replay starts processing blocks
+         ilog( "Waiting for ingest service to be ready (timeout: ${timeout}s)...", ("timeout", my->_startup_wait_timeout_seconds) );
+         bool service_ready = my->wait_for_service_ready( my->_startup_wait_timeout_seconds );
+         if( !service_ready )
+         {
+            wlog( "Ingest service not ready after timeout, but continuing anyway. Some early blocks may be lost." );
+         }
+         else
+         {
+            ilog( "Ingest service is ready" );
+         }
+         
          // Start HTTP worker early to avoid blocking replay before plugin_startup
          if( !my->_http_thread.joinable() )
          {
@@ -1137,15 +1126,7 @@ void ingest_plugin::plugin_startup()
       }
       else
       {
-         // Normal mode: start HTTP worker thread and retry thread
-         if( !my->_http_thread.joinable() )
-         {
-            my->_shutdown = false;
-            my->_http_thread = std::thread( [this]() {
-               my->http_send_worker();
-            } );
-            ilog( "Ingest plugin HTTP worker started" );
-         }
+         // Normal mode: start retry thread (HTTP worker already started in plugin_initialize)
          if( !my->_retry_thread.joinable() )
          {
             my->_retry_thread = std::thread( [this]() {
@@ -1167,7 +1148,65 @@ void ingest_plugin::plugin_shutdown()
       
       if( !my->_dry_run )
       {
-         // Normal mode: stop retry thread
+         // Normal mode: wait for queue to drain before shutting down
+         // This ensures all blocks (including block-only records) are sent
+         // Note: We don't set _shutdown yet, so worker continues processing
+         {
+            std::unique_lock< std::mutex > lock( my->_queue_mutex );
+            size_t queue_size = my->_send_queue.size();
+            if( queue_size > 0 )
+            {
+               ilog( "Waiting for ingest queue to drain (${size} items remaining, timeout: ${timeout}s)...", 
+                     ("size", queue_size)("timeout", my->_shutdown_drain_timeout_seconds) );
+               
+               // Wait up to configured timeout for queue to drain
+               // Poll periodically to check if queue is empty
+               // Worker thread will continue processing until queue is empty
+               auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds( my->_shutdown_drain_timeout_seconds );
+               bool drained = false;
+               
+               while( std::chrono::steady_clock::now() < timeout )
+               {
+                  if( my->_send_queue.empty() )
+                  {
+                     // Queue is empty, wait a bit more to ensure no new items are being added
+                     my->_queue_cv.wait_for( lock, std::chrono::milliseconds( 500 ), [this] {
+                        return !my->_send_queue.empty();
+                     } );
+                     if( my->_send_queue.empty() )
+                     {
+                        drained = true;
+                        break;
+                     }
+                  }
+                  else
+                  {
+                     // Wait a bit and check again
+                     my->_queue_cv.wait_for( lock, std::chrono::milliseconds( 100 ), [this] {
+                        return my->_send_queue.empty();
+                     } );
+                     if( my->_send_queue.empty() )
+                     {
+                        drained = true;
+                        break;
+                     }
+                  }
+               }
+               
+               if( !drained && !my->_send_queue.empty() )
+               {
+                  size_t remaining = my->_send_queue.size();
+                  wlog( "Ingest queue not fully drained after timeout. ${size} items remaining (may be lost)", ("size", remaining) );
+               }
+               else
+               {
+                  ilog( "Ingest queue drained successfully" );
+               }
+            }
+         }
+         
+         // Now set shutdown flag and stop threads
+         // Stop retry thread first
          {
             std::lock_guard< std::mutex > lock( my->_retry_mutex );
             my->_shutdown = true;
