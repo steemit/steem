@@ -20,7 +20,6 @@ jobs:
         dockerfile:
           - Dockerfile.azurelinux3.0
           - Dockerfile.debian13
-          - Dockerfile.ubuntu20.04
           - Dockerfile.ubuntu22.04
           - Dockerfile.ubuntu24.04
 
