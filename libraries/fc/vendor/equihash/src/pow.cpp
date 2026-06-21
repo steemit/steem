@@ -4,6 +4,7 @@ CC0 license
 Modifications by Steemit, Inc. 2016
 */
 
+#define blake2b blake2bSUFFIX
 #include <equihash/pow.hpp>
 #include <equihash/blake2.h>
 #include <algorithm>

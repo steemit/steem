@@ -57,15 +57,24 @@ ripemd160 ripemd160::hash( const string& s ) {
 }
 
 void ripemd160::encoder::write( const char* d, uint32_t dlen ) {
-  RIPEMD160_Update( &my->ctx, d, dlen); 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"  
+  RIPEMD160_Update( &my->ctx, d, dlen);
+#pragma GCC diagnostic pop
 }
 ripemd160 ripemd160::encoder::result() {
   ripemd160 h;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   RIPEMD160_Final((uint8_t*)h.data(), &my->ctx );
+#pragma GCC diagnostic pop
   return h;
 }
 void ripemd160::encoder::reset() {
-  RIPEMD160_Init( &my->ctx);  
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"  
+  RIPEMD160_Init( &my->ctx);
+#pragma GCC diagnostic pop
 }
 
 ripemd160 operator << ( const ripemd160& h1, uint32_t i ) {

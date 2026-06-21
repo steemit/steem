@@ -46,19 +46,21 @@ set(BOOST_TEST_TARGET_PREFIX "boosttest")
 if(NOT Boost_FOUND)
 	find_package(Boost 1.34.0 QUIET)
 endif()
-if("${Boost_VERSION}0" LESS "1034000")
+
+message(STATUS "Boost version: ${Boost_VERSION} (${Boost_VERSION_MACRO})")
+
+if(Boost_VERSION_MACRO LESS 103400)
 	set(_shared_msg
 		"NOTE: boost::test-based targets and tests cannot "
 		"be added: boost >= 1.34.0 required but not found. "
 		"(found: '${Boost_VERSION}'; want >=103400) ")
 	if(BUILD_TESTING)
 		message(FATAL_ERROR
-			${_shared_msg}
-			"You may disable BUILD_TESTING to continue without the "
-			"tests.")
+			"${_shared_msg}"
+			"You may disable BUILD_TESTING to continue without the tests.")
 	else()
 		message(STATUS
-			${_shared_msg}
+			"${_shared_msg}"
 			"BUILD_TESTING disabled, so continuing anyway.")
 	endif()
 endif()

@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.19
+FROM python:3.10-slim
 
 ENV LANG=en_US.UTF-8
 ENV WDIR=/usr/local/steem

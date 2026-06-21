@@ -137,6 +137,8 @@ namespace fc { namespace ecc {
         if( *front == 0 ){}
         else
         {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"            
             EC_KEY *key = EC_KEY_new_by_curve_name( NID_secp256k1 );
             key = o2i_ECPublicKey( &key, (const unsigned char**)&front, sizeof(dat) );
             FC_ASSERT( key );
@@ -144,6 +146,7 @@ namespace fc { namespace ecc {
             unsigned char* buffer = (unsigned char*) my->_key.begin();
             i2o_ECPublicKey( key, &buffer ); // FIXME: questionable memory handling
             EC_KEY_free( key );
+#pragma GCC diagnostic pop
         }
     }
 
@@ -244,7 +247,10 @@ namespace fc { namespace ecc {
         memcpy( x.data(), in.begin() + 1, x.data_size() );
         ssl_bignum bn_x;
         to_bignum( x, bn_x );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"        
         FC_ASSERT( EC_POINT_set_compressed_coordinates_GFp( curve, out, bn_x, *in.begin() & 1, ctx ) > 0 );
+#pragma GCC diagnostic pop
     }
 
     static void from_point( const ec_point& in, public_key_data& out )
@@ -253,7 +259,10 @@ namespace fc { namespace ecc {
         const ec_group& curve = detail::get_curve();
         ssl_bignum bn_x;
         ssl_bignum bn_y;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"        
         FC_ASSERT( EC_POINT_get_affine_coordinates_GFp( curve, in, bn_x, bn_y, ctx ) > 0 );
+#pragma GCC diagnostic pop
         private_key_secret x;
         from_bignum( bn_x, x );
         memcpy( out.begin() + 1, x.data(), out.size() - 1 );

@@ -1,0 +1,65 @@
+diff --git a/websocketpp/transport/asio/connection.hpp b/websocketpp/transport/asio/connection.hpp
+index 57dda74..16bcd3d 100644
+--- a/websocketpp/transport/asio/connection.hpp
++++ b/websocketpp/transport/asio/connection.hpp
+@@ -106,6 +106,30 @@ public:
+         m_alog->write(log::alevel::devel,"asio con transport constructor");
+     }
+ 
++
++    /// Finish constructing the transport
++    /**
++     * init_asio is called once immediately after construction to initialize
++     * Asio components to the io_service.
++     *
++     * @param io_service A pointer to the io_service to register with this
++     * connection
++     *
++     * @return Status code for the success or failure of the initialization
++     */
++    lib::error_code init_asio (io_service_ptr io_service) {
++        m_io_service = io_service;
++
++        if (config::enable_multithreading) {
++            m_strand.reset(new lib::asio::io_service::strand(*io_service));
++        }
++
++        lib::error_code ec = socket_con_type::init_asio(io_service, m_strand,
++            m_is_server);
++
++        return ec;
++    }
++
+     /// Get a shared pointer to this component
+     ptr get_shared() {
+         return lib::static_pointer_cast<type>(socket_con_type::get_shared());
+@@ -448,29 +472,6 @@ protected:
+         return lib::error_code();
+     }
+ 
+-    /// Finish constructing the transport
+-    /**
+-     * init_asio is called once immediately after construction to initialize
+-     * Asio components to the io_service.
+-     *
+-     * @param io_service A pointer to the io_service to register with this
+-     * connection
+-     *
+-     * @return Status code for the success or failure of the initialization
+-     */
+-    lib::error_code init_asio (io_service_ptr io_service) {
+-        m_io_service = io_service;
+-
+-        if (config::enable_multithreading) {
+-            m_strand.reset(new lib::asio::io_service::strand(*io_service));
+-        }
+-
+-        lib::error_code ec = socket_con_type::init_asio(io_service, m_strand,
+-            m_is_server);
+-
+-        return ec;
+-    }
+-
+     void handle_pre_init(init_handler callback, lib::error_code const & ec) {
+         if (m_alog->static_test(log::alevel::devel)) {
+             m_alog->write(log::alevel::devel,"asio connection handle pre_init");

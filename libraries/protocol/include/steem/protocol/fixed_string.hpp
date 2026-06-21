@@ -57,6 +57,23 @@ namespace fc
    }
 }
 
+namespace boost {
+namespace endian {
+
+template<>
+inline fc::uint128 native_to_big<fc::uint128>(fc::uint128 x) {
+  return fc::endian_reverse(x);
+}
+
+template<>
+inline fc::uint128 big_to_native<fc::uint128>(fc::uint128 x) {
+  return fc::endian_reverse(x);
+}
+
+} // namespace endian
+} // namespace boost
+
+
 namespace steem { namespace protocol {
 
 /**

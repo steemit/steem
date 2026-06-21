@@ -14,16 +14,27 @@
 #ifndef __BLAKE2_IMPL_H__
 #define __BLAKE2_IMPL_H__
 
+#if defined(_WIN32) || defined(WIN32)
+#include <windows.h>
+#endif
+
+#include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include "blake2-config.h"
+
+#define BLAKE2_IMPL_CAT(x,y) x ## y
+#define BLAKE2_IMPL_EVAL(x,y)  BLAKE2_IMPL_CAT(x,y)
+#define BLAKE2_IMPL_NAME(fun)  BLAKE2_IMPL_EVAL(fun, SUFFIX)
 
 static inline uint32_t load32( const void *src )
 {
 #if defined(NATIVE_LITTLE_ENDIAN)
   uint32_t w;
-  memcpy(&w, src, sizeof w);
+  memcpy( &w, src, sizeof( w ) );
   return w;
 #else
-  const uint8_t *p = ( const uint8_t * )src;
+  const uint8_t *p = ( uint8_t * )src;
   uint32_t w = *p++;
   w |= ( uint32_t )( *p++ ) <<  8;
   w |= ( uint32_t )( *p++ ) << 16;
@@ -36,10 +47,10 @@ static inline uint64_t load64( const void *src )
 {
 #if defined(NATIVE_LITTLE_ENDIAN)
   uint64_t w;
-  memcpy(&w, src, sizeof w);
+  memcpy( &w, src, sizeof( w ) );
   return w;
 #else
-  const uint8_t *p = ( const uint8_t * )src;
+  const uint8_t *p = ( uint8_t * )src;
   uint64_t w = *p++;
   w |= ( uint64_t )( *p++ ) <<  8;
   w |= ( uint64_t )( *p++ ) << 16;
@@ -55,7 +66,7 @@ static inline uint64_t load64( const void *src )
 static inline void store32( void *dst, uint32_t w )
 {
 #if defined(NATIVE_LITTLE_ENDIAN)
-  memcpy(dst, &w, sizeof w);
+  memcpy( dst, &w, sizeof( w ) );
 #else
   uint8_t *p = ( uint8_t * )dst;
   *p++ = ( uint8_t )w; w >>= 8;
@@ -68,7 +79,7 @@ static inline void store32( void *dst, uint32_t w )
 static inline void store64( void *dst, uint64_t w )
 {
 #if defined(NATIVE_LITTLE_ENDIAN)
-  memcpy(dst, &w, sizeof w);
+  memcpy( dst, &w, sizeof( w ) );
 #else
   uint8_t *p = ( uint8_t * )dst;
   *p++ = ( uint8_t )w; w >>= 8;
@@ -126,11 +137,26 @@ static inline uint64_t rotr64( const uint64_t w, const unsigned c )
 }
 
 /* prevents compiler optimizing out memset() */
-static inline void secure_zero_memory( void *v, size_t n )
+static inline void secure_zero_memory(void *v, size_t n)
 {
-  volatile uint8_t *p = ( volatile uint8_t * )v;
-  while( n-- ) *p++ = 0;
+#if defined(_WIN32) || defined(WIN32)
+  SecureZeroMemory(v, n);
+#elif defined(__hpux)
+  static void *(*const volatile memset_v)(void *, int, size_t) = &memset;
+  memset_v(v, 0, n);
+#else
+// prioritize first the general C11 call
+#if defined(HAVE_MEMSET_S)
+  memset_s(v, n, 0, n);
+#elif defined(HAVE_EXPLICIT_BZERO)
+  explicit_bzero(v, n);
+#elif defined(HAVE_EXPLICIT_MEMSET)
+  explicit_memset(v, 0, n);
+#else
+  memset(v, 0, n);
+  __asm__ __volatile__("" :: "r"(v) : "memory");
+#endif
+#endif
 }
 
 #endif
-

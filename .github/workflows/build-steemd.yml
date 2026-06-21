@@ -1,0 +1,47 @@
+name: Build All steemd Dockerfiles
+
+on:
+  push:
+    paths:
+      - "deploy/**"
+      - ".github/workflows/build-steemd.yml"
+
+  pull_request:
+
+  workflow_dispatch:
+
+jobs:
+  build-steemd:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        dockerfile:
+          - Dockerfile.azurelinux3.0
+          - Dockerfile.debian13
+          - Dockerfile.ubuntu22.04
+          - Dockerfile.ubuntu24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          set -ex
+
+          FILE="deploy/${{ matrix.dockerfile }}"
+          NAME="${{ matrix.dockerfile }}"
+          TAG="steem:${NAME#Dockerfile.}"
+
+          echo "Building Dockerfile: $FILE"
+          echo "Tag: $TAG"
+
+          sudo -E docker build \
+            --no-cache \
+            --build-arg NUMBER_BUILD_THREADS=4 \
+            --build-arg UNIT_TEST=ON \
+            -t "$TAG" \
+            -f "$FILE" \
+            .

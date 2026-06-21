@@ -87,7 +87,7 @@ void application::set_program_options()
       {
          my->_cfg_options.add(plugin_cfg_opts);
 
-         for(const boost::shared_ptr<bpo::option_description> od : plugin_cfg_opts.options())
+         for(const boost::shared_ptr<bpo::option_description> &od : plugin_cfg_opts.options())
          {
             // If the config option is not already present as a cli option, add it.
             if( plugin_cli_opts.find_nothrow( od->long_name(), false ) == nullptr )
@@ -248,7 +248,7 @@ void application::write_default_config(const bfs::path& cfg_file) {
       bfs::create_directories(cfg_file.parent_path());
 
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
-   for(const boost::shared_ptr<bpo::option_description> od : my->_cfg_options.options())
+   for(const boost::shared_ptr<bpo::option_description> &od : my->_cfg_options.options())
    {
       if(!od->description().empty())
          out_cfg << "# " << od->description() << "\n";

@@ -15,7 +15,7 @@ template<typename T, size_t N>
 class int_array
 {
     public:
-       int_array(){ memset( data, 0, sizeof(data) ); }
+       int_array() : data{} {}
 
        T&       at( size_t pos )      { FC_ASSERT( pos < N); return data[pos]; }
        const T& at( size_t pos )const { FC_ASSERT( pos < N); return data[pos]; }

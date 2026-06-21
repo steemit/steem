@@ -1,3 +1,7 @@
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
@@ -59,13 +63,16 @@ clean_database_fixture::clean_database_fixture( uint16_t shared_file_size_in_mb 
    db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
    appbase::app().register_plugin< steem::plugins::rc::rc_plugin >();
    appbase::app().register_plugin< steem::plugins::witness::witness_plugin >();
+   appbase::app().register_plugin< steem::plugins::chain::chain_plugin >();
 
    db_plugin->logging = false;
+   appbase::app().set_app_name("chain_test");
    appbase::app().initialize<
       steem::plugins::account_history::account_history_plugin,
       steem::plugins::debug_node::debug_node_plugin,
       steem::plugins::rc::rc_plugin,
-      steem::plugins::witness::witness_plugin
+      steem::plugins::witness::witness_plugin,
+      steem::plugins::chain::chain_plugin
       >( argc, argv );
 
    steem::plugins::rc::rc_plugin_skip_flags rc_skip;
@@ -110,7 +117,7 @@ clean_database_fixture::~clean_database_fixture()
 { try {
    // If we're unwinding due to an exception, don't do any more checks.
    // This way, boost test's last checkpoint tells us approximately where the error was.
-   if( !std::uncaught_exception() )
+   if (std::uncaught_exceptions() == 0)
    {
       BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
    }
@@ -186,8 +193,10 @@ live_database_fixture::live_database_fixture()
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
       appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+      appbase::app().register_plugin< steem::plugins::chain::chain_plugin >();
       appbase::app().initialize<
-         steem::plugins::account_history::account_history_plugin
+         steem::plugins::account_history::account_history_plugin,
+         steem::plugins::chain::chain_plugin
          >( argc, argv );
 
       db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
@@ -215,7 +224,7 @@ live_database_fixture::~live_database_fixture()
    {
       // If we're unwinding due to an exception, don't do any more checks.
       // This way, boost test's last checkpoint tells us approximately where the error was.
-      if( !std::uncaught_exception() )
+      if (std::uncaught_exceptions() == 0)
       {
          BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
       }
@@ -1091,7 +1100,7 @@ json_rpc_database_fixture::~json_rpc_database_fixture()
 {
    // If we're unwinding due to an exception, don't do any more checks.
    // This way, boost test's last checkpoint tells us approximately where the error was.
-   if( !std::uncaught_exception() )
+   if (std::uncaught_exceptions() == 0)
    {
       BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
    }
@@ -1220,3 +1229,7 @@ void _push_transaction( database& db, const signed_transaction& tx, uint32_t ski
 } // steem::chain::test
 
 } } // steem::chain
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif

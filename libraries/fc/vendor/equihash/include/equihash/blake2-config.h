@@ -14,7 +14,6 @@
 #ifndef __BLAKE2_CONFIG_H__
 #define __BLAKE2_CONFIG_H__
 
-// These don't work everywhere
 #if defined(__SSE2__)
 #define HAVE_SSE2
 #endif
@@ -24,7 +23,7 @@
 #endif
 
 #if defined(__SSE4_1__)
-#define HAVE_SSE41
+#define HAVE_SSE4_1
 #endif
 
 #if defined(__AVX__)
@@ -49,12 +48,12 @@
 #endif
 
 #ifdef HAVE_AVX
-#ifndef HAVE_SSE41
-#define HAVE_SSE41
+#ifndef HAVE_SSE4_1
+#define HAVE_SSE4_1
 #endif
 #endif
 
-#ifdef HAVE_SSE41
+#ifdef HAVE_SSE4_1
 #ifndef HAVE_SSSE3
 #define HAVE_SSSE3
 #endif
@@ -69,4 +68,3 @@
 #endif
 
 #endif
-
