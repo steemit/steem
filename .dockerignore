@@ -1,0 +1,8 @@
+.deps/
+build/
+*.o
+*.a
+*.so
+*.log
+node_modules/
+__pycache__/
