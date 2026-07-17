@@ -790,11 +790,10 @@ void ingest_plugin_impl::send_http_batch( const std::vector< std::string >& batc
    {
       ilog( "Ingest HTTP BATCH -> ${host}:${port}${target} (ops: ${count}, bytes: ${bytes})",
             ("host", conn->host)("port", conn->port)("target", conn->target)("count", batch.size())("bytes", batch_json.size()) );
-            ("host", conn->host)("port", conn->port)("target", target)("count", batch.size())("bytes", batch_json.size()) );
-      
+
       http::request< http::string_body > req;
       req.method( http::verb::post );
-      req.target( target );
+      req.target( conn->target );
       req.set( http::field::host, conn->host + ":" + conn->port );
       req.set( http::field::content_type, "application/json" );
       req.set( http::field::user_agent, "steemd-ingest-plugin/1.0" );
