@@ -284,8 +284,14 @@ public:
       return _checksum == fc::sha512();
    }
 
+   bool is_connected()const
+   {
+      return _remote_api.is_valid();
+   }
+
    variant info() const
    {
+      FC_ASSERT( is_connected(), "Wallet is not connected to a server (running in offline mode or disconnected)." );
       auto dynamic_props = _remote_api->get_dynamic_global_properties();
       fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
       result["witness_majority_version"] = fc::string( _remote_api->get_witness_schedule().majority_version );
@@ -298,7 +304,13 @@ public:
       result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
       result["median_sbd_price"] = _remote_api->get_current_median_history_price();
       result["account_creation_fee"] = _remote_api->get_chain_properties().account_creation_fee;
-      result["post_reward_fund"] = fc::variant(_remote_api->get_reward_fund( STEEM_POST_REWARD_FUND_NAME )).get_object();
+      try
+      {
+         result["post_reward_fund"] = fc::variant(_remote_api->get_reward_fund( STEEM_POST_REWARD_FUND_NAME )).get_object();
+      }
+      catch ( const fc::exception& )
+      {
+      }
       return result;
    }
 
@@ -332,16 +344,23 @@ public:
 #endif
       result["build"] = os + " " + bitness;
 
-      try
+      if( is_connected() )
       {
-         auto v = _remote_api->get_version();
-         result["server_blockchain_version"] = v.blockchain_version;
-         result["server_steem_revision"] = v.steem_revision;
-         result["server_fc_revision"] = v.fc_revision;
+         try
+         {
+            auto v = _remote_api->get_version();
+            result["server_blockchain_version"] = v.blockchain_version;
+            result["server_steem_revision"] = v.steem_revision;
+            result["server_fc_revision"] = v.fc_revision;
+         }
+         catch( fc::exception& )
+         {
+            result["server"] = "could not retrieve server version information";
+         }
       }
-      catch( fc::exception& )
+      else
       {
-         result["server"] = "could not retrieve server version information";
+         result["server"] = "wallet is running in offline mode";
       }
 
       return result;
@@ -1071,6 +1090,11 @@ variant wallet_api::info()
 variant_object wallet_api::about() const
 {
     return my->about();
+}
+
+bool wallet_api::is_connected() const
+{
+   return my->is_connected();
 }
 
 /*
