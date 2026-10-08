@@ -60,7 +60,7 @@ struct wallet_data
 {
    vector<char>              cipher_keys; /** encrypted keys */
 
-   string                    ws_server = "ws://localhost:8090";
+   string                    ws_server = "ws://127.0.0.1:8090";
    string                    ws_user;
    string                    ws_password;
 };
@@ -107,6 +107,11 @@ class wallet_api
        * @returns compile time info and client and dependencies versions
        */
       variant_object                      about() const;
+
+      /** Checks whether the wallet is connected to a remote steemd node.
+       * @returns true if connected, false if in offline mode or disconnected
+       */
+      bool                                is_connected() const;
 
       /** Returns the information about a block
        *
@@ -1175,6 +1180,7 @@ FC_API( steem::wallet::wallet_api,
 
         /// query api
         (info)
+        (is_connected)
         (list_my_accounts)
         (list_accounts)
         (list_witnesses)
