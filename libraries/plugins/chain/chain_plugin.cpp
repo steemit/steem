@@ -587,6 +587,9 @@ void chain_plugin::plugin_startup()
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
+         ilog("Closing chain database to flush shared memory...");
+         my->db.close();
+         ilog("Database closed and flushed successfully.");
          exit(EXIT_SUCCESS);
       }
    }
