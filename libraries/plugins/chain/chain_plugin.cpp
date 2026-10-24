@@ -587,7 +587,10 @@ void chain_plugin::plugin_startup()
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
          ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
-         exit(EXIT_SUCCESS);
+         ilog("Triggering graceful shutdown to allow plugins to flush data...");
+         // Use quit() instead of exit() to trigger normal shutdown sequence
+         // This allows plugins (like ingest_plugin) to flush their queues
+         appbase::app().quit();
       }
    }
    else
