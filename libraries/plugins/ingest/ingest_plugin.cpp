@@ -96,6 +96,14 @@ class ingest_plugin_impl
       uint32_t _batch_timeout_ms;  // Max wait time before sending a batch
       uint32_t _shutdown_drain_timeout_seconds;  // Timeout for draining queue during shutdown
       uint32_t _startup_wait_timeout_seconds;  // Timeout for waiting service to be ready during startup
+
+      // Stop-height enforcement (mandatory config: ingest-stop-height).
+      // steemd shuts down cleanly after this block is applied so it never
+      // transitions into live/p2p mode, which would expose the plugin to the
+      // mempool double-push notifications from push_transaction.
+      uint32_t _stop_height = 0;               // configured stop height (block number)
+      bool     _stop_triggered = false;        // quit() already requested at stop height
+      bool     _stop_height_validated = false; // stop height checked against block log end
       
       // Dry run configuration
       bool _dry_run;
@@ -221,6 +229,25 @@ void ingest_plugin_impl::on_post_apply_operation( const operation_notification& 
 {
    try
    {
+      // Second line of defense against mempool double-push records: a real
+      // (non-virtual) op notified with trx_in_block == -1 can only originate
+      // from push_transaction outside of block application (mempool acceptance
+      // in live/p2p mode). Block application always carries a valid index.
+      // Drop those even if live mode is ever misconfigured.
+      if( !steem::protocol::is_virtual_operation( note.op )
+          && note.trx_in_block == static_cast< uint32_t >( -1 ) )
+      {
+         wlog( "Dropping mempool-origin operation notification (trx_id: ${id}, block: ${b})",
+               ("id", note.trx_id.str())("b", note.block) );
+         return;
+      }
+
+      // Never ingest beyond the configured stop height.
+      if( note.block > _stop_height )
+      {
+         return;
+      }
+
       // Mark this block as having operations
       {
          std::lock_guard< std::mutex > lock( _blocks_mutex );
@@ -248,7 +275,13 @@ void ingest_plugin_impl::on_post_apply_block( const block_notification& note )
    try
    {
       uint32_t block_num = note.block.block_num();
-      
+
+      // Never ingest beyond the configured stop height.
+      if( block_num > _stop_height )
+      {
+         return;
+      }
+
       // Check if this block has any operations
       bool has_ops = false;
       {
@@ -257,12 +290,24 @@ void ingest_plugin_impl::on_post_apply_block( const block_notification& note )
          // Remove from set to free memory (we only need to track until block is complete)
          _blocks_with_ops.erase( block_num );
       }
-      
+
       // If block has no operations, send block-only record
       if( !has_ops )
       {
          fc::variant json = build_block_only_json( note );
          send_operation_json( json );
+      }
+
+      // Reached the configured stop height: request a clean shutdown (same as
+      // SIGINT). plugin_shutdown() then drains the send queue before exiting,
+      // so nothing beyond this point is ever ingested and steemd never enters
+      // live/p2p mode (the mempool double-push window).
+      if( block_num >= _stop_height && !_stop_triggered )
+      {
+         _stop_triggered = true;
+         ilog( "Ingest stop height ${h} reached at block ${n}, requesting clean shutdown",
+               ("h", _stop_height)("n", block_num) );
+         appbase::app().quit();
       }
    }
    catch( const fc::exception& e )
@@ -991,6 +1036,13 @@ void ingest_plugin::set_program_options(
 )
 {
    cfg.add_options()
+      ( "ingest-stop-height",
+        boost::program_options::value< uint32_t >(),
+        "REQUIRED. Block height at which replay stops and steemd shuts down cleanly "
+        "(send queue is drained first). Must be <= the last block of the block log; "
+        "recommended value: exactly the block log head. Steemd refuses to start "
+        "without this option, so the ingest plugin can never run in open-ended "
+        "live/p2p mode" )
       ( "ingest-endpoint",
         boost::program_options::value< std::string >()->default_value( "http://localhost:8080/ingest/applied_ops" ),
         "Ingest service HTTP endpoint (batch endpoint)" )
@@ -1056,7 +1108,65 @@ void ingest_plugin::plugin_initialize( const boost::program_options::variables_m
       
       if( options.count( "ingest-dry-run" ) )
          my->_dry_run = options["ingest-dry-run"].as< bool >();
-      
+
+      // ingest-stop-height is mandatory: without a hard stop the replayed node
+      // would transition into live/p2p mode, where push_transaction notifies
+      // the plugin with residual block state (head block num + trx_in_block=-1
+      // + real trx_id) and produces mempool double-push records.
+      FC_ASSERT( options.count( "ingest-stop-height" ),
+         "The ingest plugin requires 'ingest-stop-height'. Set it to the last block "
+         "number of the block log (config: ingest-stop-height = N / cli: --ingest-stop-height=N). "
+         "steemd stops and shuts down cleanly after reaching this height." );
+
+      my->_stop_height = options["ingest-stop-height"].as< uint32_t >();
+
+      FC_ASSERT( my->_stop_height > 0,
+         "'ingest-stop-height' must be a positive block number (got ${h}).",
+         ("h", my->_stop_height) );
+
+      // Validate the stop height against the block log end, if the log index
+      // is readable now: the index file holds one 8-byte position per block,
+      // so its size / 8 is the block log head number. Rejecting here (before
+      // any replay work) prevents a stop height that would leave the node
+      // short of the target and fall through to live mode.
+      try
+      {
+         bfs::path index_file = appbase::app().data_dir() / "blockchain" / "block_log.index";
+         if( bfs::exists( index_file ) )
+         {
+            uint64_t log_head_block = static_cast< uint64_t >( bfs::file_size( index_file ) )
+               / sizeof( uint64_t );
+
+            FC_ASSERT( log_head_block > 0,
+               "The block log at ${dir} is empty; there is nothing to replay for the ingest plugin.",
+               ("dir", ( appbase::app().data_dir() / "blockchain" ).string()) );
+
+            FC_ASSERT( my->_stop_height <= log_head_block,
+               "'ingest-stop-height' (${h}) is beyond the block log head (${n}). "
+               "The stop height must be <= the last block of the block log.",
+               ("h", my->_stop_height)("n", log_head_block) );
+
+            ilog( "Ingest stop height ${h} validated against block log head ${n}",
+                  ("h", my->_stop_height)("n", log_head_block) );
+            my->_stop_height_validated = true;
+         }
+         else
+         {
+            wlog( "Block log index not found at ${f}; deferring stop-height validation to startup",
+                  ("f", index_file.string()) );
+         }
+      }
+      catch( const fc::exception& )
+      {
+         throw; // validation failures are fatal
+      }
+      catch( const std::exception& e )
+      {
+         // Unreadable index is not fatal here; re-check from the opened DB at startup.
+         wlog( "Could not read the block log index (${e}); deferring stop-height validation to startup",
+               ("e", e.what()) );
+      }
+
       // Register signal handlers
       database& db = appbase::app().get_plugin< chain::chain_plugin >().db();
       my->_post_apply_operation_conn = db.add_post_apply_operation_handler(
@@ -1116,7 +1226,24 @@ void ingest_plugin::plugin_startup()
    try
    {
       ilog( "Starting ingest plugin" );
-      
+
+      // Deferred stop-height validation: the block log index was not readable
+      // at initialize time, so verify against the (now opened) chain database.
+      // If the stop block cannot be found in the log, fail instead of letting
+      // the node fall short of the target and drift into live mode.
+      if( !my->_stop_height_validated )
+      {
+         auto stop_block = my->_db.fetch_block_by_number( my->_stop_height );
+         FC_ASSERT( stop_block.valid(),
+            "'ingest-stop-height' (${h}) is beyond the block log head; the block "
+            "could not be found in the chain database. The stop height must be "
+            "<= the last block of the block log.",
+            ("h", my->_stop_height) );
+         my->_stop_height_validated = true;
+         ilog( "Ingest stop height ${h} validated at startup (block id: ${id})",
+               ("h", my->_stop_height)("id", stop_block->id().str()) );
+      }
+
       if( my->_dry_run )
       {
          // Dry run mode: initialize output file
