@@ -623,7 +623,7 @@ struct pre_apply_operation_visitor
 
       try {
 
-      if( mbparams.max_mana != rc_account.last_max_rc )
+      if( rc_account.last_max_rc != 0 && mbparams.max_mana != rc_account.last_max_rc )
       {
          if( !_skip.skip_reject_unknown_delta_vests )
          {
@@ -641,6 +641,7 @@ struct pre_apply_operation_visitor
       _db.modify( rc_account, [&]( rc_account_object& rca )
       {
          rca.rc_manabar.regenerate_mana< true >( mbparams, _current_time );
+         rca.last_max_rc = mbparams.max_mana;
       } );
       } FC_CAPTURE_AND_RETHROW( (account)(rc_account)(mbparams.max_mana) )
    }
@@ -1116,6 +1117,9 @@ void rc_plugin_impl::validate_database()
 
    for( const rc_account_object& rc_account : rc_idx )
    {
+      if( rc_account.last_max_rc == 0 )
+         continue;
+
       const account_object& account = _db.get< account_object, by_name >( rc_account.account );
       int64_t max_rc = get_maximum_rc( account, rc_account );
 
