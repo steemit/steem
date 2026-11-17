@@ -1,0 +1,5 @@
+{
+   "plugin_name": "ingest",
+   "plugin_namespace": "ingest",
+   "plugin_project": "ingest_plugin"
+}

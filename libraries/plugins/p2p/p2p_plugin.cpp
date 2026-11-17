@@ -214,7 +214,17 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
 
          return result;
       } catch ( const chain::unlinkable_block_exception& e ) {
-         // translate to a graphene::net exception
+         // During sync, receiving blocks from forks is expected behavior.
+         // Downgrade to warning to avoid log noise.
+         if ( sync_mode ) {
+            fc_wlog(fc::logger::get("sync"),
+                  "Dropping unlinkable sync block #${block_num} (head is ${head}): ${e}",
+                  ("block_num", blk_msg.block.block_num())
+                  ("head", head_block_num)
+                  ("e", e.to_detail_string()));
+            return false;
+         }
+         // Non-sync: translate to a graphene::net exception to trigger sync restart
          fc_elog(fc::logger::get("sync"),
                "Error when pushing block, current head block is ${head}:\n${e}",
                ("e", e.to_detail_string())
