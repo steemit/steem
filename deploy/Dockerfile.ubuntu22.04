@@ -1,0 +1,156 @@
+FROM ubuntu:22.04 AS builder
+
+# The default build params are for low memory mira version.
+# This usually are used as a witness node.
+ARG CMAKE_BUILD_TYPE=Release
+ARG STEEM_STATIC_BUILD=ON
+ARG ENABLE_MIRA=ON
+ARG LOW_MEMORY_MODE=ON
+ARG CLEAR_VOTES=ON
+ARG SKIP_BY_TX_ID=ON
+ARG BUILD_STEEM_TESTNET=OFF
+ARG ENABLE_COVERAGE_TESTING=OFF
+ARG CHAINBASE_CHECK_LOCKING=OFF
+ARG UNIT_TEST=OFF
+ARG DOXYGEN=OFF
+ARG BUILD_TESTING=ON
+ARG NUMBER_BUILD_THREADS
+
+RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
+    echo "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" >> /etc/build_info && \
+    echo "ENABLE_MIRA: ${ENABLE_MIRA}" >> /etc/build_info && \
+    echo "LOW_MEMORY_MODE: ${LOW_MEMORY_MODE}" >> /etc/build_info && \
+    echo "CLEAR_VOTES: ${CLEAR_VOTES}" >> /etc/build_info && \
+    echo "SKIP_BY_TX_ID: ${SKIP_BY_TX_ID}" >> /etc/build_info && \
+    echo "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" >> /etc/build_info && \
+    echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
+    echo "CHAINBASE_CHECK_LOCKING: ${CHAINBASE_CHECK_LOCKING}" >> /etc/build_info && \
+    echo "UNIT_TEST: ${UNIT_TEST}" >> /etc/build_info && \
+    echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info && \
+    echo "NUMBER_BUILD_THREADS: ${THREADS}" >> /etc/build_info
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y \
+        git \
+        jq \
+        build-essential \
+        cmake \
+        libssl-dev \
+        libsnappy-dev \
+        python3-jinja2 \
+        doxygen \
+        autoconf \
+        automake \
+        autotools-dev \
+        bsdmainutils \
+        libyajl-dev \
+        libreadline-dev \
+        libssl-dev \
+        libtool \
+        liblz4-tool \
+        ncurses-dev \
+        libgflags-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        liblz4-dev \
+        libzstd-dev \
+        wget
+
+## default version at ubuntu22.04 is boost 1.74
+## upgrade to boost 1.78
+## Build Boost 1.78 (required by Steem)
+RUN set -e && \
+    BOOST_VERSION_DOT=1.78.0 && \
+    BOOST_VERSION_UNDERSCORE=1_78_0 && \
+    BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" && \
+    BOOST_SHA256="94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7" && \
+    wget -q "${BOOST_URL}" -O boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    echo "${BOOST_SHA256}  boost_${BOOST_VERSION_UNDERSCORE}.tar.gz" | sha256sum -c - && \
+    tar -xvzf boost_${BOOST_VERSION_UNDERSCORE}.tar.gz && \
+    cd boost_${BOOST_VERSION_UNDERSCORE} && \
+    ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc || { cat bootstrap.log; exit 1; } && \
+    ./b2 -j"$(nproc)" toolset=gcc install || { cat bootstrap.log; exit 1; } && \
+    cd .. && rm -rf boost_${BOOST_VERSION_UNDERSCORE} boost_${BOOST_VERSION_UNDERSCORE}.tar.gz
+
+WORKDIR /usr/local/src
+ADD . /usr/local/src
+
+RUN pwd && \
+    git submodule update --init --recursive && \
+    cd libraries/fc/vendor/websocketpp && \
+    (git apply /usr/local/src/patches/websocketpp-patch-ini-asio.patch || echo "Patch already applied or failed")
+
+RUN mkdir -p build && \
+    cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+        -DBUILD_TESTING=${BUILD_TESTING} \
+        -DLOW_MEMORY_NODE=${LOW_MEMORY_MODE} \
+        -DCLEAR_VOTES=${CLEAR_VOTES} \
+        -DSKIP_BY_TX_ID=${SKIP_BY_TX_ID} \
+        -DBUILD_STEEM_TESTNET=${BUILD_STEEM_TESTNET} \
+        -DENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING} \
+        -DCHAINBASE_CHECK_LOCKING=${CHAINBASE_CHECK_LOCKING} \
+        -DENABLE_MIRA=${ENABLE_MIRA} \
+        -DSTEEM_STATIC_BUILD=${STEEM_STATIC_BUILD} \
+        ..
+
+RUN cd build && \
+    make -j$( [ -n "$NUMBER_BUILD_THREADS" ] \
+        && echo "$NUMBER_BUILD_THREADS" \
+        || echo $(( $(nproc) > 1 ? $(nproc) - 1 : 1 )) )
+    
+RUN cd build && \
+    make install
+
+RUN if [ "${UNIT_TEST}" = "ON" ] ; then \
+        ./tests/scripts/run_unit_tests.sh ; \
+    else \
+        echo "Skipping unit tests as UNIT_TEST is set to OFF" ; \
+    fi
+
+RUN if [ "${DOXYGEN}" = "ON" ] ; then \
+        doxygen && \
+        PYTHONPATH=programs/build_helpers \
+        python3 -m steem_build_helpers.check_reflect && \
+        programs/build_helpers/get_config_check.sh; \
+    fi
+
+FROM ubuntu:22.04 AS final
+
+ARG CMAKE_BUILD_TYPE=Release
+ARG STEEM_STATIC_BUILD=ON
+ARG ENABLE_MIRA=ON
+ARG LOW_MEMORY_MODE=ON
+ARG CLEAR_VOTES=ON
+ARG SKIP_BY_TX_ID=ON
+ARG BUILD_STEEM_TESTNET=OFF
+ARG ENABLE_COVERAGE_TESTING=OFF
+ARG CHAINBASE_CHECK_LOCKING=OFF
+ARG DOXYGEN=OFF
+
+RUN echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" >> /etc/build_info && \
+    echo "STEEM_STATIC_BUILD: ${STEEM_STATIC_BUILD}" >> /etc/build_info && \
+    echo "ENABLE_MIRA: ${ENABLE_MIRA}" >> /etc/build_info && \
+    echo "LOW_MEMORY_MODE: ${LOW_MEMORY_MODE}" >> /etc/build_info && \
+    echo "CLEAR_VOTES: ${CLEAR_VOTES}" >> /etc/build_info && \
+    echo "SKIP_BY_TX_ID: ${SKIP_BY_TX_ID}" >> /etc/build_info && \
+    echo "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" >> /etc/build_info && \
+    echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}" >> /etc/build_info && \
+    echo "DOXYGEN: ${DOXYGEN}" >> /etc/build_info
+
+COPY --from=builder /usr/local/steemd /usr/local/steemd
+WORKDIR /var/steem
+VOLUME [ "/var/steem" ]
+RUN apt-get update && \
+    apt-get install -y libsnappy-dev libreadline-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists
+
+## make steemd available on $PATH
+ENV PATH="/usr/local/steemd/bin:${PATH}"
+
+CMD ["cat", "/etc/build_info"]

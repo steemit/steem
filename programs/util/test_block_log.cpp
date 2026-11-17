@@ -1,6 +1,7 @@
 #include <steem/chain/database.hpp>
 #include <steem/protocol/block.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/exception/exception.hpp>
 
 int main( int argc, char** argv, char** envp )
 {
@@ -37,22 +38,36 @@ int main( int argc, char** argv, char** envp )
       idump( (fc::raw::pack_size(b2)) );
 
       auto r1 = log.read_block( 0 );
+      FC_ASSERT( r1.first.id() == b1.id() );
       idump( (r1) );
       idump( (fc::raw::pack_size(r1.first)) );
 
       auto r2 = log.read_block( r1.second );
+      FC_ASSERT( r2.first.id() == b2.id() );
       idump( (r2) );
       idump( (fc::raw::pack_size(r2.first)) );
 
       idump( (log.read_head()) );
       idump( (fc::raw::pack_size(log.read_head())));
 
-      auto r3 = log.read_block( r2.second );
-      idump( (r3) );
+      // the following is expected to fail
+      // as EOF should be reached
+      bool threw = false;
+      try {
+         auto r3 = log.read_block(r2.second);
+         idump( (r3) );
+      }
+      catch (const fc::exception& e) {
+         threw = true;
+         edump((e.to_detail_string()));
+      }
+      FC_ASSERT(threw, "Expected EOF exception but none was thrown");
+      log.close();
    }
    catch ( const std::exception& e )
    {
       edump( ( std::string( e.what() ) ) );
+      return -1;
    }
 
    return 0;

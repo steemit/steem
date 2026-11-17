@@ -1,6 +1,5 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
-
 #include <fc/crypto/sha256.hpp>
 #include <fc/exception/exception.hpp>
 

@@ -64,7 +64,10 @@ namespace fc { namespace ecc {
     private_key::private_key( EC_KEY* k )
     {
        my->_key = get_secret( k );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"       
        EC_KEY_free(k);
+#pragma GCC diagnostic pop
     }
 
     public_key private_key::get_public_key()const

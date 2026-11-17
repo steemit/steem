@@ -238,14 +238,30 @@ set( fc_sources
      src/compress/smaz.cpp
      src/compress/zlib.cpp
      src/reflect/typename.cpp
-     vendor/cyoencode-1.0.2/src/CyoDecode.c
-     vendor/cyoencode-1.0.2/src/CyoEncode.c
+     vendor/cyoencode/src/CyoDecode.c
+     vendor/cyoencode/src/CyoEncode.c
      )
 
 file( GLOB_RECURSE fc_headers ${CMAKE_CURRENT_SOURCE_DIR} *.hpp *.h )
 
 set( sources
   ${fc_sources}
+)
+
+# Get the latest commit hash
+execute_process(
+  COMMAND git rev-parse HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_REVISION_SHA
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest commit UNIX timestamp
+execute_process(
+  COMMAND git log -1 --format=%ct
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_REVISION_UNIX_TIMESTAMP
+  OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
@@ -365,7 +381,7 @@ target_include_directories(fc
     "${readline_includes}"
 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cyoencode-1.0.2/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cyoencode/src
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/secp256k1-zkp
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/equihash
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bitcoin/src

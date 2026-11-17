@@ -1,6 +1,8 @@
 
 #define BOOST_THREAD_PROVIDES_EXECUTORS
 #define BOOST_THREAD_PROVIDES_FUTURE
+#define BOOST_THREAD_PROVIDES_FUTURE_CONTINUATION
+#define BOOST_THREAD_USES_MOVE
 
 #include <steem/plugins/block_data_export/block_data_export_plugin.hpp>
 #include <steem/plugins/block_data_export/exportable_block_data.hpp>

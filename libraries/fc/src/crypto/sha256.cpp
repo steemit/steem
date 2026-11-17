@@ -56,15 +56,24 @@ namespace fc {
     }
 
     void sha256::encoder::write( const char* d, uint32_t dlen ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"      
       SHA256_Update( &my->ctx, d, dlen);
+#pragma GCC diagnostic pop
     }
     sha256 sha256::encoder::result() {
       sha256 h;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"      
       SHA256_Final((uint8_t*)h.data(), &my->ctx );
+#pragma GCC diagnostic pop
       return h;
     }
     void sha256::encoder::reset() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"      
       SHA256_Init( &my->ctx);
+#pragma GCC diagnostic pop
     }
 
     sha256 operator << ( const sha256& h1, uint32_t i ) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 #include <mira/index_converter.hpp>
 #include <mira/iterator_adapter.hpp>
 
@@ -15,12 +16,15 @@ struct index_adapter
 {
    typedef typename MultiIndexAdapterType::value_type                                              value_type;
    typedef typename std::remove_reference< decltype(
-      (((typename MultiIndexAdapterType::mira_type*)nullptr)->template get<IndexedBy>()) ) >::type mira_type;
-   typedef typename std::remove_reference< decltype(
-      (((typename MultiIndexAdapterType::bmic_type*)nullptr)->template get<IndexedBy>()) ) >::type bmic_type;
+      std::declval<typename MultiIndexAdapterType::mira_type>().template get<IndexedBy>()
+   ) >::type mira_type;
 
-   typedef decltype( (((mira_type*)nullptr)->begin()) )     mira_iter_type;
-   typedef decltype( (((bmic_type*)nullptr)->begin()) )     bmic_iter_type;
+   typedef typename std::remove_reference< decltype(
+      std::declval<typename MultiIndexAdapterType::bmic_type>().template get<IndexedBy>()
+   ) >::type bmic_type;
+   
+   typedef decltype( std::declval<mira_type>().begin() ) mira_iter_type;
+   typedef decltype( std::declval<bmic_type>().begin() ) bmic_iter_type;
 
    typedef iterator_adapter<
       value_type,

@@ -32,8 +32,9 @@ install( TARGETS
 
 add_executable( sign_transaction sign_transaction.cpp )
 
-target_link_libraries( sign_transaction
-                       PRIVATE steem_chain steem_protocol steem_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries(sign_transaction
+    PRIVATE steem_chain steem_protocol steem_utilities fc equihash ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
+)
 
 install( TARGETS
    sign_transaction

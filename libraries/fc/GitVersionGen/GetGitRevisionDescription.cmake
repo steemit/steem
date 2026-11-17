@@ -125,18 +125,18 @@ function(git_describe _var)
 endfunction()
 
 function(get_git_unix_timestamp _var)
-	if(NOT GIT_FOUND)
-		find_package(Git QUIET)
-	endif()
-	get_git_head_revision(refspec hash)
-	if(NOT GIT_FOUND)
-		set(${_var} "GIT-NOTFOUND" PARENT_SCOPE)
-		return()
-	endif()
-	if(NOT hash)
-		set(${_var} "HEAD-HASH-NOTFOUND" PARENT_SCOPE)
-		return()
-	endif()
+    if(NOT GIT_FOUND)
+        find_package(Git QUIET)
+    endif()
+    get_git_head_revision(refspec hash)
+    if(NOT GIT_FOUND)
+        set(${_var} "0" PARENT_SCOPE) # Use 0 as fallback
+        return()
+    endif()
+    if(NOT hash)
+        set(${_var} "0" PARENT_SCOPE) # Use 0 as fallback
+        return()
+    endif()
 
 	# TODO sanitize
 	#if((${ARGN}" MATCHES "&&") OR
@@ -148,26 +148,26 @@ function(get_git_unix_timestamp _var)
 
 	# message(STATUS "Arguments to execute_process: ${ARGN}")
 
-	execute_process(COMMAND
-		"${GIT_EXECUTABLE}"
-		"show"
-                "-s"
-                "--format=%ct"
-		${hash}
-		${ARGN}
-		WORKING_DIRECTORY
-		"${CMAKE_CURRENT_SOURCE_DIR}"
-		RESULT_VARIABLE
-		res
-		OUTPUT_VARIABLE
-		out
-		ERROR_QUIET
-		OUTPUT_STRIP_TRAILING_WHITESPACE)
-	if(NOT res EQUAL 0)
-		set(out "${out}-${res}-NOTFOUND")
-	endif()
+    execute_process(COMMAND
+        "${GIT_EXECUTABLE}"
+        "show"
+        "-s"
+        "--format=%ct"
+        ${hash}
+        ${ARGN}
+        WORKING_DIRECTORY
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE
+        res
+        OUTPUT_VARIABLE
+        out
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(NOT res EQUAL 0)
+        set(out "0") # Use 0 as fallback instead of text
+    endif()
 
-	set(${_var} "${out}" PARENT_SCOPE)
+    set(${_var} "${out}" PARENT_SCOPE)
 endfunction()
 
 function(git_get_exact_tag _var)

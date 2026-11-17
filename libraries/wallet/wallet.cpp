@@ -586,7 +586,7 @@ public:
 
       flat_map< string, condenser_api::api_account_object > approving_account_lut;
       size_t i = 0;
-      for( const optional< condenser_api::api_account_object >& approving_acct : approving_account_objects )
+      for( const optional< condenser_api::api_account_object > approving_acct : approving_account_objects )
       {
          if( !approving_acct.valid() )
          {
@@ -1111,7 +1111,7 @@ string wallet_api::help()const
 {
    std::vector<std::string> method_names = my->method_documentation.get_method_names();
    std::stringstream ss;
-   for (const std::string method_name : method_names)
+   for (const std::string &method_name : method_names)
    {
       try
       {

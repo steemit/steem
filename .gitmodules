@@ -7,3 +7,9 @@
 [submodule "libraries/fc/vendor/websocketpp"]
 	path = libraries/fc/vendor/websocketpp
 	url = https://github.com/zaphoyd/websocketpp.git
+[submodule "libraries/vendor/rocksdb"]
+	path = libraries/vendor/rocksdb
+	url = https://github.com/facebook/rocksdb.git
+[submodule "libraries/fc/vendor/cyoencode"]
+	path = libraries/fc/vendor/cyoencode
+	url = https://github.com/calzakk/CyoEncode

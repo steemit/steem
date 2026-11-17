@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #define BOOST_TEST_MODULE plugin_test
-#include <BoostTestTargetConfig.h>
+//#include <BoostTestTargetConfig.h>
 
 #include <cstdlib>
 #include <iostream>

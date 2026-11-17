@@ -381,9 +381,11 @@ struct api_feed_history_object
 {
    api_feed_history_object( const feed_history_object& f ) :
       id( f.id ),
-      current_median_history( f.current_median_history ),
-      price_history( f.price_history.begin(), f.price_history.end() )
-   {}
+      current_median_history( f.current_median_history )
+   {
+      // error: '__cur_node' may be used uninitialized [-Werror=maybe-uninitialized]
+      price_history.assign(f.price_history.begin(), f.price_history.end());
+   }
 
    api_feed_history_object() {}
 

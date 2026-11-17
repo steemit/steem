@@ -14,7 +14,7 @@ steps:
   dir: "steem"
   args: [
       'build',
-      '-f', '../Builder.DockerFile',
+      '-f', '../deploy/Dockfile.ci.tests',
       '.'
       ]
 options:

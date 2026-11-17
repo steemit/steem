@@ -41,15 +41,24 @@ namespace fc {
     }
 
     void sha512::encoder::write( const char* d, uint32_t dlen ) {
-      SHA512_Update( &my->ctx, d, dlen); 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"      
+      SHA512_Update( &my->ctx, d, dlen);
+#pragma GCC diagnostic pop
     }
     sha512 sha512::encoder::result() {
       sha512 h;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
       SHA512_Final((uint8_t*)h.data(), &my->ctx );
+#pragma GCC diagnostic pop
       return h;
     }
     void sha512::encoder::reset() {
-      SHA512_Init( &my->ctx);  
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"      
+      SHA512_Init( &my->ctx);
+#pragma GCC diagnostic pop
     }
 
     sha512 operator << ( const sha512& h1, uint32_t i ) {
