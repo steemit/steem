@@ -1289,6 +1289,14 @@ namespace detail
                vstate.reputation = reps[0].reputation;
             }
          }
+         else if( _reputation_api )
+         {
+            auto reps = _reputation_api->get_account_reputations( reputation::get_account_reputations_args( { vo.name, 1 } ) ).reputations;
+            if( reps.size() )
+            {
+               vstate.reputation = reps[0].reputation;
+            }
+         }
 
          votes.push_back( vstate );
          ++itr;
