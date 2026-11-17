@@ -90,6 +90,9 @@ namespace fc {
       virtual uint64_t get_handle()const override { return uint64_t(_data.get()); }
       virtual api_id_type register_api( api_connection& conn )const override;    // defined in api_connection.hpp
 
+      bool is_valid()const { return bool(_data); }
+      explicit operator bool()const { return bool(_data); }
+
       vtable_type& operator*()const  { FC_ASSERT( _vtable ); return *_vtable; }
       vtable_type* operator->()const {  FC_ASSERT( _vtable ); return _vtable.get(); }
 
