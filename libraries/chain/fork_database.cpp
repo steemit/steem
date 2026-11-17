@@ -11,6 +11,7 @@ void fork_database::reset()
 {
    _head.reset();
    _index.clear();
+   _unlinked_index.clear();
 }
 
 void fork_database::pop_block()
@@ -42,8 +43,8 @@ shared_ptr<fork_item>  fork_database::push_block(const signed_block& b)
    {
       wlog( "Pushing block to fork database that failed to link: ${id}, ${num}", ("id",b.id())("num",b.block_num()) );
       wlog( "Head: ${num}, ${id}", ("num",_head->data.block_num())("id",_head->data.id()) );
-      throw;
       _unlinked_index.insert( item );
+      throw;
    }
    return _head;
 }
